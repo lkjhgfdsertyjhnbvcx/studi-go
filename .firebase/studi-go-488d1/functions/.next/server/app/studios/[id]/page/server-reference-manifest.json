@@ -1,0 +1,50 @@
+{
+  "node": {
+    "40f3f415047df7d6f80b4eeb845beddaafcd2f52bb": {
+      "workers": {
+        "app/studios/[id]/page": {
+          "moduleId": 36557,
+          "async": false,
+          "exportedName": "fetchStudio",
+          "filename": "music-studio-app/src/actions/studio.ts"
+        }
+      },
+      "layer": {
+        "app/studios/[id]/page": "action-browser"
+      },
+      "exportedName": "fetchStudio",
+      "filename": "music-studio-app/src/actions/studio.ts"
+    },
+    "00fd941a7429035171e0b748ef78c5506f25c02154": {
+      "workers": {
+        "app/studios/[id]/page": {
+          "moduleId": 36557,
+          "async": false,
+          "exportedName": "getCurrentUser",
+          "filename": "music-studio-app/src/actions/login.ts"
+        }
+      },
+      "layer": {
+        "app/studios/[id]/page": "action-browser"
+      },
+      "exportedName": "getCurrentUser",
+      "filename": "music-studio-app/src/actions/login.ts"
+    },
+    "009837b3c5fe64d738d0768ba5c33970c0b39a09c2": {
+      "workers": {
+        "app/studios/[id]/page": {
+          "moduleId": 36557,
+          "async": false,
+          "exportedName": "logoutAction",
+          "filename": "music-studio-app/src/actions/login.ts"
+        }
+      },
+      "layer": {
+        "app/studios/[id]/page": "action-browser"
+      },
+      "exportedName": "logoutAction",
+      "filename": "music-studio-app/src/actions/login.ts"
+    }
+  },
+  "edge": {}
+}

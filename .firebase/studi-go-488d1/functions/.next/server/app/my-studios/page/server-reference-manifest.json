@@ -1,0 +1,80 @@
+{
+  "node": {
+    "00e4c93b8752da6310062bf7641dee775c057867ca": {
+      "workers": {
+        "app/my-studios/page": {
+          "moduleId": 33451,
+          "async": false,
+          "exportedName": "fetchStudios",
+          "filename": "music-studio-app/src/actions/studio.ts"
+        }
+      },
+      "layer": {
+        "app/my-studios/page": "action-browser"
+      },
+      "exportedName": "fetchStudios",
+      "filename": "music-studio-app/src/actions/studio.ts"
+    },
+    "00fe4763763c9e25e7b0c23dc51f4ad6547485b042": {
+      "workers": {
+        "app/my-studios/page": {
+          "moduleId": 33451,
+          "async": false,
+          "exportedName": "getMyStudiosAction",
+          "filename": "music-studio-app/src/actions/user.ts"
+        }
+      },
+      "layer": {
+        "app/my-studios/page": "action-browser"
+      },
+      "exportedName": "getMyStudiosAction",
+      "filename": "music-studio-app/src/actions/user.ts"
+    },
+    "401c848a4839b5495e326dbd9527e980e56b2e81d0": {
+      "workers": {
+        "app/my-studios/page": {
+          "moduleId": 33451,
+          "async": false,
+          "exportedName": "toggleMyStudioAction",
+          "filename": "music-studio-app/src/actions/user.ts"
+        }
+      },
+      "layer": {
+        "app/my-studios/page": "action-browser"
+      },
+      "exportedName": "toggleMyStudioAction",
+      "filename": "music-studio-app/src/actions/user.ts"
+    },
+    "00fd941a7429035171e0b748ef78c5506f25c02154": {
+      "workers": {
+        "app/my-studios/page": {
+          "moduleId": 33451,
+          "async": false,
+          "exportedName": "getCurrentUser",
+          "filename": "music-studio-app/src/actions/login.ts"
+        }
+      },
+      "layer": {
+        "app/my-studios/page": "action-browser"
+      },
+      "exportedName": "getCurrentUser",
+      "filename": "music-studio-app/src/actions/login.ts"
+    },
+    "009837b3c5fe64d738d0768ba5c33970c0b39a09c2": {
+      "workers": {
+        "app/my-studios/page": {
+          "moduleId": 33451,
+          "async": false,
+          "exportedName": "logoutAction",
+          "filename": "music-studio-app/src/actions/login.ts"
+        }
+      },
+      "layer": {
+        "app/my-studios/page": "action-browser"
+      },
+      "exportedName": "logoutAction",
+      "filename": "music-studio-app/src/actions/login.ts"
+    }
+  },
+  "edge": {}
+}

@@ -1,0 +1,20 @@
+{
+  "node": {
+    "406d50826d0311f4a2ba4016d0c87eb0c801506ec1": {
+      "workers": {
+        "app/reset-password/page": {
+          "moduleId": 36466,
+          "async": false,
+          "exportedName": "resetPasswordAction",
+          "filename": "music-studio-app/src/actions/reset-password.ts"
+        }
+      },
+      "layer": {
+        "app/reset-password/page": "action-browser"
+      },
+      "exportedName": "resetPasswordAction",
+      "filename": "music-studio-app/src/actions/reset-password.ts"
+    }
+  },
+  "edge": {}
+}

@@ -1,0 +1,20 @@
+{
+  "node": {
+    "60dc2d980d08fe70a6632f1c2387a539aa45c05dbf": {
+      "workers": {
+        "app/admin/platform/login/page": {
+          "moduleId": 38566,
+          "async": false,
+          "exportedName": "adminLogin",
+          "filename": "music-studio-app/src/actions/admin-auth.ts"
+        }
+      },
+      "layer": {
+        "app/admin/platform/login/page": "action-browser"
+      },
+      "exportedName": "adminLogin",
+      "filename": "music-studio-app/src/actions/admin-auth.ts"
+    }
+  },
+  "edge": {}
+}

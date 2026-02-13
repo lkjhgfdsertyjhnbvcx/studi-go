@@ -1,0 +1,65 @@
+{
+  "node": {
+    "405932c62487fb452c306955850c3372e60cb81894": {
+      "workers": {
+        "app/studios/[id]/rooms/[roomIndex]/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/studios/[id]/rooms/[roomIndex]/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/studio.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/music-studio-app/src/actions/schedule.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE2 => \"[project]/music-studio-app/src/actions/booking.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE3 => \"[project]/music-studio-app/src/actions/login.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "fetchStudio",
+          "filename": "music-studio-app/src/actions/studio.ts"
+        }
+      },
+      "layer": {
+        "app/studios/[id]/rooms/[roomIndex]/page": "action-browser"
+      },
+      "exportedName": "fetchStudio",
+      "filename": "music-studio-app/src/actions/studio.ts"
+    },
+    "0081e40b72fa657e20758eba101347f2368c20b5d7": {
+      "workers": {
+        "app/studios/[id]/rooms/[roomIndex]/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/studios/[id]/rooms/[roomIndex]/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/studio.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/music-studio-app/src/actions/schedule.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE2 => \"[project]/music-studio-app/src/actions/booking.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE3 => \"[project]/music-studio-app/src/actions/login.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "getBookingsAction",
+          "filename": "music-studio-app/src/actions/schedule.ts"
+        }
+      },
+      "layer": {
+        "app/studios/[id]/rooms/[roomIndex]/page": "action-browser"
+      },
+      "exportedName": "getBookingsAction",
+      "filename": "music-studio-app/src/actions/schedule.ts"
+    },
+    "40caca3610ff76b0627662db1d5c81852ddbb2cb8f": {
+      "workers": {
+        "app/studios/[id]/rooms/[roomIndex]/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/studios/[id]/rooms/[roomIndex]/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/studio.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/music-studio-app/src/actions/schedule.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE2 => \"[project]/music-studio-app/src/actions/booking.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE3 => \"[project]/music-studio-app/src/actions/login.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "createBooking",
+          "filename": "music-studio-app/src/actions/booking.ts"
+        }
+      },
+      "layer": {
+        "app/studios/[id]/rooms/[roomIndex]/page": "action-browser"
+      },
+      "exportedName": "createBooking",
+      "filename": "music-studio-app/src/actions/booking.ts"
+    },
+    "00cc83454bde0ebb8f0e5beebe1faab4e0e3d9b85c": {
+      "workers": {
+        "app/studios/[id]/rooms/[roomIndex]/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/studios/[id]/rooms/[roomIndex]/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/studio.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/music-studio-app/src/actions/schedule.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE2 => \"[project]/music-studio-app/src/actions/booking.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE3 => \"[project]/music-studio-app/src/actions/login.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "getCurrentUser",
+          "filename": "music-studio-app/src/actions/login.ts"
+        }
+      },
+      "layer": {
+        "app/studios/[id]/rooms/[roomIndex]/page": "action-browser"
+      },
+      "exportedName": "getCurrentUser",
+      "filename": "music-studio-app/src/actions/login.ts"
+    }
+  },
+  "edge": {}
+}

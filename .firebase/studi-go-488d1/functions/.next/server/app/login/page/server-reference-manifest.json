@@ -1,0 +1,20 @@
+{
+  "node": {
+    "40fd6d66984b29bd424bd497fbe1777d05b6a3fb74": {
+      "workers": {
+        "app/login/page": {
+          "moduleId": 6704,
+          "async": false,
+          "exportedName": "loginAction",
+          "filename": "music-studio-app/src/actions/login.ts"
+        }
+      },
+      "layer": {
+        "app/login/page": "action-browser"
+      },
+      "exportedName": "loginAction",
+      "filename": "music-studio-app/src/actions/login.ts"
+    }
+  },
+  "edge": {}
+}

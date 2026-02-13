@@ -1,0 +1,35 @@
+{
+  "node": {
+    "405932c62487fb452c306955850c3372e60cb81894": {
+      "workers": {
+        "app/admin/stores/[id]/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/admin/stores/[id]/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/studio.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "fetchStudio",
+          "filename": "music-studio-app/src/actions/studio.ts"
+        }
+      },
+      "layer": {
+        "app/admin/stores/[id]/page": "action-browser"
+      },
+      "exportedName": "fetchStudio",
+      "filename": "music-studio-app/src/actions/studio.ts"
+    },
+    "40a99c7e57f5ffb60c7126b179428ff9a0895705a5": {
+      "workers": {
+        "app/admin/stores/[id]/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/admin/stores/[id]/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/studio.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "updateStudio",
+          "filename": "music-studio-app/src/actions/studio.ts"
+        }
+      },
+      "layer": {
+        "app/admin/stores/[id]/page": "action-browser"
+      },
+      "exportedName": "updateStudio",
+      "filename": "music-studio-app/src/actions/studio.ts"
+    }
+  },
+  "edge": {}
+}

@@ -1,0 +1,35 @@
+{
+  "node": {
+    "00c0bbb4b1415d1cd7c9373ddf7699da1ac1714148": {
+      "workers": {
+        "app/admin/register-store/page": {
+          "moduleId": 89451,
+          "async": false,
+          "exportedName": "createNewStudioAction",
+          "filename": "music-studio-app/src/actions/studio.ts"
+        }
+      },
+      "layer": {
+        "app/admin/register-store/page": "action-browser"
+      },
+      "exportedName": "createNewStudioAction",
+      "filename": "music-studio-app/src/actions/studio.ts"
+    },
+    "40530a7c11e54431ea05abc98c22a440f2a6e9ff9a": {
+      "workers": {
+        "app/admin/register-store/page": {
+          "moduleId": 89451,
+          "async": false,
+          "exportedName": "storeLogin",
+          "filename": "music-studio-app/src/actions/admin-auth.ts"
+        }
+      },
+      "layer": {
+        "app/admin/register-store/page": "action-browser"
+      },
+      "exportedName": "storeLogin",
+      "filename": "music-studio-app/src/actions/admin-auth.ts"
+    }
+  },
+  "edge": {}
+}

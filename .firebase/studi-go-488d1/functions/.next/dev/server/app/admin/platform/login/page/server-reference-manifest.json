@@ -1,0 +1,20 @@
+{
+  "node": {
+    "6095d9b95f263e7a67fcaf6220fc022a92ad42b253": {
+      "workers": {
+        "app/admin/platform/login/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/admin/platform/login/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/admin-auth.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "adminLogin",
+          "filename": "music-studio-app/src/actions/admin-auth.ts"
+        }
+      },
+      "layer": {
+        "app/admin/platform/login/page": "action-browser"
+      },
+      "exportedName": "adminLogin",
+      "filename": "music-studio-app/src/actions/admin-auth.ts"
+    }
+  },
+  "edge": {}
+}

@@ -1,0 +1,45 @@
+[
+  {
+    "id": "c107785b-c2e1-4d22-90df-1be44eea99a4",
+    "name": "Yoichi Fujino",
+    "email": "frankyfujino@gmail.com",
+    "phone": "09041451450",
+    "createdAt": "2026-01-04T09:18:59.408Z",
+    "isJocollaUser": true,
+    "myStudios": [
+      "9260c149-1e4c-4c1a-823e-858ed9fd8e8f",
+      "9f8dfa1b-ad42-4985-9f23-38df98a96e7f",
+      "5c67f2e5-cf8b-496c-a172-4798988a0c03",
+      "b8f0af23-8765-4370-90d7-b527645732e7"
+    ],
+    "resetToken": "d68ee91e-49b5-420e-bcd8-91912a7fc05b",
+    "resetTokenExpiry": 1770207637710
+  },
+  {
+    "id": "e7a88cc8-3192-4c1a-83f8-d99017d149e9",
+    "name": "Yoichi Fujino",
+    "email": "teststudio@test.com",
+    "phone": "teststudio",
+    "createdAt": "2026-01-12T13:14:41.066Z",
+    "isJocollaUser": true
+  },
+  {
+    "id": "e10514c5-1ace-4859-9d07-7aeb116f574a",
+    "name": "CWC藤野",
+    "email": "fujino@cwc-inc.com",
+    "phone": "09041451450",
+    "createdAt": "2026-01-21T13:25:21.979Z",
+    "isJocollaUser": true,
+    "myStudios": [
+      "9260c149-1e4c-4c1a-823e-858ed9fd8e8f"
+    ]
+  },
+  {
+    "id": "a723220e-1733-409e-9b97-cf44e2a6fe4a",
+    "name": "user001",
+    "email": "user001@user.com",
+    "phone": "03-1123-3345",
+    "createdAt": "2026-01-31T05:09:29.993Z",
+    "isJocollaUser": true
+  }
+]

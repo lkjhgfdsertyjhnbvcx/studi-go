@@ -1,0 +1,6 @@
+1:"$Sreact.fragment"
+2:I[43478,["/_next/static/chunks/7ea744f109f50d6c.js","/_next/static/chunks/8e512890862c784b.js","/_next/static/chunks/6989a3da21416dd9.js"],"RegisterForm"]
+3:I[33912,["/_next/static/chunks/6a290ba8f7bd068c.js","/_next/static/chunks/50e59039a2a61e6c.js"],"OutletBoundary"]
+4:"$Sreact.suspense"
+0:{"buildId":"8pMW4K73Aker12cVXUddz","rsc":["$","$1","c",{"children":[["$","div",null,{"className":"min-h-screen bg-black flex items-center justify-center p-4","children":["$","div",null,{"className":"max-w-md w-full bg-slate-900/50 backdrop-blur border border-white/10 p-8 rounded-2xl shadow-2xl","children":[["$","div",null,{"className":"text-center mb-8","children":[["$","h1",null,{"className":"text-3xl font-bold text-white mb-2","children":"ACCOUNT REGISTRATION"}],["$","p",null,{"className":"text-gray-400 text-sm","children":"JOCOLLA MUSIC NETWORK"}]]}],["$","$L2",null,{}]]}]}],[["$","script","script-0",{"src":"/_next/static/chunks/7ea744f109f50d6c.js","async":true}],["$","script","script-1",{"src":"/_next/static/chunks/8e512890862c784b.js","async":true}],["$","script","script-2",{"src":"/_next/static/chunks/6989a3da21416dd9.js","async":true}]],["$","$L3",null,{"children":["$","$4",null,{"name":"Next.MetadataOutlet","children":"$@5"}]}]]}],"loading":null,"isPartial":false}
+5:null

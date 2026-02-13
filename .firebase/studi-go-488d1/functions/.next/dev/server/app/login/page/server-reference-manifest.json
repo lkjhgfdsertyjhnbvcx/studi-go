@@ -1,0 +1,20 @@
+{
+  "node": {
+    "40cb3a12f77b058d2c5958baae637d31328c65a6ba": {
+      "workers": {
+        "app/login/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/login/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/login.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "loginAction",
+          "filename": "music-studio-app/src/actions/login.ts"
+        }
+      },
+      "layer": {
+        "app/login/page": "action-browser"
+      },
+      "exportedName": "loginAction",
+      "filename": "music-studio-app/src/actions/login.ts"
+    }
+  },
+  "edge": {}
+}

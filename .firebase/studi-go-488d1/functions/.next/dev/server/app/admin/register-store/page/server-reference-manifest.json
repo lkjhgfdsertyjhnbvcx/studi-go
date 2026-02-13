@@ -1,0 +1,35 @@
+{
+  "node": {
+    "00074318368149362b438db185274ca5ef282e82ea": {
+      "workers": {
+        "app/admin/register-store/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/admin/register-store/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/studio.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/music-studio-app/src/actions/admin-auth.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "createNewStudioAction",
+          "filename": "music-studio-app/src/actions/studio.ts"
+        }
+      },
+      "layer": {
+        "app/admin/register-store/page": "action-browser"
+      },
+      "exportedName": "createNewStudioAction",
+      "filename": "music-studio-app/src/actions/studio.ts"
+    },
+    "40f94cb5b752928b50e639d0b94db41445b719e91b": {
+      "workers": {
+        "app/admin/register-store/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/admin/register-store/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/studio.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/music-studio-app/src/actions/admin-auth.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "storeLogin",
+          "filename": "music-studio-app/src/actions/admin-auth.ts"
+        }
+      },
+      "layer": {
+        "app/admin/register-store/page": "action-browser"
+      },
+      "exportedName": "storeLogin",
+      "filename": "music-studio-app/src/actions/admin-auth.ts"
+    }
+  },
+  "edge": {}
+}

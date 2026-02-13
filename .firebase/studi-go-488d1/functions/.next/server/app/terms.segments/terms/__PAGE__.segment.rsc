@@ -1,0 +1,5 @@
+1:"$Sreact.fragment"
+2:I[33912,["/_next/static/chunks/6a290ba8f7bd068c.js","/_next/static/chunks/50e59039a2a61e6c.js"],"OutletBoundary"]
+3:"$Sreact.suspense"
+0:{"buildId":"8pMW4K73Aker12cVXUddz","rsc":["$","$1","c",{"children":[["$","div",null,{"className":"min-h-screen bg-black text-gray-300 p-8 md:p-20 font-sans","children":["$","div",null,{"className":"max-w-3xl mx-auto bg-slate-900 border border-white/10 p-10 rounded-xl","children":[["$","h1",null,{"className":"text-3xl font-bold text-cyan-400 mb-8 border-b border-white/20 pb-4","children":"利用規約"}],["$","pre",null,{"className":"whitespace-pre-wrap font-sans leading-relaxed text-sm","children":"\n利用規約\n\n第1条（目的）\n本規約は、JOCOLLA SNSおよび関連サービス（以下「本サービス」）の利用条件を定めるものです。\n\n第2条（ユーザー登録）\nユーザーは、本サービスの利用にあたり、正確な情報を提供してユーザー登録を行うものとします。\n\n第3条（禁止事項）\nユーザーは、以下の行為を行ってはなりません。\n1. 法令または公序良俗に違反する行為\n2. 他のユーザーへの迷惑行為\n3. サービスの運営を妨害する行為\n\n第4条（サービスの停止）\n当社は、メンテナンス等のために予告なくサービスを停止することがあります。\n\n第5条（免責）\n当社は、本サービスの利用に関してユーザーに生じた損害について、一切の責任を負いません。\n\n以上\n2026年1月1日 制定\n"}]]}]}],null,["$","$L2",null,{"children":["$","$3",null,{"name":"Next.MetadataOutlet","children":"$@4"}]}]]}],"loading":null,"isPartial":false}
+4:null

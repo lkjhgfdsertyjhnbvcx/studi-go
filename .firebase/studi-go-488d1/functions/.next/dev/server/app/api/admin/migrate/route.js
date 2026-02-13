@@ -1,0 +1,10 @@
+var R=require("../../../../chunks/[turbopack]_runtime.js")("server/app/api/admin/migrate/route.js")
+R.c("server/chunks/ad563_next_65085aed._.js")
+R.c("server/chunks/ad563_@grpc_grpc-js_933e7a91._.js")
+R.c("server/chunks/ad563_protobufjs_802807da._.js")
+R.c("server/chunks/ad563_@firebase_firestore_dist_index_node_mjs_bfa80d75._.js")
+R.c("server/chunks/ad563_3881469d._.js")
+R.c("server/chunks/[root-of-the-server]__0f74f279._.js")
+R.c("server/chunks/52431__next-internal_server_app_api_admin_migrate_route_actions_484984ff.js")
+R.m("[project]/music-studio-app/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/music-studio-app/src/app/api/admin/migrate/route.ts [app-route] (ecmascript)\" } [app-route] (ecmascript)")
+module.exports=R.m("[project]/music-studio-app/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/music-studio-app/src/app/api/admin/migrate/route.ts [app-route] (ecmascript)\" } [app-route] (ecmascript)").exports

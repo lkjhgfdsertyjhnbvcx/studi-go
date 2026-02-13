@@ -1,0 +1,5 @@
+1:"$Sreact.fragment"
+2:I[33912,["/_next/static/chunks/6a290ba8f7bd068c.js","/_next/static/chunks/50e59039a2a61e6c.js"],"OutletBoundary"]
+3:"$Sreact.suspense"
+0:{"buildId":"8pMW4K73Aker12cVXUddz","rsc":["$","$1","c",{"children":[["$","div",null,{"className":"min-h-screen bg-black text-gray-300 p-8 md:p-20 font-sans","children":["$","div",null,{"className":"max-w-3xl mx-auto bg-slate-900 border border-white/10 p-10 rounded-xl","children":[["$","h1",null,{"className":"text-3xl font-bold text-cyan-400 mb-8 border-b border-white/20 pb-4","children":"プライバシーポリシー"}],["$","pre",null,{"className":"whitespace-pre-wrap font-sans leading-relaxed text-sm","children":"\nプライバシーポリシー\n\n1. 個人情報の収集\n当社は、ユーザー登録時に氏名、メールアドレス、電話番号等の個人情報を収集します。\n\n2. 利用目的\n収集した個人情報は、以下の目的で利用します。\n- サービスの提供・運営\n- ユーザーサポート\n- 重要なお知らせの通知\n\n3. 第三者提供\n法令に基づく場合を除き、ユーザーの同意なく個人情報を第三者に提供することはありません。\n\n4. 安全管理\n当社は、個人情報の漏洩・滅失防止のために適切な安全管理措置を講じます。\n\n5. お問い合わせ\n個人情報の取り扱いに関するお問い合わせは、サポート窓口までご連絡ください。\n\n以上\n2026年1月1日 制定\n"}]]}]}],null,["$","$L2",null,{"children":["$","$3",null,{"name":"Next.MetadataOutlet","children":"$@4"}]}]]}],"loading":null,"isPartial":false}
+4:null

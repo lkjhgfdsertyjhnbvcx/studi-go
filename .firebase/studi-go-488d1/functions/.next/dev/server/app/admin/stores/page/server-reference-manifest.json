@@ -1,0 +1,50 @@
+{
+  "node": {
+    "00de754591fdaf2c4a04b598d8d123785d38cd283a": {
+      "workers": {
+        "app/admin/stores/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/admin/stores/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/studio.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "fetchStudios",
+          "filename": "music-studio-app/src/actions/studio.ts"
+        }
+      },
+      "layer": {
+        "app/admin/stores/page": "action-browser"
+      },
+      "exportedName": "fetchStudios",
+      "filename": "music-studio-app/src/actions/studio.ts"
+    },
+    "00074318368149362b438db185274ca5ef282e82ea": {
+      "workers": {
+        "app/admin/stores/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/admin/stores/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/studio.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "createNewStudioAction",
+          "filename": "music-studio-app/src/actions/studio.ts"
+        }
+      },
+      "layer": {
+        "app/admin/stores/page": "action-browser"
+      },
+      "exportedName": "createNewStudioAction",
+      "filename": "music-studio-app/src/actions/studio.ts"
+    },
+    "40f0b91f465b26951c09a3f17715c967e1276cad01": {
+      "workers": {
+        "app/admin/stores/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/admin/stores/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/studio.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "deleteStudioAction",
+          "filename": "music-studio-app/src/actions/studio.ts"
+        }
+      },
+      "layer": {
+        "app/admin/stores/page": "action-browser"
+      },
+      "exportedName": "deleteStudioAction",
+      "filename": "music-studio-app/src/actions/studio.ts"
+    }
+  },
+  "edge": {}
+}

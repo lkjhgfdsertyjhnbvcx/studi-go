@@ -1,0 +1,20 @@
+{
+  "node": {
+    "40a88808c6d380bb850277d02ced53e826f99f1281": {
+      "workers": {
+        "app/register/page": {
+          "moduleId": 47475,
+          "async": false,
+          "exportedName": "registerUser",
+          "filename": "music-studio-app/src/actions/auth.ts"
+        }
+      },
+      "layer": {
+        "app/register/page": "action-browser"
+      },
+      "exportedName": "registerUser",
+      "filename": "music-studio-app/src/actions/auth.ts"
+    }
+  },
+  "edge": {}
+}

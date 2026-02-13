@@ -1,0 +1,174 @@
+{
+  "storeName": "スタジオ・JOCOLLA",
+  "companyName": "株式会社JOCOLLA",
+  "representative": "山本望",
+  "manager": "藤野洋一",
+  "contactPerson": "伊藤",
+  "address": "東京都渋谷区東3_4_5",
+  "phone": "0312345678",
+  "email": "y.fujino@jocolla.com",
+  "businessHours": {
+    "weekday": "10:00 - 24:00",
+    "saturday": "09:00 - 24:00",
+    "sundayHoliday": "09:00 - 22:00"
+  },
+  "url": "https://jocolla.co.jp",
+  "studioCount": 3,
+  "rooms": [
+    {
+      "name": "Studio 1",
+      "pricing": {
+        "weekday": {
+          "slots": [
+            {
+              "start": "10:00",
+              "end": "18:00",
+              "price": 2000
+            },
+            {
+              "start": "18:00",
+              "end": "23:00",
+              "price": 2500
+            }
+          ]
+        },
+        "saturday": {
+          "slots": [
+            {
+              "start": "10:00",
+              "end": "14:00",
+              "price": 2000
+            },
+            {
+              "start": "14:00",
+              "end": "24:00",
+              "price": 2500
+            }
+          ]
+        },
+        "sundayHoliday": {
+          "slots": [
+            {
+              "start": "10:00",
+              "end": "12:00",
+              "price": 2000
+            },
+            {
+              "start": "12:00",
+              "end": "24:00",
+              "price": 3000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Studio 2",
+      "pricing": {
+        "weekday": {
+          "slots": [
+            {
+              "start": "10:00",
+              "end": "18:00",
+              "price": 2000
+            },
+            {
+              "start": "18:00",
+              "end": "24:00",
+              "price": 3000
+            }
+          ]
+        },
+        "saturday": {
+          "slots": [
+            {
+              "start": "10:00",
+              "end": "18:00",
+              "price": 2000
+            },
+            {
+              "start": "18:00",
+              "end": "24:00",
+              "price": 4000
+            }
+          ]
+        },
+        "sundayHoliday": {
+          "slots": [
+            {
+              "start": "10:00",
+              "end": "18:00",
+              "price": 2000
+            },
+            {
+              "start": "18:00",
+              "end": "24:00",
+              "price": 4000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Mixing Room",
+      "pricing": {
+        "weekday": {
+          "slots": [
+            {
+              "start": "10:00",
+              "end": "18:00",
+              "price": 2000
+            },
+            {
+              "start": "18:00",
+              "end": "24:00",
+              "price": 2500
+            }
+          ]
+        },
+        "saturday": {
+          "slots": [
+            {
+              "start": "10:00",
+              "end": "18:00",
+              "price": 2000
+            },
+            {
+              "start": "18:00",
+              "end": "24:00",
+              "price": 2500
+            }
+          ]
+        },
+        "sundayHoliday": {
+          "slots": [
+            {
+              "start": "10:00",
+              "end": "18:00",
+              "price": 2000
+            },
+            {
+              "start": "18:00",
+              "end": "24:00",
+              "price": 2500
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "equipmentOptions": [
+    {
+      "name": "Marshall 1987 50W",
+      "pricePerHour": 1000
+    },
+    {
+      "name": "Fender Twin Reverb",
+      "pricePerHour": 1000
+    },
+    {
+      "name": "Roland JUPITER 88鍵",
+      "pricePerHour": 500
+    }
+  ]
+}

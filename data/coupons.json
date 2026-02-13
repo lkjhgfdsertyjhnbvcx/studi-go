@@ -1,0 +1,18 @@
+[
+  {
+    "id": "75aed172-6c10-4d5c-b0ad-098b0edcb5ab",
+    "code": "E8W2LYVB",
+    "title": "MARINO クーポンVol.1",
+    "discountType": "fixed",
+    "discountValue": 2000,
+    "maxUses": 12,
+    "validFrom": "2026-01-26",
+    "validUntil": "2026-02-28",
+    "targetStudioIds": [
+      "9f8dfa1b-ad42-4985-9f23-38df98a96e7f"
+    ],
+    "usedCount": 0,
+    "isActive": false,
+    "createdAt": "2026-01-25T12:15:06.145Z"
+  }
+]

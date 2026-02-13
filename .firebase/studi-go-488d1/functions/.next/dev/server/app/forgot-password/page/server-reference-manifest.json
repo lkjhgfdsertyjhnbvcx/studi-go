@@ -1,0 +1,20 @@
+{
+  "node": {
+    "40db2dc8ace2843fdbdfb90551bbe8fb6738fc43e0": {
+      "workers": {
+        "app/forgot-password/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/forgot-password/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/reset-password.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "sendPasswordResetAction",
+          "filename": "music-studio-app/src/actions/reset-password.ts"
+        }
+      },
+      "layer": {
+        "app/forgot-password/page": "action-browser"
+      },
+      "exportedName": "sendPasswordResetAction",
+      "filename": "music-studio-app/src/actions/reset-password.ts"
+    }
+  },
+  "edge": {}
+}

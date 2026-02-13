@@ -1,0 +1,6 @@
+{
+  "/admin/(protected)/migrate/page": "app/admin/(protected)/migrate/page.js",
+  "/admin/(protected)/page": "app/admin/(protected)/page.js",
+  "/admin/login/page": "app/admin/login/page.js",
+  "/admin/platform/login/page": "app/admin/platform/login/page.js"
+}

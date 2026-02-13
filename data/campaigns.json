@@ -1,0 +1,28 @@
+[
+  {
+    "id": "9dfb94fe-a381-4863-8a87-52c1725b4ad4",
+    "title": "卒業ライブキャンペーン",
+    "description": "卒業ライブキャンペーン卒業ライブキャンペーン卒業ライブキャンペーン卒業ライブキャンペーン卒業ライブキャンペーン卒業ライブキャンペーン卒業ライブキャンペーン卒業ライブキャンペーン卒業ライブキャンペーン卒業ライブキャンペーン",
+    "discountType": "fixed",
+    "discountValue": 500,
+    "target": "all",
+    "targetStudioIds": [],
+    "startDate": "2026-03-01",
+    "endDate": "2026-03-31",
+    "isActive": true,
+    "createdAt": "2026-01-25T12:12:07.073Z"
+  },
+  {
+    "id": "195a0155-38f4-4abd-8d67-9062e7bd8f90",
+    "title": "早割30",
+    "description": "早割30 早割30 早割30 早割30 早割30 早割30 早割30 早割30 早割30 早割30 早割30 早割30 早割30 早割30 早割30 早割30 早割30 ",
+    "discountType": "percentage",
+    "discountValue": 20,
+    "target": "all",
+    "targetStudioIds": [],
+    "startDate": "2026-02-01",
+    "endDate": "2026-04-25",
+    "isActive": true,
+    "createdAt": "2026-01-25T12:13:29.765Z"
+  }
+]

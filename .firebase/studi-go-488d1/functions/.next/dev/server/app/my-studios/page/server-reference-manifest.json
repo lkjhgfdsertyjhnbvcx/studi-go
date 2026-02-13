@@ -1,0 +1,80 @@
+{
+  "node": {
+    "00de754591fdaf2c4a04b598d8d123785d38cd283a": {
+      "workers": {
+        "app/my-studios/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/my-studios/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/studio.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/music-studio-app/src/actions/user.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE2 => \"[project]/music-studio-app/src/actions/login.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "fetchStudios",
+          "filename": "music-studio-app/src/actions/studio.ts"
+        }
+      },
+      "layer": {
+        "app/my-studios/page": "action-browser"
+      },
+      "exportedName": "fetchStudios",
+      "filename": "music-studio-app/src/actions/studio.ts"
+    },
+    "00436b83f3e18cfd5d2704e582c2236e657d47885e": {
+      "workers": {
+        "app/my-studios/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/my-studios/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/studio.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/music-studio-app/src/actions/user.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE2 => \"[project]/music-studio-app/src/actions/login.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "getMyStudiosAction",
+          "filename": "music-studio-app/src/actions/user.ts"
+        }
+      },
+      "layer": {
+        "app/my-studios/page": "action-browser"
+      },
+      "exportedName": "getMyStudiosAction",
+      "filename": "music-studio-app/src/actions/user.ts"
+    },
+    "4026afb62eb83ec1ef72dfd1cde9a33c6d0e3c93e6": {
+      "workers": {
+        "app/my-studios/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/my-studios/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/studio.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/music-studio-app/src/actions/user.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE2 => \"[project]/music-studio-app/src/actions/login.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "toggleMyStudioAction",
+          "filename": "music-studio-app/src/actions/user.ts"
+        }
+      },
+      "layer": {
+        "app/my-studios/page": "action-browser"
+      },
+      "exportedName": "toggleMyStudioAction",
+      "filename": "music-studio-app/src/actions/user.ts"
+    },
+    "00cc83454bde0ebb8f0e5beebe1faab4e0e3d9b85c": {
+      "workers": {
+        "app/my-studios/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/my-studios/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/studio.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/music-studio-app/src/actions/user.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE2 => \"[project]/music-studio-app/src/actions/login.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "getCurrentUser",
+          "filename": "music-studio-app/src/actions/login.ts"
+        }
+      },
+      "layer": {
+        "app/my-studios/page": "action-browser"
+      },
+      "exportedName": "getCurrentUser",
+      "filename": "music-studio-app/src/actions/login.ts"
+    },
+    "008a4238b043ec4500f156fcb67d1507ee6b08edb1": {
+      "workers": {
+        "app/my-studios/page": {
+          "moduleId": "[project]/music-studio-app/.next-internal/server/app/my-studios/page/actions.js { ACTIONS_MODULE0 => \"[project]/music-studio-app/src/actions/studio.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/music-studio-app/src/actions/user.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE2 => \"[project]/music-studio-app/src/actions/login.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "logoutAction",
+          "filename": "music-studio-app/src/actions/login.ts"
+        }
+      },
+      "layer": {
+        "app/my-studios/page": "action-browser"
+      },
+      "exportedName": "logoutAction",
+      "filename": "music-studio-app/src/actions/login.ts"
+    }
+  },
+  "edge": {}
+}

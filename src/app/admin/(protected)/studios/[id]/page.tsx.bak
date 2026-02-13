@@ -1,0 +1,280 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
+import {
+    Form,
+    FormControl,
+    FormDescription,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { fetchStudio, updateStudio } from "@/actions/studio";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Trash2, ArrowLeft, Save } from "lucide-react";
+
+// Reuse schema logic (simplified copy for now to speed up, ideally shared)
+const timeSlotSchema = z.object({
+    start: z.string(),
+    end: z.string(),
+    price: z.coerce.number().min(0),
+});
+const dayScheduleSchema = z.object({
+    slots: z.array(timeSlotSchema),
+});
+const roomSchema = z.object({
+    // We should probably generate ID for rooms too
+    name: z.string().min(1, "スタジオ名は必須です"),
+    pricing: z.object({
+        weekday: dayScheduleSchema,
+        saturday: dayScheduleSchema,
+        sundayHoliday: dayScheduleSchema,
+    }),
+});
+const equipmentOptionSchema = z.object({
+    name: z.string().min(1, "機材名は必須です"),
+    pricePerHour: z.coerce.number().min(0),
+});
+const formSchema = z.object({
+    id: z.string(), // ID is required
+    storeName: z.string().min(1, "店舗名は必須です"),
+    companyName: z.string().optional(),
+    representative: z.string().optional(),
+    manager: z.string().optional(),
+    contactPerson: z.string().optional(),
+    address: z.string().optional(),
+    phone: z.string().optional(),
+    email: z.string().optional(),
+    businessHours: z.object({
+        weekday: z.string().optional(),
+        saturday: z.string().optional(),
+        sundayHoliday: z.string().optional(),
+    }),
+    url: z.string().optional(),
+    studioCount: z.coerce.number().optional(),
+    rooms: z.array(roomSchema),
+    equipmentOptions: z.array(equipmentOptionSchema),
+    appealPoint: z.string().optional(),
+    // We will handle images as a newline-separated string in the UI for simplicity, then parse to array
+    imageUrlsText: z.string().optional(),
+});
+
+// ... inside component ...
+
+// Transform string array to multiline string for Form
+useEffect(() => {
+    const load = async () => {
+        if (!id) return;
+        const data = await fetchStudio(id);
+        if (!data) {
+            alert("Studio not found");
+            router.push("/admin/stores");
+            return;
+        }
+        form.reset({
+            ...data,
+            // Ensure arrays
+            rooms: data.rooms || [],
+            equipmentOptions: data.equipmentOptions || [],
+            // Join array to string for textarea
+            imageUrlsText: data.images ? data.images.join('\n') : "",
+            appealPoint: data.appealPoint || ""
+        });
+        setIsLoading(false);
+    };
+    load();
+}, [id, router, form]);
+
+const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    // Parse images text back to array
+    const images = values.imageUrlsText
+        ? values.imageUrlsText.split('\n').map(s => s.trim()).filter(Boolean)
+        : [];
+
+    const payload = {
+        ...values,
+        images,
+    };
+    // Remove temp field if strict (or server ignores it)
+    delete (payload as any).imageUrlsText;
+
+    // @ts-ignore
+    const res = await updateStudio(payload);
+    if (res.success) {
+        alert("保存しました");
+    } else {
+        alert("保存失敗: " + res.message);
+    }
+};
+
+// ... inside render Basic Info section ...
+
+<section className="space-y-4">
+    <h2 className="text-xl font-bold border-l-4 border-cyan-500 pl-3">基本情報</h2>
+    <div className="grid md:grid-cols-2 gap-6 p-6 bg-slate-900/50 rounded-lg border border-white/10">
+        <FormField control={form.control} name="storeName" render={({ field }) => (
+            <FormItem><FormLabel>店舗名 *</FormLabel><FormControl><Input {...field} className="bg-black border-white/20" /></FormControl><FormMessage /></FormItem>
+        )} />
+        <FormField control={form.control} name="companyName" render={({ field }) => (
+            <FormItem><FormLabel>会社名</FormLabel><FormControl><Input {...field} className="bg-black border-white/20" /></FormControl><FormMessage /></FormItem>
+        )} />
+        <FormField control={form.control} name="studioCount" render={({ field }) => (
+            <FormItem><FormLabel>スタジオ数 *</FormLabel><FormControl><Input type="number" {...field} className="bg-black border-white/20" /></FormControl><FormMessage /></FormItem>
+        )} />
+        <FormField control={form.control} name="url" render={({ field }) => (
+            <FormItem><FormLabel>Webサイト URL *</FormLabel><FormControl><Input {...field} className="bg-black border-white/20" /></FormControl><FormMessage /></FormItem>
+        )} />
+
+        <div className="col-span-2">
+            <FormField control={form.control} name="appealPoint" render={({ field }) => (
+                <FormItem>
+                    <FormLabel>アピールポイント (店舗の特徴など)</FormLabel>
+                    <FormControl>
+                        <Textarea {...field} className="bg-black border-white/20 min-h-[100px]" placeholder="最高の音響体験。プロ仕様の機材が使い放題です。" />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            )} />
+        </div>
+
+        <div className="col-span-2">
+            <FormField control={form.control} name="imageUrlsText" render={({ field }) => (
+                <FormItem>
+                    <FormLabel>店舗写真 URL (1行に1つ)</FormLabel>
+                    <FormDescription>
+                        画像のURLを入力してください。複数ある場合は改行してください。<br />
+                        例: /images/studio_a.jpg<br />
+                        https://example.com/photo.png
+                    </FormDescription>
+                    <FormControl>
+                        <Textarea {...field} className="bg-black border-white/20 min-h-[100px] font-mono text-xs" placeholder="/images/studio1.jpg" />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            )} />
+        </div>
+    </div>
+</section>
+
+{/* --- ROOM PRICING --- */ }
+<section className="space-y-4">
+    <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold border-l-4 border-cyan-500 pl-3">スタジオ料金設定 (部屋ごと・時間ごと)</h2>
+        <Button type="button" onClick={addDefaultRoom} variant="outline" className="border-cyan-500 text-cyan-400 hover:bg-cyan-950">
+            <Plus className="mr-2 h-4 w-4" /> 新しいスタジオを追加
+        </Button>
+    </div>
+    <div className="grid gap-6">
+        {roomFields.map((room, roomIndex) => (
+            <Card key={room.id} className="bg-slate-900 border-white/10 overflow-hidden">
+                <CardHeader className="bg-white/5 flex flex-row justify-between items-center py-3">
+                    <div className="flex items-center gap-4 flex-1">
+                        <Badge variant="outline" className="text-cyan-400 border-cyan-400">Rm {roomIndex + 1}</Badge>
+                        <FormField
+                            control={form.control}
+                            name={`rooms.${roomIndex}.name`}
+                            render={({ field }) => (
+                                <Input {...field} placeholder="Studio Name (e.g. A Studio)" className="bg-black/50 border-none text-lg font-bold w-64 text-white placeholder:text-gray-600 focus-visible:ring-1 focus-visible:ring-cyan-500" />
+                            )}
+                        />
+                    </div>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeRoom(roomIndex)} className="text-gray-500 hover:text-red-400">
+                        <Trash2 className="h-5 w-5" />
+                    </Button>
+                </CardHeader>
+                <CardContent className="p-6">
+                    <Accordion type="single" collapsible className="w-full">
+                        {['weekday', 'saturday', 'sundayHoliday'].map((dayType) => (
+                            <AccordionItem key={dayType} value={dayType} className="border-white/10">
+                                <AccordionTrigger className="hover:text-cyan-400">
+                                    {dayType === 'weekday' ? '平日料金' : dayType === 'saturday' ? '土曜料金' : '日祝料金'}
+                                </AccordionTrigger>
+                                <AccordionContent className="pt-4">
+                                    <div className="space-y-2">
+                                        {[0, 1].map((slotIndex) => (
+                                            <div key={slotIndex} className="flex gap-4 items-end">
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`rooms.${roomIndex}.pricing.${dayType}.slots.${slotIndex}.start` as any}
+                                                    render={({ field }) => (
+                                                        <FormItem><FormLabel className="text-xs text-gray-500">開始</FormLabel><FormControl><Input type="text" placeholder="10:00" {...field} className="bg-black w-24 border-white/20" /></FormControl></FormItem>
+                                                    )}
+                                                />
+                                                <span className="mb-3 text-gray-500">~</span>
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`rooms.${roomIndex}.pricing.${dayType}.slots.${slotIndex}.end` as any}
+                                                    render={({ field }) => (
+                                                        <FormItem><FormLabel className="text-xs text-gray-500">終了</FormLabel><FormControl><Input type="text" placeholder="24:00" {...field} className="bg-black w-24 border-white/20" /></FormControl></FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`rooms.${roomIndex}.pricing.${dayType}.slots.${slotIndex}.price` as any}
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex-1"><FormLabel className="text-xs text-gray-500">1H料金 (¥)</FormLabel><FormControl><Input type="number" {...field} className="bg-black border-white/20 font-mono text-cyan-400" /></FormControl></FormItem>
+                                                    )}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        ))}
+                    </Accordion>
+                </CardContent>
+            </Card>
+        ))}
+    </div>
+</section>
+
+{/* --- OPTIONS --- */ }
+<section className="space-y-4">
+    <h2 className="text-xl font-bold border-l-4 border-cyan-500 pl-3">オプション機材</h2>
+    <Card className="bg-slate-900 border-white/10">
+        <CardContent className="p-6 space-y-4">
+            {equipmentFields.map((item, index) => (
+                <div key={item.id} className="flex gap-4 items-end">
+                    <FormField
+                        control={form.control}
+                        name={`equipmentOptions.${index}.name`}
+                        render={({ field }) => (
+                            <FormItem className="flex-[2]"><FormLabel className="text-xs text-gray-500">機材名</FormLabel><FormControl><Input {...field} className="bg-black border-white/20" /></FormControl></FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name={`equipmentOptions.${index}.pricePerHour`}
+                        render={({ field }) => (
+                            <FormItem className="flex-1"><FormLabel className="text-xs text-gray-500">時間単価 (¥)</FormLabel><FormControl><Input type="number" {...field} className="bg-black border-white/20" /></FormControl></FormItem>
+                        )}
+                    />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeEquipment(index)} className="mb-1 text-gray-500 hover:text-red-400 bg-white/5">
+                        <Trash2 className="h-5 w-5" />
+                    </Button>
+                </div>
+            ))}
+            <Button type="button" onClick={() => appendEquipment({ name: "", pricePerHour: 500 })} variant="outline" className="w-full border-dashed border-white/20 text-gray-400 hover:text-cyan-400 mt-4">
+                <Plus className="mr-2 h-4 w-4" /> オプション機材を追加
+            </Button>
+        </CardContent>
+    </Card>
+</section>
+
+{/* Note: Contact info is hidden/simplified for now to save space as requested focus on pricing */ }
+                    </form >
+                </Form >
+            </div >
+        </div >
+    );
+}

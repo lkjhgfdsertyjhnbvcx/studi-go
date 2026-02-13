@@ -1,0 +1,191 @@
+"use server";
+
+import {
+    checkAvailabilityFromFirestore,
+    saveBookingToFirestore,
+    getBookingByIdFromFirestore,
+    updateBookingInFirestore,
+    getAllBookingsFromFirestore,
+    getAllStudiosFromFirestore,
+    getAllPaymentsFromFirestore
+} from "@/lib/db-firestore";
+import { Booking } from "@/lib/db-local";
+import { addMyStudioAction, getUserById } from "./user";
+import { fetchStudio } from "./studio";
+import { createPayment } from "./payment";
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+interface BookingRequest {
+    userId: string;
+    studioId: string;
+    roomName?: string;
+    date: string;
+    startTime: string;
+    durationHours: number;
+    userCount: number;
+    equipmentIds: string[];
+    totalPriceOverride?: number;
+    isPersonalPractice?: boolean;
+}
+
+interface BookingResponse {
+    success: boolean;
+    message: string;
+    price?: number;
+    bookingId?: string;
+}
+
+const PRICE_BAND_HOURLY = 2500;
+const PRICE_INDIVIDUAL_HOURLY = 800;
+const PRICE_LOCKOUT_FLAT = 20000;
+
+export async function createBooking(data: BookingRequest): Promise<BookingResponse> {
+    const { userId, studioId, roomName, date, startTime, durationHours, userCount, totalPriceOverride } = data;
+
+    const isAvailable = await checkAvailabilityFromFirestore(studioId, roomName, date, startTime, durationHours);
+    if (!isAvailable) {
+        return {
+            success: false,
+            message: "🚫 この時間帯は既に予約されています。別の時間を選択してください。"
+        };
+    }
+
+    const studio = await fetchStudio(studioId);
+    if (data.isPersonalPractice) {
+        if (!studio?.personalPracticeSettings?.enabled) {
+            return { success: false, message: "個人練習の受付は現在停止しています。" };
+        }
+
+        const settings = studio.personalPracticeSettings;
+        const targetDateTime = new Date(`${date}T${startTime}`);
+        const now = new Date();
+        let diffMs = targetDateTime.getTime() - now.getTime();
+
+        if (settings.reservationWindowType === 'days') {
+            const diffDays = diffMs / (1000 * 60 * 60 * 24);
+            if (diffDays > settings.reservationWindowValue) {
+                return { success: false, message: `個人練習は利用日の${settings.reservationWindowValue}日前から予約可能です。` };
+            }
+        } else {
+            const diffHours = diffMs / (1000 * 60 * 60);
+            if (diffHours > settings.reservationWindowValue) {
+                return { success: false, message: `個人練習は利用の${settings.reservationWindowValue}時間前から予約可能です。` };
+            }
+        }
+
+        if (userCount > settings.maxPeople) {
+            return { success: false, message: `個人練習は最大${settings.maxPeople}名までです。` };
+        }
+    }
+
+    let totalPrice = 0;
+    if (totalPriceOverride !== undefined) {
+        totalPrice = totalPriceOverride;
+    } else {
+        if (durationHours >= 10) {
+            totalPrice = PRICE_LOCKOUT_FLAT;
+        } else if (userCount <= 2) {
+            totalPrice = PRICE_INDIVIDUAL_HOURLY * userCount * durationHours;
+        } else {
+            totalPrice = PRICE_BAND_HOURLY * durationHours;
+        }
+    }
+
+    const newBooking: Booking = {
+        id: Math.random().toString(36).substring(7),
+        userId,
+        studioId,
+        roomName,
+        date,
+        startTime,
+        durationHours,
+        userCount,
+        totalPrice,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        isPersonalPractice: data.isPersonalPractice
+    };
+
+    try {
+        await saveBookingToFirestore(newBooking);
+
+        await createPayment({
+            bookingId: newBooking.id,
+            studioId: studioId,
+            studioName: studio?.storeName || "Unknown Studio",
+            userName: "User", // Simplified for now
+            userEmail: "",
+            amount: totalPrice,
+            paymentMethod: "stripe"
+        });
+
+        await addMyStudioAction(studioId);
+
+        return {
+            success: true,
+            message: "予約が完了しました。",
+            price: totalPrice,
+            bookingId: newBooking.id
+        };
+    } catch (e) {
+        return { success: false, message: "予約に失敗しました。" };
+    }
+}
+
+export async function cancelBookingAction(bookingId: string): Promise<{ success: boolean; message: string }> {
+    const success = await updateBookingInFirestore(bookingId, { status: 'cancelled' });
+    if (success) return { success: true, message: "予約をキャンセルしました。" };
+    return { success: false, message: "キャンセルの更新に失敗しました。" };
+}
+
+export async function updateBookingAction(bookingId: string, data: Partial<BookingRequest>): Promise<BookingResponse> {
+    const oldBooking = await getBookingByIdFromFirestore(bookingId);
+    if (!oldBooking) return { success: false, message: "予約が見つかりません。" };
+
+    const studioId = data.studioId || oldBooking.studioId;
+    const roomName = data.roomName || oldBooking.roomName;
+    const date = data.date || oldBooking.date;
+    const startTime = data.startTime || oldBooking.startTime;
+    const durationHours = data.durationHours || oldBooking.durationHours;
+
+    const isAvailable = await checkAvailabilityFromFirestore(studioId, roomName, date, startTime, durationHours, bookingId);
+    if (!isAvailable) {
+        return { success: false, message: "🚫 この時間帯は既に予約されています。" };
+    }
+
+    const success = await updateBookingInFirestore(bookingId, {
+        ...data,
+        status: 'modified'
+    });
+
+    if (success) return { success: true, message: "予約を更新しました。" };
+    return { success: false, message: "予約の更新に失敗しました。" };
+}
+
+export async function fetchMyBookings(): Promise<any[]> {
+    const { getCurrentUser } = await import("./login");
+    const user = await getCurrentUser();
+    if (!user) return [];
+
+    const bookings = await getAllBookingsFromFirestore();
+    const studios = await getAllStudiosFromFirestore();
+    const studioMap = new Map(studios.map(s => [s.id, { name: s.storeName, invoice: s.invoiceNumber }]));
+
+    const payments = await getAllPaymentsFromFirestore();
+    const paymentStatusMap = new Map(payments.map(p => [p.bookingId, p.status]));
+
+    return bookings
+        .filter(b => b.userId === user.id)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .map(b => {
+            const s = studioMap.get(b.studioId);
+            return {
+                ...b,
+                studioName: s?.name || "Unknown Studio",
+                invoiceNumber: s?.invoice || "",
+                paymentStatus: paymentStatusMap.get(b.id) || "pending"
+            };
+        });
+}
