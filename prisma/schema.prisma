@@ -8,16 +8,21 @@ datasource db {
 }
 
 model User {
-  id            String       @id @default(cuid())
-  name          String?
-  email         String?      @unique
-  password      String?
-  image         String?
-  role          String       @default("USER")
-  bandMembers   BandMember[] 
-  ledBands      Band[]       
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id               String       @id @default(cuid())
+  name             String?
+  email            String?      @unique
+  password         String?
+  image            String?
+  role             String       @default("USER")
+  
+  // ↓↓↓ 【今回の追加】パスワードリセット用の枠 ↓↓↓
+  resetToken       String?      
+  resetTokenExpiry Float?       
+  
+  bandMembers      BandMember[] 
+  ledBands         Band[]       
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 }
 
 model Band {
@@ -55,12 +60,11 @@ model Reservation {
   optionPaymentMode String?
   guaranteeMode     String?
   
-  // ↓↓↓ 【今回の追加】予約の詳細データ（金額・時間など）を受け取る枠 ↓↓↓
   optionsAmount     Int?     @default(0)
   totalAmount       Int?
   studioId          String?
   startTime         DateTime?
-  endTime           DateTime? 
+  endTime           DateTime?
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
