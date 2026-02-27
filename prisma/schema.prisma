@@ -14,11 +14,8 @@ model User {
   password         String?
   image            String?
   role             String       @default("USER")
-  
-  // ↓↓↓ この2行がVercelに届いていません！ ↓↓↓
   resetToken       String?      
   resetTokenExpiry Float?       
-  
   bandMembers      BandMember[] 
   ledBands         Band[]       
   createdAt        DateTime     @default(now())
@@ -54,18 +51,15 @@ model Reservation {
   id                String   @id @default(cuid())
   bandId            String?  
   band              Band?    @relation(fields: [bandId], references: [id])
-  
   status            String?
   isSplitPayment    Boolean? @default(false)
   optionPaymentMode String?
   guaranteeMode     String?
-  
   optionsAmount     Int?     @default(0)
   totalAmount       Int?
   studioId          String?
   startTime         DateTime?
   endTime           DateTime?
-  
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
