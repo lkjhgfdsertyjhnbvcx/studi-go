@@ -58,4 +58,5 @@ model Booking {
   studio      Studio   @relation(fields: [studioId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
 }
