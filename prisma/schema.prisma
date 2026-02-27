@@ -3,67 +3,59 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("POSTGRES_PRISMA_URL") // Vercel Postgres用
-  directUrl = env("POSTGRES_URL_NON_POOLING") // Vercel Postgres用
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  password      String?
+  image         String?
+  role          String    @default("USER")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model Store {
-  id              Int         @id @default(autoincrement())
-  name            String
-  companyName     String?
-  ownerName       String?
-  email           String      @unique
-  password        String      @default("store123")
-  tel             String?
-  url             String?
-  address         String      @default("")
-  description     String?
-  logoUrl         String?     @db.Text // 大容量画像対応
-  bgColor         String      @default("#ffffff")
-  bgImageUrl      String?     @db.Text // 大容量画像対応
-  useActivaCoupon Boolean     @default(false)
-  studios         Studio[]
-  options         Option[]
-  bookings        Booking[]
+  id          String    @id @default(cuid())
+  name        String
+  email       String    @unique
+  password    String
+  address     String?
+  phone       String?
+  description String?
+  image       String?
+  studios     Studio[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Studio {
-  id           Int       @id @default(autoincrement())
-  name         String
-  description  String?
-  size         String?
-  photoUrl     String?   @db.Text // 大容量画像対応
-  equipment    String?
-  pricingJson  String?   @default("{}")
-  storeId      Int
-  store        Store     @relation(fields: [storeId], references: [id])
-  bookings     Booking[]
-}
-
-model Option {
-  id        Int      @id @default(autoincrement())
-  name      String
-  price     Int      @default(0)
-  isHourly  Boolean  @default(false)
-  storeId   Int
-  store     Store    @relation(fields: [storeId], references: [id])
+  id          String    @id @default(cuid())
+  name        String
+  price       Int
+  capacity    Int?
+  description String?
+  image       String?
+  storeId     String
+  store       Store     @relation(fields: [storeId], references: [id])
+  bookings    Booking[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Booking {
-  id              Int      @id @default(autoincrement())
-  storeId         Int
-  studioId        Int
-  studioName      String
-  date            String
-  startTime       Int
-  totalPrice      Int
-  isPaid          Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  store           Store    @relation(fields: [storeId], references: [id])
-}
-
-model AdminConfig {
-  id     Int    @id @default(1)
-  adCode String @default("") @db.Text
+  id          String   @id @default(cuid())
+  date        DateTime
+  startTime   String
+  endTime     String
+  userName    String
+  userEmail   String
+  status      String   @default("PENDING")
+  studioId    String
+  studio      Studio   @relation(fields: [studioId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
