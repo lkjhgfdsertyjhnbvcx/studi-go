@@ -14,7 +14,8 @@ model User {
   password      String?
   image         String?
   role          String       @default("USER")
-  bandMembers   BandMember[] // ← ユーザーが所属するバンドメンバー情報のリンクを追加
+  bandMembers   BandMember[] 
+  ledBands      Band[]       // ← 【追加】リーダーとして管理するバンドのリンク
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 }
@@ -23,6 +24,7 @@ model Band {
   id                String       @id @default(cuid())
   name              String
   leaderId          String
+  leader            User         @relation(fields: [leaderId], references: [id]) // ← 【今回の真犯人】リーダーのユーザー情報へのリンクを追加
   jocollaRegistered Boolean      @default(false)
   inviteToken       String?      @unique
   members           BandMember[]
@@ -35,7 +37,7 @@ model BandMember {
   bandId    String
   userId    String
   band      Band     @relation(fields: [bandId], references: [id])
-  user      User     @relation(fields: [userId], references: [id]) // ← 【今回の真犯人】ユーザー情報へのリンクを追加
+  user      User     @relation(fields: [userId], references: [id]) 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
