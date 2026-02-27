@@ -28,7 +28,7 @@ model Band {
   jocollaRegistered Boolean      @default(false)
   inviteToken       String?      @unique
   members           BandMember[]
-  reservations      Reservation[] // ← 【追加】このバンドが持っている予約データへのリンク
+  reservations      Reservation[]
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 }
@@ -41,9 +41,10 @@ model BandMember {
   user      User     @relation(fields: [userId], references: [id]) 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([userId, bandId]) // ← 【今回の真犯人】この2つの組み合わせでの検索を許可
 }
 
-// ↓↓↓ 【今回の真犯人】予約データを保存するための新しい箱を追加 ↓↓↓
 model Reservation {
   id        String   @id @default(cuid())
   bandId    String?  
