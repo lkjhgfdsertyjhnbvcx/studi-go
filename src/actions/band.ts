@@ -19,7 +19,6 @@ export async function createBandAction(name: string) {
                     id: user.id,
                     email: user.email,
                     name: user.name,
-                    jocollaRegistered: true // JOCOLLA経由としての登録
                 }
             });
         }
