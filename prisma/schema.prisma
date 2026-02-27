@@ -15,7 +15,7 @@ model User {
   image            String?
   role             String       @default("USER")
   
-  // ↓↓↓ 【今回の追加】パスワードリセット用の枠 ↓↓↓
+  // ↓↓↓ これがVercelに届いていませんでした！ ↓↓↓
   resetToken       String?      
   resetTokenExpiry Float?       
   
@@ -65,7 +65,6 @@ model Reservation {
   studioId          String?
   startTime         DateTime?
   endTime           DateTime?
-  
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
