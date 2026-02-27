@@ -60,7 +60,7 @@ model Reservation {
   totalAmount       Int?
   studioId          String?
   startTime         DateTime?
-  endTime           DateTime? // ← 先回りして追加
+  endTime           DateTime? 
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
