@@ -68,6 +68,7 @@ export interface DesignSettings {
     backgroundColor: string;
     backgroundImageUrl?: string;
     backgroundType: 'color' | 'image';
+    showMap?: boolean;
 }
 
 export interface StudioProfile {

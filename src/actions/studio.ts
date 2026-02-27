@@ -12,22 +12,56 @@ import { v4 as uuidv4 } from "uuid";
 
 // Get All
 export async function fetchStudios() {
-    return getAllStudiosFromFirestore();
+    let studios = await getAllStudiosFromFirestore();
+
+    // Fallback if Firestore is empty
+    if (studios.length === 0) {
+        try {
+            const fs = await import('fs');
+            const path = await import('path');
+            const studioPath = path.join(process.cwd(), 'data', 'studios.json');
+            if (fs.existsSync(studioPath)) {
+                studios = JSON.parse(fs.readFileSync(studioPath, 'utf-8'));
+            }
+        } catch (e) { }
+    }
+    return studios;
 }
 
 // Get One
 export async function fetchStudio(id: string) {
-    return getStudioByIdFromFirestore(id);
+    let studio = await getStudioByIdFromFirestore(id);
+
+    // Fallback to local JSON if Firestore fails or is empty
+    if (!studio) {
+        try {
+            const fs = await import('fs');
+            const path = await import('path');
+            const studioPath = path.join(process.cwd(), 'data', 'studios.json');
+            if (fs.existsSync(studioPath)) {
+                const studios: StudioProfile[] = JSON.parse(fs.readFileSync(studioPath, 'utf-8'));
+                studio = studios.find(s => s.id === id) || null;
+            }
+        } catch (e) { }
+    }
+
+    console.log(`[fetchStudio] ID: ${id}, Result: ${studio ? studio.storeName : 'NOT FOUND'}`);
+    return studio;
 }
 
 // Upsert
 export async function updateStudio(data: StudioProfile) {
+    console.log("[updateStudio] ID:", data.id);
+    if (data.designSettings) {
+        console.log("[updateStudio] designSettings:", JSON.stringify(data.designSettings));
+    }
     try {
         await saveStudioToFirestore(data);
         revalidatePath("/studios");
-        revalidatePath(`/studios/${data.id}`);
+        revalidatePath(`/admin/studios/${data.id}`);
         return { success: true, message: "Studio saved successfully." };
     } catch (e: any) {
+        console.error("[updateStudio] Error:", e);
         return { success: false, message: e.message };
     }
 }

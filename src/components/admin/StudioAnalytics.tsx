@@ -60,7 +60,7 @@ export function StudioAnalytics({ studioId }: { studioId: string }) {
     }, [studioId]);
 
     if (isLoading || !studio) {
-        return <div className="p-20 text-center text-gray-500">分析データを計算中...</div>;
+        return <div className="p-20 text-center text-muted-foreground">分析データを計算中...</div>;
     }
 
     // --- Calculations for Current Month ---
@@ -110,51 +110,51 @@ export function StudioAnalytics({ studioId }: { studioId: string }) {
         <div className="space-y-8 animate-in fade-in duration-700">
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="bg-slate-900 border-white/10 hover:border-cyan-500/50 transition-all overflow-hidden relative group">
+                <Card className="bg-card border-border hover:border-cyan-500/50 transition-all overflow-hidden relative group">
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <TrendingUp size={48} className="text-cyan-400" />
+                        <TrendingUp size={48} className="text-cyan-500 dark:text-cyan-400" />
                     </div>
                     <CardHeader className="pb-2">
-                        <CardDescription className="text-gray-400 text-xs uppercase tracking-wider">今月の売上</CardDescription>
-                        <CardTitle className="text-3xl font-bold text-white flex items-baseline gap-2">
+                        <CardDescription className="text-muted-foreground text-xs uppercase tracking-wider">今月の売上</CardDescription>
+                        <CardTitle className="text-3xl font-bold text-foreground flex items-baseline gap-2">
                             ¥{totalRevenue.toLocaleString()}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex items-center gap-1 text-xs text-green-400">
+                        <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                             <ArrowUpRight size={14} />
                             <span>前月比 +12.5%</span>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="bg-slate-900 border-white/10 hover:border-purple-500/50 transition-all overflow-hidden relative group">
+                <Card className="bg-card border-border hover:border-purple-500/50 transition-all overflow-hidden relative group">
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <PieChart size={48} className="text-purple-400" />
+                        <PieChart size={48} className="text-purple-500 dark:text-purple-400" />
                     </div>
                     <CardHeader className="pb-2">
-                        <CardDescription className="text-gray-400 text-xs uppercase tracking-wider">平均予約単価 (AOV)</CardDescription>
-                        <CardTitle className="text-3xl font-bold text-white">
+                        <CardDescription className="text-muted-foreground text-xs uppercase tracking-wider">平均予約単価 (AOV)</CardDescription>
+                        <CardTitle className="text-3xl font-bold text-foreground">
                             ¥{Math.round(avgOrderValue).toLocaleString()}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-xs text-gray-500">1予約あたりの収益</div>
+                        <div className="text-xs text-muted-foreground">1予約あたりの収益</div>
                     </CardContent>
                 </Card>
 
-                <Card className="bg-slate-900 border-white/10 hover:border-green-500/50 transition-all overflow-hidden relative group">
+                <Card className="bg-card border-border hover:border-green-500/50 transition-all overflow-hidden relative group">
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <Clock size={48} className="text-green-400" />
+                        <Clock size={48} className="text-green-500 dark:text-green-400" />
                     </div>
                     <CardHeader className="pb-2">
-                        <CardDescription className="text-gray-400 text-xs uppercase tracking-wider">全室稼働率</CardDescription>
-                        <CardTitle className="text-3xl font-bold text-green-400">
+                        <CardDescription className="text-muted-foreground text-xs uppercase tracking-wider">全室稼働率</CardDescription>
+                        <CardTitle className="text-3xl font-bold text-green-600 dark:text-green-400">
                             {totalOccupancyRate.toFixed(1)}%
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="w-full bg-white/5 h-1.5 rounded-full mt-1 overflow-hidden">
+                        <div className="w-full bg-muted h-1.5 rounded-full mt-1 overflow-hidden">
                             <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: `${Math.min(100, totalOccupancyRate)}%` }}
@@ -165,27 +165,27 @@ export function StudioAnalytics({ studioId }: { studioId: string }) {
                     </CardContent>
                 </Card>
 
-                <Card className="bg-slate-900 border-white/10 hover:border-orange-500/50 transition-all overflow-hidden relative group">
+                <Card className="bg-card border-border hover:border-orange-500/50 transition-all overflow-hidden relative group">
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <Target size={48} className="text-orange-400" />
+                        <Target size={48} className="text-orange-500 dark:text-orange-400" />
                     </div>
                     <CardHeader className="pb-2">
-                        <CardDescription className="text-gray-400 text-xs uppercase tracking-wider">目標達成率 (予実)</CardDescription>
-                        <CardTitle className="text-3xl font-bold text-white">
+                        <CardDescription className="text-muted-foreground text-xs uppercase tracking-wider">目標達成率 (予実)</CardDescription>
+                        <CardTitle className="text-3xl font-bold text-foreground">
                             {achievementRate.toFixed(1)}%
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                        <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
                             <span>目標: ¥{(targetRevenue / 10000).toLocaleString()}万</span>
                             <span>残り: ¥{Math.max(0, targetRevenue - totalRevenue).toLocaleString()}</span>
                         </div>
-                        <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                        <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden">
                             <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: `${Math.min(100, achievementRate)}%` }}
                                 transition={{ duration: 1, ease: "easeOut" }}
-                                className={`h-full ${achievementRate >= 100 ? 'bg-cyan-400' : 'bg-orange-500'}`}
+                                className={`h-full ${achievementRate >= 100 ? 'bg-cyan-500 dark:bg-cyan-400' : 'bg-orange-500'}`}
                             />
                         </div>
                     </CardContent>
@@ -194,10 +194,10 @@ export function StudioAnalytics({ studioId }: { studioId: string }) {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Room Operating Rates */}
-                <Card className="bg-slate-900 border-white/10">
+                <Card className="bg-card border-border">
                     <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <BarChart3 className="text-cyan-400 h-5 w-5" />
+                        <CardTitle className="text-lg flex items-center gap-2 text-foreground">
+                            <BarChart3 className="text-cyan-500 dark:text-cyan-400 h-5 w-5" />
                             部屋別稼働状況
                         </CardTitle>
                     </CardHeader>
@@ -206,15 +206,15 @@ export function StudioAnalytics({ studioId }: { studioId: string }) {
                             <div key={i} className="space-y-2">
                                 <div className="flex justify-between items-end">
                                     <div>
-                                        <div className="text-sm font-bold text-white">{stat.name}</div>
-                                        <div className="text-xs text-gray-500">{stat.count} 予約 / 今月</div>
+                                        <div className="text-sm font-bold text-foreground">{stat.name}</div>
+                                        <div className="text-xs text-muted-foreground">{stat.count} 予約 / 今月</div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="text-lg font-mono text-cyan-400">{stat.occupancy.toFixed(1)}%</div>
-                                        <div className="text-[10px] text-gray-500">売上: ¥{stat.revenue.toLocaleString()}</div>
+                                        <div className="text-lg font-mono text-cyan-500 dark:text-cyan-400">{stat.occupancy.toFixed(1)}%</div>
+                                        <div className="text-[10px] text-muted-foreground">売上: ¥{stat.revenue.toLocaleString()}</div>
                                     </div>
                                 </div>
-                                <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
+                                <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
                                     <motion.div
                                         initial={{ width: 0 }}
                                         animate={{ width: `${Math.min(100, stat.occupancy)}%` }}
@@ -228,10 +228,10 @@ export function StudioAnalytics({ studioId }: { studioId: string }) {
                 </Card>
 
                 {/* Day-by-Day Revenue Visualization (Simple Bar Chart) */}
-                <Card className="bg-slate-900 border-white/10">
+                <Card className="bg-card border-border">
                     <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <BarChart3 className="text-purple-400 h-5 w-5" />
+                        <CardTitle className="text-lg flex items-center gap-2 text-foreground">
+                            <BarChart3 className="text-purple-500 dark:text-purple-400 h-5 w-5" />
                             日別売上推移
                         </CardTitle>
                     </CardHeader>
@@ -253,11 +253,11 @@ export function StudioAnalytics({ studioId }: { studioId: string }) {
                                         <motion.div
                                             initial={{ height: 0 }}
                                             animate={{ height: `${Math.max(2, heightPercent)}%` }}
-                                            className={`w-full rounded-t-sm transition-colors ${isSameDay(day, now) ? 'bg-cyan-400' : 'bg-slate-700 group-hover:bg-slate-600'}`}
+                                            className={`w-full rounded-t-sm transition-colors ${isSameDay(day, now) ? 'bg-cyan-500 dark:bg-cyan-400' : 'bg-muted group-hover:bg-muted/80'}`}
                                         />
                                         {dayRevenue > 0 && (
                                             <div className="absolute bottom-full mb-2 hidden group-hover:block z-10">
-                                                <Badge className="bg-black border-cyan-500/50 text-[10px] whitespace-nowrap">
+                                                <Badge className="bg-card border-border text-[10px] whitespace-nowrap text-foreground shadow-lg">
                                                     {format(day, 'd日')}: ¥{dayRevenue.toLocaleString()}
                                                 </Badge>
                                             </div>
@@ -266,7 +266,7 @@ export function StudioAnalytics({ studioId }: { studioId: string }) {
                                 );
                             })}
                         </div>
-                        <div className="flex justify-between mt-4 text-[10px] text-gray-500 border-t border-white/5 pt-2">
+                        <div className="flex justify-between mt-4 text-[10px] text-muted-foreground border-t border-border pt-2">
                             <span>{format(monthStart, 'yyyy/MM/dd')}</span>
                             <span>{format(monthEnd, 'yyyy/MM/dd')}</span>
                         </div>
@@ -275,14 +275,14 @@ export function StudioAnalytics({ studioId }: { studioId: string }) {
             </div>
 
             {/* Insight / Suggestion */}
-            <Card className="bg-cyan-950/20 border-cyan-500/20">
+            <Card className="bg-cyan-500/10 border-cyan-500/20">
                 <CardContent className="p-4 flex gap-4 items-center">
-                    <div className="bg-cyan-500/20 p-2 rounded-lg text-cyan-400">
+                    <div className="bg-cyan-500/20 p-2 rounded-lg text-cyan-600 dark:text-cyan-400">
                         <Target size={20} />
                     </div>
                     <div>
-                        <div className="text-sm font-bold text-cyan-400">AI分析インサイト</div>
-                        <div className="text-xs text-gray-400">
+                        <div className="text-sm font-bold text-cyan-600 dark:text-cyan-400">AI分析インサイト</div>
+                        <div className="text-xs text-muted-foreground">
                             {totalOccupancyRate > 70
                                 ? "稼働率が高い状態です。ピークタイムの特別価格設定や、予備室の開放を検討してください。"
                                 : totalOccupancyRate < 30

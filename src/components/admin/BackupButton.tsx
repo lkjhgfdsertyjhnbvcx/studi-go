@@ -94,20 +94,20 @@ export function BackupButton() {
                 ) : (
                     <RefreshCw className={`h-3 w-3 ${status === 'success' ? 'text-green-400' : 'text-cyan-400 group-hover:rotate-180 transition-transform duration-500'}`} />
                 )}
-                {status === 'loading' ? 'GENERATING_BACKUP...' : 'DOWNLOAD_BACKUP_JSON'}
+                {status === 'loading' ? 'バックアップ作成中...' : 'バックアップJSONをダウンロード'}
             </Button>
 
             {status === 'success' && (
                 <div className="flex items-center gap-1.5 text-[9px] font-mono text-green-400 uppercase animate-in fade-in slide-in-from-top-1 text-right">
                     <CheckCircle2 size={10} />
-                    Download Complete
+                    ダウンロード完了
                 </div>
             )}
 
             {status === 'error' && (
                 <div className="flex items-center gap-1.5 text-[9px] font-mono text-red-400 uppercase animate-in fade-in slide-in-from-top-1">
                     <AlertCircle size={10} />
-                    {message || "Backup Failed"}
+                    {message || "バックアップ失敗"}
                 </div>
             )}
         </div>

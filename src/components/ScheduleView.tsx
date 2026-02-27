@@ -141,7 +141,7 @@ export const ScheduleView = ({ bookings = [], roomId, onSlotSelect }: ScheduleVi
                                             ${booking ? 'bg-red-900/40 cursor-not-allowed' : 'cursor-pointer'}
                                             ${isSelected ? 'bg-cyan-500/50' : (!booking && 'hover:bg-cyan-500/20')}
                                         `}
-                                        title={booking ? 'Booked' : 'Available'}
+                                        title={booking ? '予約済み' : '予約可能'}
                                         onMouseDown={() => !booking && handleMouseDown(slotDateStr, h)}
                                         onMouseEnter={() => handleMouseEnter(slotDateStr, h)}
                                     >
@@ -161,7 +161,7 @@ export const ScheduleView = ({ bookings = [], roomId, onSlotSelect }: ScheduleVi
             <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-4">
                     <h2 className="text-xl font-bold font-mono text-cyan-400">
-                        {roomId ? `${roomId} SCHEDULE` : 'SCHEDULE'}
+                        {roomId ? `${roomId} スケジュール` : 'スケジュール'}
                     </h2>
                 </div>
                 <div className="flex gap-2">
@@ -171,9 +171,9 @@ export const ScheduleView = ({ bookings = [], roomId, onSlotSelect }: ScheduleVi
             </div>
 
             <div className="flex justify-between items-center mb-4 bg-white/5 p-2 rounded">
-                <Button size="sm" variant="ghost" onClick={() => setCurrentDate(curr => viewMode === 'month' ? addMonths(curr, -1) : addWeeks(curr, -1))}>← PREV</Button>
+                <Button size="sm" variant="ghost" onClick={() => setCurrentDate(curr => viewMode === 'month' ? addMonths(curr, -1) : addWeeks(curr, -1))}>← 前</Button>
                 <span className="font-bold text-lg">{format(currentDate, "yyyy年 M月", { locale: ja })}</span>
-                <Button size="sm" variant="ghost" onClick={() => setCurrentDate(curr => viewMode === 'month' ? addMonths(curr, 1) : addWeeks(curr, 1))}>NEXT →</Button>
+                <Button size="sm" variant="ghost" onClick={() => setCurrentDate(curr => viewMode === 'month' ? addMonths(curr, 1) : addWeeks(curr, 1))}>次 →</Button>
             </div>
 
             {viewMode === 'month' ? renderMonth() : renderWeek()}

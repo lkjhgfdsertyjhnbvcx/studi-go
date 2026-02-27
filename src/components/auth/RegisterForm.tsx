@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import Link from 'next/link';
 import { registerUser } from '@/actions/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 const formSchema = z.object({
     name: z.string().min(1, { message: "名前を入力してください" }),
@@ -24,6 +24,9 @@ const formSchema = z.object({
 
 export const RegisterForm = () => {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirect = searchParams.get('redirect');
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema) as any,
         defaultValues: {
@@ -45,7 +48,11 @@ export const RegisterForm = () => {
         const res = await registerUser(formData);
 
         if (res.success) {
-            router.push('/register/success');
+            if (redirect) {
+                router.push(redirect);
+            } else {
+                router.push('/register/success');
+            }
         } else {
             alert(res.message);
         }

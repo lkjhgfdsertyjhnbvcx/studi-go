@@ -12,7 +12,7 @@ import {
     Loader2, DollarSign, ArrowLeft, Printer, Download, Receipt, Save
 } from "lucide-react";
 import { fetchMyBookings, cancelBookingAction, updateBookingAction } from "@/actions/booking";
-import { format, parseISO, isFuture } from "date-fns";
+import { format, parseISO, isFuture, isPast, isToday } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
@@ -21,6 +21,7 @@ export function UserBookings() {
     const [isLoading, setIsLoading] = useState(true);
     const [actionId, setActionId] = useState<string | null>(null);
     const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
+    const [isPaymentProcessing, setIsPaymentProcessing] = useState<string | null>(null);
 
     // Modification States
     const [isModifyOpen, setIsModifyOpen] = useState(false);
@@ -93,11 +94,30 @@ export function UserBookings() {
         window.print();
     };
 
+    const handlePayment = async (bookingId: string) => {
+        if (!confirm("支払い処理へ進みます。よろしいですか？\n(※現在デモ環境のため、自動的に支払い完了となります)")) return;
+        setIsPaymentProcessing(bookingId);
+        try {
+            const { processPaymentForBooking } = await import("@/actions/payment");
+            const res = await processPaymentForBooking(bookingId);
+            if (res.success) {
+                alert("支払いが完了しました。");
+                await load();
+            } else {
+                alert(res.message || "支払い処理に失敗しました。");
+            }
+        } catch (e) {
+            alert("通信エラーが発生しました。");
+        } finally {
+            setIsPaymentProcessing(null);
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
                 <Loader2 className="animate-spin h-8 w-8 text-cyan-400" />
-                <p className="text-gray-500 font-mono tracking-widest animate-pulse">AUTHORIZING ACCESS...</p>
+                <p className="text-muted-foreground font-mono tracking-widest animate-pulse">アクセス認証中...</p>
             </div>
         );
     }
@@ -109,10 +129,10 @@ export function UserBookings() {
                 <Button
                     variant="ghost"
                     onClick={() => router.back()}
-                    className="text-gray-500 hover:text-white group flex items-center gap-2 px-0"
+                    className="text-muted-foreground hover:text-foreground group flex items-center gap-2 px-0"
                 >
                     <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-                    <span className="text-xs font-mono tracking-tighter">BACK() // RETURN TO PREVIOUS</span>
+                    <span className="text-xs font-mono tracking-tighter">戻る</span>
                 </Button>
             </div>
 
@@ -120,22 +140,22 @@ export function UserBookings() {
                 <div className="flex items-center gap-4">
                     <div className="h-12 w-1.5 bg-cyan-500 rounded-full"></div>
                     <div>
-                        <h1 className="text-6xl font-black italic tracking-tighter text-white uppercase leading-none">
-                            My Bookings
+                        <h1 className="text-6xl font-black italic tracking-tighter text-foreground uppercase leading-none">
+                            予約一覧
                         </h1>
-                        <p className="text-gray-500 font-mono text-sm mt-2 uppercase tracking-[0.3em]">RESERVATION_HISTORY_v.4.1</p>
+                        <p className="text-muted-foreground font-mono text-sm mt-2 uppercase tracking-[0.3em]">RESERVATION_HISTORY</p>
                     </div>
                 </div>
             </header>
 
             {bookings.length === 0 ? (
-                <Card className="bg-slate-900/50 border-white/5 border-dashed py-20 flex flex-col items-center gap-6">
-                    <div className="p-4 bg-white/5 rounded-full">
-                        <Calendar className="h-10 w-10 text-gray-700" />
+                <Card className="bg-card/50 border-border border-dashed py-20 flex flex-col items-center gap-6">
+                    <div className="p-4 bg-accent/10 rounded-full">
+                        <Calendar className="h-10 w-10 text-muted-foreground" />
                     </div>
                     <div className="text-center space-y-2">
-                        <h2 className="text-xl font-bold text-gray-400">予約履歴がありません</h2>
-                        <p className="text-gray-600 text-sm">次回のセッションを予約しましょう</p>
+                        <h2 className="text-xl font-bold text-muted-foreground">予約履歴がありません</h2>
+                        <p className="text-muted-foreground/60 text-sm">次回のセッションを予約しましょう</p>
                     </div>
                     <Button onClick={() => router.push('/studios')} className="bg-cyan-500 hover:bg-cyan-400 text-black font-bold">
                         スタジオを探す
@@ -144,17 +164,32 @@ export function UserBookings() {
             ) : (
                 <div className="grid gap-6">
                     {bookings.map((booking) => {
-                        const canModify = isFuture(parseISO(booking.date)) && booking.status !== 'cancelled';
+                        const bookingDate = parseISO(booking.date);
+                        // isFuture doesn't strictly include today, so we check if it's strictly in the past (yesterday or older). 
+                        // For a more precise check, we could combine date + time, but for now we'll check if the date is strictly in the past.
+                        const isDatePassed = isPast(bookingDate) && !isToday(bookingDate);
+
+                        const canModify = !isDatePassed && booking.status !== 'cancelled';
                         const isActioned = actionId === booking.id;
+                        const isUnpaidPast = isDatePassed && booking.paymentStatus !== 'paid' && booking.status !== 'cancelled';
+
+                        let cardStyle = "";
+                        if (booking.status === 'cancelled') {
+                            cardStyle = "opacity-50 grayscale";
+                        } else if (isDatePassed) {
+                            cardStyle = "bg-muted/30 border-muted opacity-80"; // Slightly dimmed for past bookings
+                        } else {
+                            cardStyle = "bg-card border-border hover:border-cyan-500/30"; // Normal style for future/today
+                        }
 
                         return (
-                            <Card key={booking.id} className={`bg-slate-900 border-white/10 overflow-hidden group transition-all hover:border-cyan-500/30 ${booking.status === 'cancelled' ? 'opacity-50 grayscale' : ''}`}>
+                            <Card key={booking.id} className={`overflow-hidden group transition-all ${cardStyle}`}>
                                 <div className="flex flex-col md:flex-row">
                                     <div className="p-8 flex-1 space-y-6">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <div className="text-[9px] font-mono text-gray-600 uppercase tracking-widest mb-1">ID: {booking.id}</div>
-                                                <h3 className="text-3xl font-black text-white group-hover:text-cyan-400 transition-colors uppercase italic">{booking.studioName}</h3>
+                                                <div className="text-[9px] font-mono text-muted-foreground uppercase tracking-widest mb-1">ID: {booking.id}</div>
+                                                <h3 className="text-3xl font-black text-foreground group-hover:text-cyan-400 transition-colors uppercase italic">{booking.studioName}</h3>
                                             </div>
                                             <Badge variant="outline" className={`px-4 py-1 rounded-full border-none font-bold text-[10px] ${booking.status === 'cancelled' ? 'bg-red-500/10 text-red-500' :
                                                 booking.status === 'modified' ? 'bg-orange-500/10 text-orange-400' : 'bg-green-500/10 text-green-400'
@@ -163,50 +198,53 @@ export function UserBookings() {
                                             </Badge>
                                         </div>
 
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 border-t border-white/5 pt-6">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 border-t border-border pt-6">
                                             <div className="space-y-1">
-                                                <div className="text-[10px] text-gray-600 uppercase flex items-center gap-1 font-bold tracking-widest"><Calendar className="h-3 w-3" /> Date</div>
-                                                <div className="text-sm font-black text-white">{format(parseISO(booking.date), "yyyy.MM.dd")}</div>
+                                                <div className="text-[10px] text-muted-foreground uppercase flex items-center gap-1 font-bold tracking-widest"><Calendar className="h-3 w-3" /> 利用日</div>
+                                                <div className="text-sm font-black text-foreground">{format(parseISO(booking.date), "yyyy.MM.dd")}</div>
                                             </div>
                                             <div className="space-y-1">
-                                                <div className="text-[10px] text-gray-600 uppercase flex items-center gap-1 font-bold tracking-widest"><Clock className="h-3 w-3" /> Time / Slot</div>
-                                                <div className="text-sm font-black text-white">{booking.startTime} ({booking.durationHours}h)</div>
+                                                <div className="text-[10px] text-muted-foreground uppercase flex items-center gap-1 font-bold tracking-widest"><Clock className="h-3 w-3" /> 時間</div>
+                                                <div className="text-sm font-black text-foreground">{booking.startTime} ({booking.durationHours}h)</div>
                                             </div>
                                             <div className="space-y-1">
-                                                <div className="text-[10px] text-gray-600 uppercase flex items-center gap-1 font-bold tracking-widest"><MapPin className="h-3 w-3" /> Zone / Studio</div>
-                                                <div className="text-sm font-black text-white">{booking.roomName || "Main Hall"}</div>
+                                                <div className="text-[10px] text-muted-foreground uppercase flex items-center gap-1 font-bold tracking-widest"><MapPin className="h-3 w-3" /> 部屋</div>
+                                                <div className="text-sm font-black text-foreground">{booking.roomName || "メインルーム"}</div>
                                             </div>
                                             <div className="space-y-1">
-                                                <div className="text-[10px] text-gray-600 uppercase flex items-center gap-1 font-bold tracking-widest"><DollarSign className="h-3 w-3" /> Ledger Value</div>
+                                                <div className="text-[10px] text-muted-foreground uppercase flex items-center gap-1 font-bold tracking-widest"><DollarSign className="h-3 w-3" /> 金額</div>
                                                 <div className="text-sm font-black text-cyan-400">¥{booking.totalPrice.toLocaleString()}</div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="bg-white/5 md:w-56 p-6 flex md:flex-col gap-3 justify-center items-center border-t md:border-t-0 md:border-l border-white/5">
+                                    <div className="bg-accent/5 md:w-56 p-6 flex md:flex-col gap-3 justify-center items-center border-t md:border-t-0 md:border-l border-border">
                                         {canModify ? (
                                             <>
                                                 <Button
                                                     variant="ghost"
-                                                    className="w-full text-xs font-bold text-gray-400 hover:text-white border border-white/5 hover:border-white/20"
+                                                    className="w-full text-xs font-bold text-muted-foreground hover:text-foreground border border-border hover:border-foreground/20"
                                                     disabled={isActioned}
                                                     onClick={() => openModifyDialog(booking)}
                                                 >
                                                     {isActioned && modifyingBooking?.id === booking.id ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <RefreshCw className="h-3 w-3 mr-2" />}
-                                                    MODIFY
+                                                    変更
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     className="w-full text-xs font-bold text-red-500 hover:bg-red-500/10 border border-red-500/10 hover:border-red-500/30"
                                                     disabled={isActioned}
-                                                    onClick={() => handleCancel(booking.id)}
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        handleCancel(booking.id);
+                                                    }}
                                                 >
                                                     {isActioned && modifyingBooking === null ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3 mr-2" />}
-                                                    CANCEL
+                                                    キャンセル
                                                 </Button>
                                             </>
                                         ) : (
-                                            <div className="text-[9px] text-gray-600 italic font-mono mb-2 uppercase">LOCKED // RECORD_ONLY</div>
+                                            <div className="text-[9px] text-muted-foreground italic font-mono mb-2 uppercase">変更不可</div>
                                         )}
                                         {booking.paymentStatus === 'paid' ? (
                                             <Button
@@ -214,11 +252,28 @@ export function UserBookings() {
                                                 className="w-full text-xs font-bold text-cyan-400 hover:bg-cyan-500/10 border border-cyan-500/10 hover:border-cyan-500/30"
                                                 onClick={() => setSelectedReceipt(booking)}
                                             >
-                                                <Receipt className="h-3 w-3 mr-2" /> RECEIPT
+                                                <Receipt className="h-3 w-3 mr-2" /> 領収書
                                             </Button>
                                         ) : (
-                                            <div className="text-[10px] text-orange-500 font-mono font-bold uppercase py-2 px-4 border border-orange-500/20 bg-orange-500/5 rounded text-center w-full">
-                                                UNPAID // 支払い待ち
+                                            <div className="w-full flex flex-col gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    className={`w-full text-[10px] font-mono font-bold uppercase py-3 px-2 border ${isUnpaidPast ? 'border-red-500/50 text-red-500 bg-red-500/10 hover:bg-red-500/20' : 'border-orange-500/50 text-orange-500 bg-orange-500/10 hover:bg-orange-500/20'} rounded text-center h-auto hover:text-white transition-colors`}
+                                                    onClick={() => handlePayment(booking.id)}
+                                                    disabled={isPaymentProcessing === booking.id}
+                                                >
+                                                    {isPaymentProcessing === booking.id ? (
+                                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                                    ) : (
+                                                        <DollarSign className="h-3 w-3 mr-1" />
+                                                    )}
+                                                    {isUnpaidPast ? "支払いへ" : "支払いへ (UNPAID)"}
+                                                </Button>
+                                                {isUnpaidPast && (
+                                                    <div className="text-[10px] text-red-500 font-bold text-center mt-1 animate-pulse">
+                                                        支払いを行なってください
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -229,17 +284,17 @@ export function UserBookings() {
                 </div>
             )}
 
-            <section className="bg-white/5 p-8 rounded-3xl border border-white/5 backdrop-blur-3xl shadow-2xl">
+            <section className="bg-card/30 p-8 rounded-3xl border border-border backdrop-blur-3xl shadow-xl">
                 <div className="flex items-start gap-6">
                     <div className="p-3 bg-cyan-500/10 rounded-2xl border border-cyan-500/30">
                         <AlertCircle className="h-6 w-6 text-cyan-400" />
                     </div>
                     <div className="space-y-2">
-                        <h4 className="text-lg font-black text-white uppercase italic">Security & Policy Log</h4>
-                        <p className="text-gray-500 text-xs leading-relaxed font-mono uppercase tracking-tighter">
-                            SYS_POLICY: Cancellation window is 24 hours prior to initiation.
-                            Unauthorized absences may result in restricted access or financial penalties.
-                            Ledger records are permanently archived.
+                        <h4 className="text-lg font-black text-foreground uppercase italic">セキュリティ & ポリシー</h4>
+                        <p className="text-muted-foreground text-xs leading-relaxed font-mono uppercase tracking-tighter">
+                            SYS_POLICY: キャンセルは予約時間の24時間前まで可能です。
+                            無断キャンセルはアクセス制限やペナルティの対象となる場合があります。
+                            予約記録は永続的に保存されます。
                         </p>
                     </div>
                 </div>
@@ -247,41 +302,41 @@ export function UserBookings() {
 
             {/* Modification Modal */}
             <Dialog open={isModifyOpen} onOpenChange={setIsModifyOpen}>
-                <DialogContent className="bg-slate-950 border border-white/10 text-white shadow-[0_0_50px_rgba(6,182,212,0.1)]">
+                <DialogContent className="bg-background border border-border text-foreground shadow-2xl">
                     <DialogHeader>
-                        <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Modify Session Details</DialogTitle>
-                        <DialogDescription className="text-gray-500 uppercase text-[10px] font-mono">
+                        <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">予約内容の変更</DialogTitle>
+                        <DialogDescription className="text-muted-foreground uppercase text-[10px] font-mono">
                             Update your reservation for {modifyingBooking?.studioName}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="grid gap-6 py-6">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">New Date</Label>
+                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">新しい日付</Label>
                             <Input
                                 type="date"
-                                className="bg-white/5 border-white/10 text-white focus:border-cyan-500 transition-colors"
+                                className="bg-accent/5 border-border text-foreground focus:border-cyan-500 transition-colors"
                                 value={mDate}
                                 onChange={(e) => setMDate(e.target.value)}
                             />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Start Time</Label>
+                                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">開始時間</Label>
                                 <Input
                                     type="time"
-                                    className="bg-white/5 border-white/10 text-white focus:border-cyan-500 transition-colors"
+                                    className="bg-accent/5 border-border text-foreground focus:border-cyan-500 transition-colors"
                                     value={mTime}
                                     onChange={(e) => setMTime(e.target.value)}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Duration (h)</Label>
+                                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">利用時間 (h)</Label>
                                 <Select value={mDuration} onValueChange={setMDuration}>
-                                    <SelectTrigger className="bg-white/5 border-white/10 text-white focus:border-cyan-500">
+                                    <SelectTrigger className="bg-accent/5 border-border text-foreground focus:border-cyan-500">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-slate-900 border-white/10 text-white">
+                                    <SelectContent className="bg-card border-border text-foreground">
                                         {[1, 2, 3, 4, 5, 6, 8, 10, 12].map(h => (
                                             <SelectItem key={h} value={h.toString()}>{h}時間</SelectItem>
                                         ))}
@@ -297,11 +352,11 @@ export function UserBookings() {
                     </div>
 
                     <DialogFooter className="gap-2">
-                        <Button variant="ghost" className="text-xs text-gray-500 hover:text-white" onClick={() => setIsModifyOpen(false)}>
-                            CANCEL Changes
+                        <Button variant="ghost" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => setIsModifyOpen(false)}>
+                            変更をキャンセル
                         </Button>
                         <Button className="bg-cyan-500 hover:bg-cyan-400 text-black font-black uppercase italic" onClick={handleUpdate}>
-                            <Save className="h-4 w-4 mr-2" /> Commit modification
+                            <Save className="h-4 w-4 mr-2" /> 変更を確定する
                         </Button>
                     </DialogFooter>
                 </DialogContent>

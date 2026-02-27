@@ -70,3 +70,44 @@ export async function updatePaymentStatus(paymentId: string, status: "paid" | "p
         return { success: false, message: error.message };
     }
 }
+
+export async function processPaymentForBooking(bookingId: string) {
+    noStore();
+    try {
+        const payments = await getAllPaymentsFromFirestore();
+        const payment = payments.find(p => p.bookingId === bookingId);
+        if (payment) {
+            await updatePaymentStatusInFirestore(payment.id, "paid");
+            revalidatePath("/bookings");
+            return { success: true };
+        } else {
+            // Payment record wasn't created properly at booking time (likely old data)
+            // Let's create it now then mark it as paid.
+            const { getBookingByIdFromFirestore, getStudioByIdFromFirestore } = await import("@/lib/db-firestore");
+            const booking = await getBookingByIdFromFirestore(bookingId);
+            if (!booking) {
+                return { success: false, message: "予約情報が見つかりません" };
+            }
+            const studio = await getStudioByIdFromFirestore(booking.studioId);
+
+            const newPaymentResult = await createPayment({
+                bookingId: booking.id,
+                studioId: booking.studioId,
+                studioName: studio?.storeName || "Unknown Studio",
+                userName: "User",
+                userEmail: "",
+                amount: booking.totalPrice || 0,
+                paymentMethod: "stripe"
+            });
+
+            if (newPaymentResult.success && newPaymentResult.paymentId) {
+                await updatePaymentStatusInFirestore(newPaymentResult.paymentId, "paid");
+                revalidatePath("/bookings");
+                return { success: true };
+            }
+        }
+        return { success: false, message: "支払い情報の生成に失敗しました" };
+    } catch (error: any) {
+        return { success: false, message: error.message };
+    }
+}

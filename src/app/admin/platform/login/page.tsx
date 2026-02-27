@@ -25,48 +25,48 @@ export default function PlatformAdminLoginPage() {
             router.refresh();
             router.push('/admin');
         } else {
-            setError(res.message || 'Login failed');
+            setError(res.message || 'ログインに失敗しました');
             setIsLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-[#0a0f1c] text-white flex items-center justify-center font-mono relative overflow-hidden">
+        <div className="min-h-screen bg-background text-foreground flex items-center justify-center font-mono relative overflow-hidden">
             {/* Background elements */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
                 <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-indigo-900/20 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-cyan-900/20 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-900/20 rounded-full blur-3xl"></div>
             </div>
 
-            <div className="w-full max-w-md p-10 border border-slate-800 rounded-3xl bg-slate-900/80 backdrop-blur-xl shadow-2xl relative z-10">
+            <div className="w-full max-w-md p-10 border border-border rounded-3xl bg-card/80 backdrop-blur-xl shadow-2xl relative z-10">
                 <div className="text-center mb-10">
                     <div className="flex justify-center mb-6">
-                        <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                        <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
                             <span className="text-4xl">💎</span>
                         </div>
                     </div>
                     <h1 className="text-2xl font-bold tracking-widest text-white mb-2">Studi-Go</h1>
-                    <p className="text-sm font-semibold text-cyan-400 uppercase tracking-widest">運営管理者用</p>
+                    <p className="text-sm font-semibold text-purple-400 uppercase tracking-widest">運営管理者用</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-400 tracking-wider ml-1">ADMIN ID</label>
+                        <label className="text-[10px] font-bold text-slate-400 tracking-wider ml-1 uppercase">メールアドレス</label>
                         <Input
                             name="email"
                             type="email"
-                            placeholder="admin@antigravity.com"
-                            className="bg-slate-950/50 border-slate-700 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 h-12 rounded-xl"
+                            placeholder="admin@studio-go.com"
+                            className="bg-muted/50 border-border text-foreground focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 h-12 rounded-xl"
                             required
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-400 tracking-wider ml-1">PASSWORD</label>
+                        <label className="text-[10px] font-bold text-muted-foreground tracking-wider ml-1 uppercase">パスワード</label>
                         <Input
                             name="password"
                             type="password"
-                            placeholder="•••••"
-                            className="bg-slate-950/50 border-slate-700 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 h-12 rounded-xl"
+                            placeholder="パスワードを入力"
+                            className="bg-muted/50 border-border text-foreground focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 h-12 rounded-xl"
                             required
                         />
                     </div>
@@ -80,15 +80,15 @@ export default function PlatformAdminLoginPage() {
                     <Button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold h-12 rounded-xl shadow-lg shadow-indigo-900/50 transition-all duration-300 transform hover:scale-[1.02]"
+                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold h-12 rounded-xl shadow-lg shadow-indigo-900/50 transition-all duration-300 transform hover:scale-[1.02]"
                     >
-                        {isLoading ? 'VERIFYING...' : 'SECURE LOGIN'}
+                        {isLoading ? '検証中...' : 'セキュアログイン'}
                     </Button>
                 </form>
 
                 <div className="mt-8 text-center">
-                    <p className="text-[10px] text-slate-600 uppercase tracking-widest">
-                        Restricted Access Area<br />Authorized Personnel Only
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                        制限区域<br />許可された関係者のみ
                     </p>
                 </div>
             </div>

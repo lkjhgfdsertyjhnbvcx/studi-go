@@ -1,87 +1,67 @@
 "use client";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 
-import React, { useState } from 'react';
-import { adminLogin } from '@/actions/admin-auth';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import Link from 'next/link';
-import Image from 'next/image';
-
-export default function AdminLoginPage() {
-    const [error, setError] = useState('');
+export default function AdminLogin() {
     const router = useRouter();
-    const [isLoading, setIsLoading] = useState(false);
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
-        setError('');
+        setError("");
 
-        const formData = new FormData(e.currentTarget);
-        const res = await adminLogin(formData);
+        try {
+            const res = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
 
-        if (res.success) {
-            router.push('/admin');
-        } else {
-            setError(res.message || 'Login failed');
-            setIsLoading(false);
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                // 🌟 ログイン成功：ダッシュボードへ飛ばす
+                router.push('/admin/dashboard');
+            } else {
+                setError("IDまたはパスワードが正しくありません");
+            }
+        } catch (err) {
+            setError("接続エラーが発生しました。サーバーを確認してください。");
         }
     };
 
     return (
-        <div className="min-h-screen bg-black text-white flex items-center justify-center font-mono">
-            <div className="w-full max-w-md p-8 border border-white/10 rounded-xl bg-slate-900/50 backdrop-blur-md">
-                <div className="text-center mb-8">
-                    <h1 className="text-2xl font-bold tracking-widest text-emerald-400 mb-2">STUDIO LOGIN</h1>
-                    <p className="text-xs text-gray-500">店舗スタッフ・オーナー様専用</p>
-                </div>
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+            <div className="max-w-md w-full p-10 bg-white rounded-[3rem] shadow-2xl">
+                <h1 className="text-3xl font-black italic tracking-tighter text-center mb-2">Studi-Go</h1>
+                <p className="text-[10px] font-black text-gray-400 text-center uppercase tracking-[0.3em] mb-10">Admin Portal</p>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="space-y-2">
-                        <label className="text-xs text-gray-400">OPERATOR ID</label>
-                        <Input
-                            name="email"
-                            type="email"
-                            placeholder="admin@antigravity.com"
-                            className="bg-black/50 border-white/10 text-white focus:border-cyan-500"
-                            required
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-xs text-gray-400">ACCESS KEY</label>
-                        <Input
-                            name="password"
-                            type="password"
-                            placeholder="•••••"
-                            className="bg-black/50 border-white/10 text-white focus:border-cyan-500"
-                            required
-                        />
-                    </div>
+                <form onSubmit={handleLogin} className="space-y-6">
+                    <input
+                        type="email"
+                        placeholder="Admin Email"
+                        required
+                        className="w-full p-4 bg-gray-100 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-purple-800 transition-all text-gray-900"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
+                    <input
+                        type="password"
+                        placeholder="Password"
+                        required
+                        className="w-full p-4 bg-gray-100 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-purple-800 transition-all text-gray-900"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
 
-                    {error && (
-                        <div className="text-red-500 text-xs text-center border border-red-900/50 bg-red-900/20 p-2 rounded">
-                            {error}
-                        </div>
-                    )}
+                    {error && <p className="text-red-500 text-xs font-bold text-center">{error}</p>}
 
-                    <Button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full bg-cyan-600 hover:bg-cyan-500 text-black font-bold tracking-widest"
-                    >
-                        {isLoading ? 'AUTHENTICATING...' : 'INITIALIZE SESSION'}
-                    </Button>
+                    <button type="submit" className="w-full py-5 bg-purple-800 text-white rounded-2xl font-black text-xl shadow-xl hover:bg-black transition-all">
+                        LOGIN
+                    </button>
                 </form>
-
-                <div className="mt-8 text-center space-y-4">
-                    <p className="text-sm text-gray-400">
-                        店舗をお持ちですか？ <Link href="/admin/register-store" className="text-cyan-400 hover:text-cyan-300 underline">新規店舗登録</Link>
-                    </p>
-                    <div className="text-xs text-gray-600">
-                        SECURE CONNECTION // V1.0.4
-                    </div>
-                </div>
             </div>
         </div>
     );

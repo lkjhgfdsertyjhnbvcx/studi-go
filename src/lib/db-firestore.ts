@@ -16,6 +16,50 @@ import { User } from "@/actions/auth";
 import { Booking } from "./db-local";
 import { Payment } from "@/actions/payment";
 
+/**
+ * Robust data cleaner for Firestore.
+ * Ensures plain objects, converts NaNs, and handles nested structures.
+ */
+function toPlainObject(obj: any): any {
+    if (obj === null || obj === undefined) return null;
+
+    // Primitives
+    if (typeof obj !== 'object') {
+        if (typeof obj === 'number' && (isNaN(obj) || !isFinite(obj))) return 0;
+        return obj;
+    }
+
+    if (obj instanceof Date) return obj.toISOString();
+
+    // Arrays
+    if (Array.isArray(obj)) {
+        return obj.map(toPlainObject);
+    }
+
+    // Objects
+    const result: any = {};
+    for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            const value = obj[key];
+            if (value === undefined) continue;
+
+            // Deep clean nested designSettings specifically if it exists
+            if (key === 'designSettings' && value && typeof value === 'object') {
+                result[key] = {
+                    logoSize: Number(value.logoSize) || 100,
+                    backgroundColor: String(value.backgroundColor || "#000000"),
+                    backgroundType: String(value.backgroundType || "color"),
+                    backgroundImageUrl: value.backgroundImageUrl ? String(value.backgroundImageUrl) : "",
+                    showMap: value.showMap !== false
+                };
+            } else {
+                result[key] = toPlainObject(value);
+            }
+        }
+    }
+    return result;
+}
+
 export interface Campaign {
     id: string;
     title: string;
@@ -69,9 +113,13 @@ export const getStudioByIdFromFirestore = async (id: string): Promise<StudioProf
 
 export const saveStudioToFirestore = async (studio: StudioProfile): Promise<void> => {
     try {
-        await setDoc(doc(db, "studios", studio.id), studio);
+        const cleanedData = toPlainObject(studio);
+
+        console.log(`[saveStudioToFirestore] Saving studio: ${studio.id} (${studio.storeName})`);
+
+        await setDoc(doc(db, "studios", studio.id), cleanedData);
     } catch (e) {
-        console.error("Error saving studio:", e);
+        console.error("[saveStudioToFirestore] Error saving studio:", e);
         throw e;
     }
 };
@@ -109,7 +157,8 @@ export const getUserByIdFromFirestore = async (id: string): Promise<User | undef
 
 export const saveUserToFirestore = async (user: User): Promise<void> => {
     try {
-        await setDoc(doc(db, "users", user.id), user);
+        const cleanedData = toPlainObject(user);
+        await setDoc(doc(db, "users", user.id), cleanedData);
     } catch (e) {
         console.error("Error saving user:", e);
         throw e;
@@ -140,7 +189,8 @@ export const getBookingByIdFromFirestore = async (id: string): Promise<Booking |
 
 export const saveBookingToFirestore = async (booking: Booking): Promise<void> => {
     try {
-        await setDoc(doc(db, "bookings", booking.id), booking);
+        const cleanedData = toPlainObject(booking);
+        await setDoc(doc(db, "bookings", booking.id), cleanedData);
     } catch (e) {
         console.error("Error saving booking:", e);
         throw e;
@@ -181,7 +231,8 @@ export const getPaymentsByStudioIdFromFirestore = async (studioId: string): Prom
 
 export const savePaymentToFirestore = async (payment: Payment): Promise<void> => {
     try {
-        await setDoc(doc(db, "payments", payment.id), payment);
+        const cleanedData = toPlainObject(payment);
+        await setDoc(doc(db, "payments", payment.id), cleanedData);
     } catch (e) {
         console.error("Error saving payment:", e);
         throw e;
@@ -253,7 +304,8 @@ export const getAllCampaignsFromFirestore = async (): Promise<Campaign[]> => {
 
 export const saveCampaignToFirestore = async (campaign: Campaign): Promise<void> => {
     try {
-        await setDoc(doc(db, "campaigns", campaign.id), campaign);
+        const cleanedData = toPlainObject(campaign);
+        await setDoc(doc(db, "campaigns", campaign.id), cleanedData);
     } catch (e) {
         console.error("Error saving campaign:", e);
         throw e;
@@ -282,7 +334,8 @@ export const getAllCouponsFromFirestore = async (): Promise<Coupon[]> => {
 
 export const saveCouponToFirestore = async (coupon: Coupon): Promise<void> => {
     try {
-        await setDoc(doc(db, "coupons", coupon.id), coupon);
+        const cleanedData = toPlainObject(coupon);
+        await setDoc(doc(db, "coupons", coupon.id), cleanedData);
     } catch (e) {
         console.error("Error saving coupon:", e);
         throw e;

@@ -19,6 +19,16 @@ export interface User {
     isJocollaUser: boolean;
     jocollaId?: string; // Added field for future SNS sync
     myStudios?: string[];
+    coupons?: Array<{
+        id: string;
+        code: string;
+        title: string;
+        discountType: "percentage" | "fixed";
+        discountValue: number;
+        issuedAt: string;
+        isUsed: boolean;
+        usedAt?: string;
+    }>;
 }
 
 export async function registerUser(formData: FormData) {

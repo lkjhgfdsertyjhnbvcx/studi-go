@@ -22,17 +22,39 @@ export const metadata: Metadata = {
   description: "Next-gen music studio reservation system.",
 };
 
+import { ThemeProvider } from "@/lib/theme-context";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="ja" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const savedMode = localStorage.getItem('theme-mode');
+                  if (savedMode === 'light') {
+                    document.documentElement.classList.add('light');
+                  } else {
+                    document.documentElement.classList.add('dark');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${orbitron.variable} antialiased bg-black text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} ${orbitron.variable} antialiased`}
       >
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

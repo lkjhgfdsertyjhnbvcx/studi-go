@@ -32,11 +32,11 @@ export default function MigrationPage() {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white p-10 font-sans">
+        <div className="min-h-screen bg-background text-foreground p-10 font-sans">
             <div className="max-w-2xl mx-auto space-y-8">
-                <Card className="bg-slate-900 border-white/10">
+                <Card className="bg-card border-border">
                     <CardHeader>
-                        <CardTitle className="text-2xl text-cyan-400">データ移行ツール (Beta)</CardTitle>
+                        <CardTitle className="text-2xl text-cyan-500">データ移行ツール (Beta)</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <p className="text-gray-400">
@@ -45,7 +45,7 @@ export default function MigrationPage() {
                         </p>
 
                         {status === 'idle' && (
-                            <Button onClick={startMigration} className="w-full bg-cyan-500 hover:bg-cyan-600 text-black font-bold h-12">
+                            <Button onClick={startMigration} className="w-full bg-cyan-500 hover:bg-cyan-600 text-cyan-950 font-bold h-12">
                                 データを移行する
                             </Button>
                         )}
@@ -77,7 +77,7 @@ export default function MigrationPage() {
                             </div>
                         )}
 
-                        <div className="bg-black/50 p-4 rounded-lg font-mono text-xs overflow-y-auto max-h-48 border border-white/5 space-y-1">
+                        <div className="bg-muted p-4 rounded-lg font-mono text-xs overflow-y-auto max-h-48 border border-border space-y-1">
                             {log.map((line, i) => <div key={i}>{line}</div>)}
                         </div>
                     </CardContent>

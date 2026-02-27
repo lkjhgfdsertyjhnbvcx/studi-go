@@ -1,27 +1,10 @@
 "use server";
 
-import fs from 'fs';
-import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { Resend } from 'resend';
+import { getAllUsersFromFirestore, saveUserToFirestore } from '@/lib/db-firestore';
 
-const USERS_DB_PATH = path.join(process.cwd(), 'data', 'users.json');
 const resend = new Resend(process.env.RESEND_API_KEY);
-
-// Helper functions
-const getUsers = (): any[] => {
-    if (!fs.existsSync(USERS_DB_PATH)) return [];
-    try {
-        const data = fs.readFileSync(USERS_DB_PATH, 'utf-8');
-        return JSON.parse(data);
-    } catch {
-        return [];
-    }
-}
-
-const saveUsers = (users: any[]) => {
-    fs.writeFileSync(USERS_DB_PATH, JSON.stringify(users, null, 2));
-}
 
 // 1. Send Password Reset Email
 export async function sendPasswordResetAction(formData: FormData) {
@@ -31,9 +14,8 @@ export async function sendPasswordResetAction(formData: FormData) {
         return { success: false, message: 'メールアドレスを入力してください。' };
     }
 
-    const users = getUsers();
-    const userIndex = users.findIndex((u: any) => u.email === email);
-    const user = users[userIndex];
+    const users = await getAllUsersFromFirestore();
+    const user = users.find((u: any) => u.email === email);
 
     if (!user) {
         return { success: false, message: 'このメールアドレスは登録されていません。' };
@@ -44,10 +26,18 @@ export async function sendPasswordResetAction(formData: FormData) {
     const resetTokenExpiry = Date.now() + 3600000; // 1 hour from now
 
     // Save Token to User
-    user.resetToken = resetToken;
-    user.resetTokenExpiry = resetTokenExpiry;
-    users[userIndex] = user;
-    saveUsers(users);
+    const updatedUser = {
+        ...user,
+        resetToken,
+        resetTokenExpiry
+    };
+    
+    try {
+        await saveUserToFirestore(updatedUser);
+    } catch (e) {
+        console.error('[Reset Password] Failed to save token:', e);
+        return { success: false, message: 'エラーが発生しました。しばらく時間を置いてから再度お試しください。' };
+    }
 
     // Send Email
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
@@ -60,28 +50,31 @@ export async function sendPasswordResetAction(formData: FormData) {
                 to: email,
                 subject: '【Studi-Go】パスワード再設定のご案内',
                 html: `
-                    <h1>パスワード再設定</h1>
-                    <p>パスワードの再設定リクエストを受け付けました。</p>
-                    <p>以下のリンクをクリックして、新しいパスワードを設定してください。</p>
-                    <p><a href="${resetUrl}">${resetUrl}</a></p>
-                    <p>このリンクは1時間有効です。</p>
-                    <p>お心当たりがない場合は、このメールを無視してください。</p>
+                    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h1 style="color: #06b6d4;">パスワード再設定</h1>
+                        <p>パスワードの再設定リクエストを受け付けました。</p>
+                        <p>以下のボタンをクリックして、新しいパスワードを設定してください。</p>
+                        <div style="margin: 30px 0;">
+                            <a href="${resetUrl}" style="background-color: #06b6d4; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">パスワードを再設定する</a>
+                        </div>
+                        <p>または、以下のURLをブラウザに貼り付けてください：</p>
+                        <p>${resetUrl}</p>
+                        <p>このリンクは1時間有効です。</p>
+                        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+                        <p style="color: #666; font-size: 12px;">お心当たりがない場合は、このメールを無視してください。</p>
+                    </div>
                 `
             });
 
             if (error) {
                 console.error('[Reset Password] ❌ Resend Error (Returned):', error);
-                console.log(`[Reset Password] ⚠️ Email failed. DEV MODE: Reset URL is ${resetUrl}`);
-                // For development convenience, return success with the link if email fails
-                return { success: true, message: `(開発モード) メール送信に失敗しましたが、リセットURLを発行しました: ${resetUrl}` };
+                return { success: true, message: `(開発モード) メール送信に失敗しましたが、コンソールにURLを出力しました。` };
             }
 
             console.log(`[Reset Password] 📧 Email sent to ${email} via Resend.`);
             return { success: true, message: 'パスワード再設定用のメールを送信しました。' };
         } catch (error) {
             console.error('[Reset Password] ❌ Failed to send email via Resend (Exception):', error);
-            // In dev/debug
-            console.log(`[Reset Password] 🧪 DEV MODE: Reset URL is ${resetUrl}`);
             return { success: true, message: 'メール送信に失敗しました。(Dev: コンソールを確認)' };
         }
     } else {
@@ -99,9 +92,8 @@ export async function resetPasswordAction(formData: FormData) {
         return { success: false, message: '無効なリクエストです。' };
     }
 
-    const users = getUsers();
-    const userIndex = users.findIndex((u: any) => u.resetToken === token);
-    const user = users[userIndex];
+    const users = await getAllUsersFromFirestore();
+    const user = users.find((u: any) => u.resetToken === token);
 
     if (!user) {
         return { success: false, message: '無効なまたは期限切れのリンクです。' };
@@ -112,14 +104,18 @@ export async function resetPasswordAction(formData: FormData) {
         return { success: false, message: 'リンクの有効期限が切れています。もう一度リクエストしてください。' };
     }
 
-    // Update Password
-    user.password = password;
-    // Clear token
-    delete user.resetToken;
-    delete user.resetTokenExpiry;
+    // Update Password and clear token
+    const { resetToken, resetTokenExpiry, ...cleanUser } = user;
+    const updatedUser = {
+        ...cleanUser,
+        password
+    };
 
-    users[userIndex] = user;
-    saveUsers(users);
-
-    return { success: true, message: 'パスワードを変更しました。ログインしてください。' };
+    try {
+        await saveUserToFirestore(updatedUser);
+        return { success: true, message: 'パスワードを変更しました。ログインしてください。' };
+    } catch (e) {
+        console.error('[Reset Password] Failed to update password:', e);
+        return { success: false, message: 'パスワードの更新に失敗しました。' };
+    }
 }

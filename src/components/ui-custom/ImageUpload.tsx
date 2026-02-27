@@ -81,25 +81,22 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
                 ))}
             </div>
 
-            <div>
+            <div className="relative w-full min-h-[160px] rounded-xl border-2 border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-colors flex items-center justify-center group overflow-hidden">
                 <input
                     type="file"
                     accept="image/*"
-                    className="hidden"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     ref={fileInputRef}
                     onChange={onUpload}
                     disabled={disabled || isUploading}
                 />
-                <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={disabled || isUploading}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="bg-white/10 hover:bg-white/20 text-white border border-white/20"
-                >
-                    <Upload className="h-4 w-4 mr-2" />
-                    {isUploading ? "Uploading..." : "Upload Image"}
-                </Button>
+                <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground group-hover:text-purple-400 transition-colors pointer-events-none">
+                    <Upload className="h-10 w-10 mb-3 opacity-50 group-hover:opacity-100 transition-opacity" />
+                    <span className="font-bold text-sm">
+                        {isUploading ? "アップロード中..." : "クリックして画像を選択"}
+                    </span>
+                    <span className="text-xs opacity-60 mt-1">またはドラッグ＆ドロップ</span>
+                </div>
             </div>
         </div>
     );

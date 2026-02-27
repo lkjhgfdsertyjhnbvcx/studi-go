@@ -14,6 +14,7 @@ import { StudioProfile } from "@/lib/db-studio";
 import { getCurrentUser } from "@/actions/login";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { PlusCircle, Loader2 } from "lucide-react";
 
 interface BookingModalProps {
     isOpen: boolean;
@@ -47,6 +48,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     const [selectedOtherDiscounts, setSelectedOtherDiscounts] = useState<number[]>([]);
     const [isPersonalPractice, setIsPersonalPractice] = useState(false);
     const [personalPracticeError, setPersonalPracticeError] = useState<string | null>(null);
+    const [isSplitPayment, setIsSplitPayment] = useState(false);
+    const [optionPaymentMode, setOptionPaymentMode] = useState<"split" | "booker">("split");
+    const [guaranteeMode, setGuaranteeMode] = useState<"auth" | "provisional">("auth");
+    const [optionsAmount, setOptionsAmount] = useState<number>(0);
+    const [myBands, setMyBands] = useState<any[]>([]);
+    const [selectedBandId, setSelectedBandId] = useState<string>("");
+
+    // 新規バンド登録用
+    const [isCreatingBand, setIsCreatingBand] = useState(false);
+    const [newBandName, setNewBandName] = useState("");
+    const [isCreatingBandLoading, setIsCreatingBandLoading] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -54,6 +66,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             if (initialTime) setStartTime(initialTime);
             if (initialDuration) setDuration(initialDuration);
             if (initialRoomIndex) setSelectedRoomIndex(initialRoomIndex);
+
+            // Fetch bands
+            import("@/actions/band").then(({ fetchMyBands }) => {
+                fetchMyBands().then(bands => {
+                    setMyBands(bands);
+                    if (bands.length > 0) setSelectedBandId(bands[0].id);
+                });
+            });
         }
     }, [isOpen, initialDate, initialTime, initialRoomIndex, initialDuration]);
 
@@ -78,8 +98,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             if (!room) return 0;
 
             const dayOfWeek = new Date(date).getDay(); // 0 = Sun, 6 = Sat
-            // Simple mapping: 0 -> sundayHoliday, 6 -> saturday, others -> weekday
-            // Note: Holidays logic is missing, sticking to Sunday = Holiday for now.
             let schedule = room.pricing.weekday;
             if (dayOfWeek === 6) schedule = room.pricing.saturday;
             if (dayOfWeek === 0) schedule = room.pricing.sundayHoliday;
@@ -88,44 +106,39 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
             let total = 0;
             const startHour = parseInt(startTime.split(':')[0]);
-            const startMin = parseInt(startTime.split(':')[1]); // Ignore minutes for price blocks simplification? Or allow 30min?
-            // Simplified logic: Assume block pricing based on start time hour overlap
-            // Real logic needs time range intersection.
             const durationH = parseInt(duration);
 
             for (let i = 0; i < durationH; i++) {
                 const currentHour = startHour + i;
-                // Find slot covering this hour (e.g. 10:00 starts at 10)
-                // We convert slots "10:00" to numbers for comparison
                 const slot = schedule.slots.find(s => {
                     const sStart = parseInt(s.start.split(':')[0]);
                     const sEnd = parseInt(s.end.split(':')[0]);
-                    // Handle 24+ notation if needed, assume standard for checks
                     return currentHour >= sStart && currentHour < sEnd;
                 });
 
                 if (slot) {
                     let hourPrice = 0;
                     if (slot.pricingType === 'discount' && room.basePrice) {
-                        // Calculate from basePrice if type is discount
                         hourPrice = room.basePrice * (1 - (slot.discountRate || 0) / 100);
                     } else {
                         hourPrice = slot.price;
                     }
                     total += hourPrice;
                 } else {
-                    // Fallback to base price if no slot found
                     total += room.basePrice || 0;
                 }
             }
 
             // Options
+            let optTotal = 0;
             selectedOptions.forEach(optIndex => {
                 const opt = studioData.equipmentOptions[optIndex];
                 if (opt) {
-                    total += opt.pricePerHour * durationH;
+                    optTotal += opt.pricePerHour * durationH;
                 }
             });
+            total += optTotal;
+            setOptionsAmount(Math.max(0, Math.floor(optTotal)));
 
             // Studio-wide Discounts
             if (isStudentDiscount && studioData.studentDiscount?.enabled) {
@@ -204,12 +217,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 durationHours: parseInt(duration),
                 userCount: parseInt(userCount),
                 equipmentIds: selectedOptions.map(i => studioData?.equipmentOptions[i].name || ""),
-                totalPriceOverride: calculatedPrice || undefined, // Send authoritative price from client? Ideal is server recalc.
-                isPersonalPractice
+                totalPriceOverride: calculatedPrice || undefined,
+                isPersonalPractice,
+                isSplitPayment,
+                bandId: isSplitPayment ? selectedBandId : undefined,
+                optionPaymentMode: isSplitPayment ? optionPaymentMode : undefined,
+                guaranteeMode: isSplitPayment ? guaranteeMode : undefined,
+                optionsAmount: isSplitPayment ? optionsAmount : 0
             });
             if (res.success) {
-                // Redirect to success page
-                window.location.href = `/booking/success?id=${res.bookingId}`;
+                // If split payment, redirect to the split payment page instead of normal success
+                if (isSplitPayment && res.splitPaymentUrl) {
+                    window.location.href = res.splitPaymentUrl;
+                } else {
+                    window.location.href = `/booking/success?id=${res.bookingId}`;
+                }
             } else {
                 setResult({ success: false, message: res.message });
             }
@@ -217,6 +239,29 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             setResult({ success: false, message: e.message });
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleCreateBand = async () => {
+        if (!newBandName.trim()) return;
+        setIsCreatingBandLoading(true);
+        try {
+            const { createBandAction } = await import("@/actions/band");
+            const res = await createBandAction(newBandName.trim());
+            if (res.success && res.bandId) {
+                const { fetchMyBands } = await import("@/actions/band");
+                const bands = await fetchMyBands();
+                setMyBands(bands);
+                setSelectedBandId(res.bandId);
+                setIsCreatingBand(false);
+                setNewBandName("");
+            } else {
+                alert("バンドの作成に失敗しました。");
+            }
+        } catch (e) {
+            alert("エラーが発生しました。");
+        } finally {
+            setIsCreatingBandLoading(false);
         }
     };
 
@@ -231,8 +276,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     const glowColor = primaryColor === 'neon' ? 'shadow-[0_0_30px_#00ffcc]' :
         primaryColor === 'red' ? 'shadow-[0_0_30px_#ff0055]' : 'shadow-[0_0_30px_#00ccff]';
 
-    const buttonColorClass = primaryColor === 'neon' ? 'bg-[#00ffcc] text-black hover:bg-[#00ffcc]/80' :
-        primaryColor === 'red' ? 'bg-[#ff0055] text-white hover:bg-[#ff0055]/80' : 'bg-[#00ccff] text-black hover:bg-[#00ccff]/80';
+    // 選択されたオプション名リスト
+    const selectedOptionDetails = selectedOptions.map(i => studioData?.equipmentOptions[i]).filter(Boolean);
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -254,7 +299,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                                 onCheckedChange={(checked) => {
                                     setIsPersonalPractice(!!checked);
                                     if (checked) {
-                                        // Auto-set userCount to maxPeople or current if smaller
                                         const max = studioData.personalPracticeSettings?.maxPeople || 2;
                                         if (parseInt(userCount) > max) {
                                             setUserCount(max.toString());
@@ -274,6 +318,120 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         )}
                     </div>
                 )}
+
+                {/* Split Payment Toggle */}
+                <div className="px-4 py-3 bg-purple-500/10 border-y border-white/5 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Checkbox
+                                id="split-payment"
+                                checked={isSplitPayment}
+                                onCheckedChange={(checked) => setIsSplitPayment(!!checked)}
+                                className="border-purple-500 data-[state=checked]:bg-purple-500"
+                            />
+                            <Label htmlFor="split-payment" className="text-sm font-bold text-purple-400 cursor-pointer">
+                                割り勘決済を利用する（バンドメンバーと分割払い）
+                            </Label>
+                        </div>
+                    </div>
+
+                    {isSplitPayment && (
+                        <div className="pl-6 space-y-4 mt-2 border-l-2 border-purple-500/30">
+                            {/* バンド選択 */}
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-300">実施するバンド/プロジェクト</Label>
+                                {!isCreatingBand ? (
+                                    <>
+                                        {myBands.length > 0 ? (
+                                            <Select value={selectedBandId} onValueChange={setSelectedBandId}>
+                                                <SelectTrigger className="bg-slate-800 border-slate-700 text-white h-8 text-xs">
+                                                    <SelectValue placeholder="バンドを選択" />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                                                    {myBands.map(band => (
+                                                        <SelectItem key={band.id} value={band.id}>{band.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        ) : (
+                                            <p className="text-[10px] text-amber-400">バンドが登録されていません。</p>
+                                        )}
+                                        {/* 新規バンド作成ボタン */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsCreatingBand(true)}
+                                            className="flex items-center gap-1 text-[11px] text-purple-400 hover:text-purple-300 transition-colors mt-1"
+                                        >
+                                            <PlusCircle className="h-3 w-3" />
+                                            リストにないバンド/プロジェクトを新規登録
+                                        </button>
+                                    </>
+                                ) : (
+                                    <div className="space-y-2 bg-purple-900/20 p-3 rounded-lg border border-purple-500/30">
+                                        <Label className="text-[11px] text-purple-300 font-bold">バンド/プロジェクト名を入力</Label>
+                                        <Input
+                                            value={newBandName}
+                                            onChange={(e) => setNewBandName(e.target.value)}
+                                            placeholder="例: My Rock Band"
+                                            className="bg-slate-800 border-slate-700 text-white h-8 text-xs"
+                                        />
+                                        <div className="flex gap-2">
+                                            <Button
+                                                size="sm"
+                                                onClick={handleCreateBand}
+                                                disabled={isCreatingBandLoading || !newBandName.trim()}
+                                                className="bg-purple-600 hover:bg-purple-500 text-white h-7 text-xs flex-1"
+                                            >
+                                                {isCreatingBandLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "登録する"}
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => { setIsCreatingBand(false); setNewBandName(""); }}
+                                                className="text-gray-400 h-7 text-xs"
+                                            >
+                                                キャンセル
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* オプション料金支払い */}
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-300">オプション料金（機材等）の支払い</Label>
+                                <Select value={optionPaymentMode} onValueChange={(v: "split" | "booker") => setOptionPaymentMode(v)}>
+                                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white h-8 text-xs">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                                        <SelectItem value="split" className="text-xs">割り勘に含める（全員で等分）</SelectItem>
+                                        <SelectItem value="booker" className="text-xs">使用した人（予約代表者）が全額負担する</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* 予約確定タイミング */}
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-300">予約の確定タイミング</Label>
+                                <Select value={guaranteeMode} onValueChange={(v: "auth" | "provisional") => setGuaranteeMode(v)}>
+                                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white h-8 text-xs">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                                        <SelectItem value="auth" className="text-xs">代表者枠で確定（未払いリスクは代表者負担）</SelectItem>
+                                        <SelectItem value="provisional" className="text-xs">仮予約（全員が期限内に決済して本確定）</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {guaranteeMode === 'auth' ? (
+                                    <p className="text-[10px] text-gray-400 mt-1">※ 代表者のクレジットカード枠を確保して予約を確定します。メンバーが支払わなかった分は代表者が負担します。</p>
+                                ) : (
+                                    <p className="text-[10px] text-gray-400 mt-1">※ 全員が期限までに決済しない場合、予約は自動的にキャンセルされます。</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
 
                 {!result ? (
                     <div className="grid gap-4 py-4">
@@ -422,6 +580,27 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                             </div>
                         )}
 
+                        {/* ── 選択済みオプションのサマリー表示 ── */}
+                        {selectedOptionDetails.length > 0 && (
+                            <div className="mt-2 p-3 bg-purple-900/20 rounded-lg border border-purple-500/20">
+                                <div className="text-[10px] text-purple-400 font-bold uppercase tracking-widest mb-2">選択中のオプション</div>
+                                <div className="space-y-1">
+                                    {selectedOptionDetails.map((opt, idx) => (
+                                        opt && (
+                                            <div key={idx} className="flex justify-between text-xs text-gray-300">
+                                                <span>・{opt.name}</span>
+                                                <span className="text-purple-300">+¥{(opt.pricePerHour * parseInt(duration)).toLocaleString()}</span>
+                                            </div>
+                                        )
+                                    ))}
+                                    <div className="flex justify-between text-xs font-bold border-t border-purple-500/20 pt-1 mt-1 text-purple-300">
+                                        <span>オプション合計</span>
+                                        <span>+¥{optionsAmount.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Price Preview */}
                         <div className="mt-4 p-4 bg-slate-800 rounded text-center border border-white/10">
                             <div className="text-xs text-gray-400">概算料金</div>
@@ -459,7 +638,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         <Button
                             onClick={handleBooking}
                             disabled={isLoading || !date || !studioData || !!personalPracticeError}
-                            className={`w-full ${buttonColorClass}`}
+                            className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold shadow-[0_0_20px_rgba(147,51,234,0.4)] transition-all"
                         >
                             {isLoading ? "処理中..." : "予約を確定する"}
                         </Button>

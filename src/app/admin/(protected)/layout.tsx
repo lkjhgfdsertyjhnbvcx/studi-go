@@ -17,7 +17,7 @@ export default async function AdminLayout({
     await requireAdminAuth();
 
     return (
-        <div className="flex min-h-screen bg-black text-white selection:bg-cyan-500 selection:text-black">
+        <div className="flex min-h-screen bg-background text-foreground selection:bg-purple-500 selection:text-white">
             <AdminSidebar />
             <main className="flex-1 ml-64 p-8 overflow-y-auto">
                 {children}

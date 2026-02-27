@@ -1,7 +1,7 @@
 "use server";
 
 import { getBookings, updateBooking } from "@/lib/db-local";
-import { getAllUsersFromFirestore } from "@/lib/db-firestore";
+import { getAllUsersFromFirestore, getUserByIdFromFirestore } from "@/lib/db-firestore";
 import { User } from "./auth";
 
 export async function fetchBookings() {
@@ -45,4 +45,19 @@ export async function fetchUsersByStudio(studioId: string) {
         const lastB = new Date(b.bookings[0].createdAt).getTime();
         return lastB - lastA;
     });
+}
+
+export async function fetchUserDetail(userId: string) {
+    const user = await getUserByIdFromFirestore(userId);
+    if (!user) return null;
+
+    const allBookings = await getBookings();
+    const userBookings = allBookings
+        .filter(b => b.userId === userId)
+        .sort((a, b) => new Date(b.date + 'T' + b.startTime).getTime() - new Date(a.date + 'T' + a.startTime).getTime());
+
+    return {
+        ...user,
+        bookings: userBookings
+    };
 }

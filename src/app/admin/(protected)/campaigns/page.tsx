@@ -145,16 +145,16 @@ export default function CampaignsPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-black text-white flex items-center justify-center">
-                <Loader2 className="animate-spin mr-2" /> Loading...
+            <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+                <Loader2 className="animate-spin mr-2" /> 読み込み中...
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-black text-white p-10 font-sans">
+        <div className="min-h-screen bg-background text-foreground p-10 font-sans">
             <div className="max-w-7xl mx-auto">
-                <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-6">
+                <div className="flex justify-between items-center mb-8 border-b border-border pb-6">
                     <div>
                         <h1 className="text-3xl font-bold text-cyan-400 mb-2">
                             キャンペーン管理
@@ -172,7 +172,7 @@ export default function CampaignsPage() {
                                 <Plus className="mr-2 h-4 w-4" /> 新規作成
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="bg-slate-900 border-white/10 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <DialogContent className="bg-card border-border text-foreground max-w-2xl max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle className="text-cyan-400">
                                     {editingCampaign ? "キャンペーン編集" : "新規キャンペーン"}
@@ -187,7 +187,7 @@ export default function CampaignsPage() {
                                         onChange={(e) =>
                                             setFormData({ ...formData, title: e.target.value })
                                         }
-                                        className="bg-slate-800 border-white/10 text-white"
+                                        className="bg-muted border-border text-foreground"
                                         required
                                     />
                                 </div>
@@ -200,7 +200,7 @@ export default function CampaignsPage() {
                                         onChange={(e) =>
                                             setFormData({ ...formData, description: e.target.value })
                                         }
-                                        className="bg-slate-800 border-white/10 text-white"
+                                        className="bg-muted border-border text-foreground"
                                         rows={3}
                                         required
                                     />
@@ -215,10 +215,10 @@ export default function CampaignsPage() {
                                                 setFormData({ ...formData, discountType: value })
                                             }
                                         >
-                                            <SelectTrigger className="bg-slate-800 border-white/10 text-white">
+                                            <SelectTrigger className="bg-muted border-border text-foreground">
                                                 <SelectValue />
                                             </SelectTrigger>
-                                            <SelectContent className="bg-slate-800 border-white/10 text-white">
+                                            <SelectContent className="bg-muted border-border text-foreground">
                                                 <SelectItem value="percentage">パーセント(%)</SelectItem>
                                                 <SelectItem value="fixed">固定額(¥)</SelectItem>
                                             </SelectContent>
@@ -240,7 +240,7 @@ export default function CampaignsPage() {
                                                     discountValue: Number(e.target.value),
                                                 })
                                             }
-                                            className="bg-slate-800 border-white/10 text-white"
+                                            className="bg-muted border-border text-foreground"
                                             required
                                         />
                                     </div>
@@ -258,10 +258,10 @@ export default function CampaignsPage() {
                                             })
                                         }
                                     >
-                                        <SelectTrigger className="bg-slate-800 border-white/10 text-white">
+                                        <SelectTrigger className="bg-muted border-border text-foreground">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-slate-800 border-white/10 text-white">
+                                        <SelectContent className="bg-muted border-border text-foreground">
                                             <SelectItem value="all">全店舗</SelectItem>
                                             <SelectItem value="specific">個別店舗</SelectItem>
                                         </SelectContent>
@@ -271,7 +271,7 @@ export default function CampaignsPage() {
                                 {formData.target === "specific" && (
                                     <div>
                                         <Label>対象スタジオ</Label>
-                                        <div className="space-y-2 mt-2 max-h-40 overflow-y-auto bg-slate-800 p-3 rounded border border-white/10">
+                                        <div className="space-y-2 mt-2 max-h-40 overflow-y-auto bg-muted p-3 rounded border border-border">
                                             {studios.map((studio) => (
                                                 <label
                                                     key={studio.id}
@@ -320,7 +320,7 @@ export default function CampaignsPage() {
                                             onChange={(e) =>
                                                 setFormData({ ...formData, startDate: e.target.value })
                                             }
-                                            className="bg-slate-800 border-white/10 text-white"
+                                            className="bg-muted border-border text-foreground"
                                             required
                                         />
                                     </div>
@@ -334,7 +334,7 @@ export default function CampaignsPage() {
                                             onChange={(e) =>
                                                 setFormData({ ...formData, endDate: e.target.value })
                                             }
-                                            className="bg-slate-800 border-white/10 text-white"
+                                            className="bg-muted border-border text-foreground"
                                             required
                                         />
                                     </div>
@@ -360,13 +360,13 @@ export default function CampaignsPage() {
                                         type="button"
                                         variant="outline"
                                         onClick={() => setIsDialogOpen(false)}
-                                        className="border-white/20 text-white hover:bg-white/5"
+                                        className="border-border text-foreground hover:bg-accent"
                                     >
                                         キャンセル
                                     </Button>
                                     <Button
                                         type="submit"
-                                        className="bg-cyan-500 hover:bg-cyan-600 text-black"
+                                        className="bg-cyan-500 hover:bg-cyan-600 text-cyan-950 font-bold"
                                     >
                                         {editingCampaign ? "更新" : "作成"}
                                     </Button>
@@ -379,7 +379,7 @@ export default function CampaignsPage() {
                 {/* Campaigns List */}
                 <div className="grid gap-6">
                     {campaigns.length === 0 ? (
-                        <Card className="bg-slate-900 border-white/10">
+                        <Card className="bg-card border-border">
                             <CardContent className="py-20 text-center text-gray-500">
                                 キャンペーンがありません。右上のボタンから作成してください。
                             </CardContent>
@@ -388,7 +388,7 @@ export default function CampaignsPage() {
                         campaigns.map((campaign) => (
                             <Card
                                 key={campaign.id}
-                                className={`bg-slate-900 border ${campaign.isActive ? "border-cyan-500/30" : "border-white/10"
+                                className={`bg-card border ${campaign.isActive ? "border-cyan-500/30" : "border-border"
                                     }`}
                             >
                                 <CardHeader>
@@ -396,17 +396,17 @@ export default function CampaignsPage() {
                                         <div className="flex-1">
                                             <div className="flex items-center gap-3 mb-2">
                                                 <Megaphone className="h-5 w-5 text-cyan-400" />
-                                                <CardTitle className="text-xl text-white">
+                                                <CardTitle className="text-xl text-foreground">
                                                     {campaign.title}
                                                 </CardTitle>
                                                 {campaign.isActive && (
                                                     <Badge className="bg-green-900/30 text-green-400 border-green-500/30">
-                                                        Active
+                                                        有効
                                                     </Badge>
                                                 )}
                                                 {!campaign.isActive && (
                                                     <Badge className="bg-gray-700/30 text-gray-400 border-gray-500/30">
-                                                        Inactive
+                                                        無効
                                                     </Badge>
                                                 )}
                                             </div>
@@ -418,7 +418,7 @@ export default function CampaignsPage() {
                                             <Button
                                                 size="sm"
                                                 variant="outline"
-                                                className="border-white/20 text-white hover:bg-white/5"
+                                                className="border-white/20 text-foreground hover:bg-white/5"
                                                 onClick={() => handleEdit(campaign)}
                                             >
                                                 <Edit className="h-3 w-3" />
@@ -440,7 +440,7 @@ export default function CampaignsPage() {
                                             <CalendarDays className="h-4 w-4 text-cyan-400" />
                                             <div>
                                                 <div className="text-gray-500 text-xs">期間</div>
-                                                <div className="text-white">
+                                                <div className="text-foreground">
                                                     {campaign.startDate} ~ {campaign.endDate}
                                                 </div>
                                             </div>
@@ -449,7 +449,7 @@ export default function CampaignsPage() {
                                             <Target className="h-4 w-4 text-cyan-400" />
                                             <div>
                                                 <div className="text-gray-500 text-xs">対象</div>
-                                                <div className="text-white">
+                                                <div className="text-foreground">
                                                     {campaign.target === "all"
                                                         ? "全店舗"
                                                         : `${campaign.targetStudioIds.length}店舗`}

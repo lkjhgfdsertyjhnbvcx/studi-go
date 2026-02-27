@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL") // Vercel Postgres用
+  directUrl = env("POSTGRES_URL_NON_POOLING") // Vercel Postgres用
+}
+
+model Store {
+  id              Int         @id @default(autoincrement())
+  name            String
+  companyName     String?
+  ownerName       String?
+  email           String      @unique
+  password        String      @default("store123")
+  tel             String?
+  url             String?
+  address         String      @default("")
+  description     String?
+  logoUrl         String?     @db.Text // 大容量画像対応
+  bgColor         String      @default("#ffffff")
+  bgImageUrl      String?     @db.Text // 大容量画像対応
+  useActivaCoupon Boolean     @default(false)
+  studios         Studio[]
+  options         Option[]
+  bookings        Booking[]
+}
+
+model Studio {
+  id           Int       @id @default(autoincrement())
+  name         String
+  description  String?
+  size         String?
+  photoUrl     String?   @db.Text // 大容量画像対応
+  equipment    String?
+  pricingJson  String?   @default("{}")
+  storeId      Int
+  store        Store     @relation(fields: [storeId], references: [id])
+  bookings     Booking[]
+}
+
+model Option {
+  id        Int      @id @default(autoincrement())
+  name      String
+  price     Int      @default(0)
+  isHourly  Boolean  @default(false)
+  storeId   Int
+  store     Store    @relation(fields: [storeId], references: [id])
+}
+
+model Booking {
+  id              Int      @id @default(autoincrement())
+  storeId         Int
+  studioId        Int
+  studioName      String
+  date            String
+  startTime       Int
+  totalPrice      Int
+  isPaid          Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  store           Store    @relation(fields: [storeId], references: [id])
+}
+
+model AdminConfig {
+  id     Int    @id @default(1)
+  adCode String @default("") @db.Text
+}

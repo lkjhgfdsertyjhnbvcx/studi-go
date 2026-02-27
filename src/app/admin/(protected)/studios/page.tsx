@@ -1,115 +1,137 @@
 "use client";
-
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Plus, Building2, MapPin, Loader2, Trash2 } from "lucide-react";
-import { fetchStudios, createNewStudioAction, deleteStudioAction } from "@/actions/studio";
-import { useRouter } from "next/navigation";
 
-export default function StudioListPage() {
+export default function StudiosManagerPage() {
     const [studios, setStudios] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const router = useRouter();
+    const [isProcessing, setIsProcessing] = useState(false);
 
-    const loadStudios = async () => {
-        setIsLoading(true);
-        const data = await fetchStudios();
-        setStudios(data);
-        setIsLoading(false);
+    // 画面を開いた時に部屋一覧を取得
+    const fetchStudios = () => {
+        fetch('/api/studios')
+            .then(res => res.json())
+            .then(data => {
+                if (!data.error) setStudios(data);
+            });
     };
 
     useEffect(() => {
-        loadStudios();
+        fetchStudios();
     }, []);
 
-    const handleCreate = async () => {
-        if (!confirm("新しいスタジオを登録しますか？")) return;
-        const newId = await createNewStudioAction();
-        router.push(`/admin/studios/${newId}`);
+    // 新しい部屋を追加
+    const handleAddStudio = async () => {
+        setIsProcessing(true);
+        await fetch('/api/studios', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: "新規スタジオ", pricePerHour: 1500 })
+        });
+        fetchStudios();
+        setIsProcessing(false);
     };
 
-    const handleDelete = async (id: string, e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!confirm("本当に削除しますか？この操作は取り消せません。")) return;
-        await deleteStudioAction(id);
-        loadStudios();
-    }
+    // 部屋の設定を保存
+    const handleSaveStudio = async (studio: any) => {
+        setIsProcessing(true);
+        const res = await fetch('/api/studios', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(studio)
+        });
+        if (res.ok) alert(`✅ ${studio.name} の設定を保存しました`);
+        else alert("保存に失敗しました");
+        setIsProcessing(false);
+    };
 
-    if (isLoading) {
-        return <div className="min-h-screen bg-black text-white flex items-center justify-center"><Loader2 className="animate-spin mr-2" /> Loading...</div>;
-    }
+    // 部屋を削除
+    const handleDeleteStudio = async (id: number, name: string) => {
+        if (!confirm(`本当に「${name}」を削除しますか？\n※この操作は元に戻せません`)) return;
+        setIsProcessing(true);
+        await fetch(`/api/studios?id=${id}`, { method: 'DELETE' });
+        fetchStudios();
+        setIsProcessing(false);
+    };
+
+    // 入力欄の変更を反映
+    const handleChange = (id: number, field: string, value: any) => {
+        setStudios(studios.map(s => s.id === id ? { ...s, [field]: value } : s));
+    };
 
     return (
-        <div className="min-h-screen bg-black text-white p-10 font-sans">
+        <div className="min-h-screen bg-[#0a0f16] text-gray-300 font-sans p-8">
             <div className="max-w-6xl mx-auto">
-                <div className="flex justify-between items-center mb-10 border-b border-white/10 pb-6">
+
+                <div className="flex justify-between items-center mb-10 border-b border-gray-800 pb-6">
                     <div>
-                        <h1 className="text-3xl font-bold text-cyan-400">スタジオ管理・一覧</h1>
-                        <p className="text-gray-400">登録されているスタジオを管理します。</p>
+                        <h1 className="text-3xl font-black text-white flex items-center gap-3 italic">
+                            <span className="p-3 bg-purple-600/20 text-purple-400 rounded-xl not-italic">🎸</span>
+                            Rooms & Pricing
+                        </h1>
+                        <p className="text-xs text-purple-500/80 font-bold mt-2 tracking-widest uppercase">スタジオ（部屋）ごとの料金と設定</p>
                     </div>
-                    <Button onClick={handleCreate} className="bg-cyan-500 hover:bg-cyan-600 text-black font-bold">
-                        <Plus className="mr-2 h-4 w-4" /> 新規登録
-                    </Button>
+                    <button
+                        onClick={handleAddStudio} disabled={isProcessing}
+                        className="px-6 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-500 shadow-lg shadow-purple-600/20 transition-all active:scale-95"
+                    >
+                        ＋ 新しい部屋を追加
+                    </button>
                 </div>
 
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {studios.map(studio => (
-                        <Link key={studio.id} href={`/admin/studios/${studio.id}`} className="block group">
-                            <Card className="bg-slate-900 border-white/10 group-hover:border-cyan-500 transition-all h-full relative overflow-hidden">
-                                {studio.images && studio.images.length > 0 ? (
-                                    <div className="relative w-full h-40">
-                                        <Image
-                                            src={studio.images[0]}
-                                            alt={studio.storeName}
-                                            fill
-                                            className="object-cover"
-                                        />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent" />
-                                    </div>
-                                ) : (
-                                    <div className="w-full h-40 bg-zinc-800 flex items-center justify-center text-zinc-600">
-                                        No Image
-                                    </div>
-                                )}
-                                <CardHeader>
-                                    <CardTitle className="text-xl text-white group-hover:text-cyan-400 flex items-center gap-2">
-                                        <Building2 className="h-5 w-5" />
-                                        {studio.storeName}
-                                    </CardTitle>
-                                    <CardDescription className="flex items-center gap-1">
-                                        <MapPin className="h-3 w-3" />
-                                        {studio.address || "住所未設定"}
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-2 text-sm text-gray-400">
-                                    <div className="flex justify-between">
-                                        <span>スタジオ数:</span>
-                                        <span className="text-white">{studio.rooms?.length || 0}部屋</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span>Email:</span>
-                                        <span className="text-white truncate max-w-[150px]">{studio.email || "-"}</span>
-                                    </div>
-                                </CardContent>
-                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button variant="ghost" size="icon" className="hover:bg-red-900/50 hover:text-red-400" onClick={(e) => handleDelete(studio.id, e)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                        <div key={studio.id} className="bg-[#111823] border border-gray-800 rounded-[2rem] p-8 shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-2 h-full bg-purple-600"></div>
+
+                            <div className="flex justify-between items-start mb-6">
+                                <input
+                                    type="text"
+                                    value={studio.name}
+                                    onChange={(e) => handleChange(studio.id, 'name', e.target.value)}
+                                    className="bg-transparent text-2xl font-black text-white border-b border-gray-700 focus:border-purple-500 focus:outline-none pb-1 w-1/2"
+                                />
+                                <button onClick={() => handleDeleteStudio(studio.id, studio.name)} className="text-red-500 text-sm font-bold hover:text-red-400 bg-red-500/10 px-3 py-1 rounded-lg">
+                                    削除
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6 mb-8">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">1時間の料金 (¥)</label>
+                                    <input type="number" value={studio.pricePerHour} onChange={(e) => handleChange(studio.id, 'pricePerHour', e.target.value)} className="w-full bg-[#0a0f16] border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-purple-500 focus:outline-none" />
                                 </div>
-                            </Card>
-                        </Link>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">何ヶ月先まで受付</label>
+                                    <input type="number" value={studio.bookingLimitMonths} onChange={(e) => handleChange(studio.id, 'bookingLimitMonths', e.target.value)} className="w-full bg-[#0a0f16] border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-purple-500 focus:outline-none" />
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 mb-8 p-4 bg-[#0a0f16] rounded-xl border border-gray-800">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm font-bold text-gray-300">店頭支払いを許可</span>
+                                    <input type="checkbox" checked={studio.allowCash} onChange={(e) => handleChange(studio.id, 'allowCash', e.target.checked)} className="w-5 h-5 accent-purple-600" />
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm font-bold text-gray-300">事前決済 (Apple Pay等) を許可</span>
+                                    <input type="checkbox" checked={studio.allowOnlineStripe} onChange={(e) => handleChange(studio.id, 'allowOnlineStripe', e.target.checked)} className="w-5 h-5 accent-purple-600" />
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => handleSaveStudio(studio)} disabled={isProcessing}
+                                className="w-full py-4 bg-gray-800 text-white rounded-xl font-bold hover:bg-gray-700 transition-colors"
+                            >
+                                💾 この部屋の設定を保存
+                            </button>
+                        </div>
                     ))}
 
                     {studios.length === 0 && (
-                        <div className="col-span-full text-center py-20 text-gray-500 bg-white/5 rounded border border-dashed border-white/10">
-                            スタジオが登録されていません。右上のボタンから追加してください。
+                        <div className="col-span-full text-center py-20 text-gray-500 font-bold">
+                            部屋が登録されていません。「＋ 新しい部屋を追加」ボタンから作成してください。
                         </div>
                     )}
                 </div>
+
             </div>
         </div>
     );

@@ -28,6 +28,11 @@ interface BookingRequest {
     equipmentIds: string[];
     totalPriceOverride?: number;
     isPersonalPractice?: boolean;
+    isSplitPayment?: boolean;
+    bandId?: string;
+    optionPaymentMode?: "split" | "booker";
+    guaranteeMode?: "auth" | "provisional";
+    optionsAmount?: number;
 }
 
 interface BookingResponse {
@@ -35,6 +40,7 @@ interface BookingResponse {
     message: string;
     price?: number;
     bookingId?: string;
+    splitPaymentUrl?: string;
 }
 
 const PRICE_BAND_HOURLY = 2500;
@@ -43,6 +49,11 @@ const PRICE_LOCKOUT_FLAT = 20000;
 
 export async function createBooking(data: BookingRequest): Promise<BookingResponse> {
     const { userId, studioId, roomName, date, startTime, durationHours, userCount, totalPriceOverride } = data;
+
+    // Fetch user info for payment and email
+    const user = await getUserById(userId);
+    const userName = user?.name || "Guest User";
+    const userEmail = user?.email || "";
 
     const isAvailable = await checkAvailabilityFromFirestore(studioId, roomName, date, startTime, durationHours);
     if (!isAvailable) {
@@ -115,22 +126,118 @@ export async function createBooking(data: BookingRequest): Promise<BookingRespon
             bookingId: newBooking.id,
             studioId: studioId,
             studioName: studio?.storeName || "Unknown Studio",
-            userName: "User", // Simplified for now
-            userEmail: "",
+            userName: userName,
+            userEmail: userEmail,
             amount: totalPrice,
             paymentMethod: "stripe"
         });
 
         await addMyStudioAction(studioId);
 
+        let splitPaymentUrl: string | undefined;
+
+        if (data.isSplitPayment) {
+            // Prismaにモックデータを作成して割り勘機能をテスト可能にする
+            const { prisma } = await import('@/lib/prisma');
+            const { createSplitPayments } = await import('./split-payments');
+
+            // Userの確保
+            let prismaUser = await prisma.user.findUnique({ where: { id: userId } });
+            if (!prismaUser) {
+                // セッション情報から取得を試みる
+                const { getCurrentUser } = await import('./login');
+                const currentUser = await getCurrentUser();
+                prismaUser = await prisma.user.create({
+                    data: {
+                        id: userId,
+                        email: currentUser?.email || 'guest@example.com',
+                        name: currentUser?.name || 'Guest User'
+                    }
+                });
+            }
+
+            let finalBandId = data.bandId;
+
+            // バンドが指定されていない、または存在しない場合のフォールバック（テスト用）
+            if (!finalBandId) {
+                let prismaBand = await prisma.band.findFirst({
+                    where: { leaderId: userId }
+                });
+                if (!prismaBand) {
+                    prismaBand = await prisma.band.create({
+                        data: {
+                            name: 'Test Band',
+                            leaderId: userId,
+                            members: { create: { userId: userId } }
+                        }
+                    });
+                    // テスト用にメンバー追加
+                    const subUser = await prisma.user.upsert({
+                        where: { email: 'member@example.com' },
+                        update: {},
+                        create: { email: 'member@example.com', name: 'バンドメンバーA' }
+                    });
+                    await prisma.bandMember.upsert({
+                        where: { userId_bandId: { userId: subUser.id, bandId: prismaBand.id } },
+                        update: {},
+                        create: { userId: subUser.id, bandId: prismaBand.id }
+                    });
+                }
+                finalBandId = prismaBand.id;
+            }
+
+            // Prisma予約データの作成 (既存の予約IDと重複しないように注意が必要だが、Firestore IDをそのまま使う)
+            const prismaReservation = await prisma.reservation.create({
+                data: {
+                    id: newBooking.id,
+                    band: { connect: { id: finalBandId } },
+                    status: data.guaranteeMode === 'auth' ? 'Confirmed' : 'Pending', // 与信枠確保の場合は本予約として扱う
+                    isSplitPayment: true,
+                    optionPaymentMode: data.optionPaymentMode,
+                    guaranteeMode: data.guaranteeMode,
+                    optionsAmount: data.optionsAmount || 0,
+                    totalAmount: totalPrice,
+                    studioId: studioId,
+                    startTime: new Date(`${date}T${startTime}`),
+                    endTime: new Date(new Date(`${date}T${startTime}`).getTime() + durationHours * 60 * 60 * 1000),
+                }
+            });
+
+            // 割り勘セッションを発行（StripeアカウントIDは一旦ダミーもしくは環境変数から）
+            await createSplitPayments(prismaReservation.id, 'acct_dummy', userId); // userIdを代表者として渡す
+
+            splitPaymentUrl = `/split-payment/${prismaReservation.id}`;
+        }
+
+        // 予約完了メール（または割り勘用URLメール）を送信
+        if (userEmail) {
+            try {
+                const emailContent = data.isSplitPayment
+                    ? `予約（割り勘支払い待ち）を受け付けました。\n以下のURLからご自身のお支払いをお願いします。\n全員の支払いが完了次第、予約が確定します。\n\n支払URL: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${splitPaymentUrl}`
+                    : `ご予約が完了しました。\n利用日時: ${date} ${startTime}\nご利用料金: ${totalPrice}円`;
+
+                await resend.emails.send({
+                    from: 'Studi-Go <system@studi-go.com>',
+                    to: [userEmail],
+                    subject: data.isSplitPayment ? '【Studi-Go】割り勘決済のご案内' : '【Studi-Go】ご予約完了のお知らせ',
+                    text: emailContent
+                });
+                console.log(`Email sent successfully to ${userEmail}`);
+            } catch (err) {
+                console.error("Failed to send email", err);
+            }
+        }
+
         return {
             success: true,
             message: "予約が完了しました。",
             price: totalPrice,
-            bookingId: newBooking.id
+            bookingId: newBooking.id,
+            splitPaymentUrl
         };
-    } catch (e) {
-        return { success: false, message: "予約に失敗しました。" };
+    } catch (e: any) {
+        console.error("Booking Error:", e);
+        return { success: false, message: "予約に失敗しました。 " + e.message };
     }
 }
 
