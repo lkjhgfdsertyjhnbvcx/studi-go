@@ -101,7 +101,8 @@ export async function joinBandAction(inviteToken: string) {
                     id: user.id,
                     email: user.email,
                     name: user.name,
-                    jocollaRegistered: true
+
+
                 }
             });
         }
