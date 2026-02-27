@@ -15,7 +15,7 @@ model User {
   image         String?
   role          String       @default("USER")
   bandMembers   BandMember[] 
-  ledBands      Band[]       // ← 【追加】リーダーとして管理するバンドのリンク
+  ledBands      Band[]       
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 }
@@ -24,10 +24,11 @@ model Band {
   id                String       @id @default(cuid())
   name              String
   leaderId          String
-  leader            User         @relation(fields: [leaderId], references: [id]) // ← 【今回の真犯人】リーダーのユーザー情報へのリンクを追加
+  leader            User         @relation(fields: [leaderId], references: [id]) 
   jocollaRegistered Boolean      @default(false)
   inviteToken       String?      @unique
   members           BandMember[]
+  reservations      Reservation[] // ← 【追加】このバンドが持っている予約データへのリンク
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 }
@@ -38,6 +39,15 @@ model BandMember {
   userId    String
   band      Band     @relation(fields: [bandId], references: [id])
   user      User     @relation(fields: [userId], references: [id]) 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ↓↓↓ 【今回の真犯人】予約データを保存するための新しい箱を追加 ↓↓↓
+model Reservation {
+  id        String   @id @default(cuid())
+  bandId    String?  
+  band      Band?    @relation(fields: [bandId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
