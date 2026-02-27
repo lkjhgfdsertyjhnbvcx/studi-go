@@ -23,6 +23,7 @@ model Band {
   name              String
   leaderId          String
   jocollaRegistered Boolean      @default(false)
+  inviteToken       String?      @unique // ← 今回のエラーを潰すための枠を追加
   members           BandMember[]
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
