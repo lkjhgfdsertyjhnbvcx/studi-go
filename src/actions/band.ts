@@ -19,6 +19,7 @@ export async function createBandAction(name: string) {
                     id: user.id,
                     email: user.email,
                     name: user.name,
+
                 }
             });
         }
