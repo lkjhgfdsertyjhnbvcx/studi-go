@@ -42,13 +42,20 @@ model BandMember {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, bandId]) // ← 【今回の真犯人】この2つの組み合わせでの検索を許可
+  @@unique([userId, bandId])
 }
 
 model Reservation {
-  id        String   @id @default(cuid())
-  bandId    String?  
-  band      Band?    @relation(fields: [bandId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String   @id @default(cuid())
+  bandId            String?  
+  band              Band?    @relation(fields: [bandId], references: [id])
+  
+  // ↓↓↓ 【今回の追加】決済・ステータス用の情報を受け取る枠 ↓↓↓
+  status            String?
+  isSplitPayment    Boolean? @default(false)
+  optionPaymentMode String?
+  guaranteeMode     String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
