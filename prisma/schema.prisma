@@ -50,11 +50,17 @@ model Reservation {
   bandId            String?  
   band              Band?    @relation(fields: [bandId], references: [id])
   
-  // ↓↓↓ 【今回の追加】決済・ステータス用の情報を受け取る枠 ↓↓↓
   status            String?
   isSplitPayment    Boolean? @default(false)
   optionPaymentMode String?
   guaranteeMode     String?
+  
+  // ↓↓↓ 【今回の追加】予約の詳細データ（金額・時間など）を受け取る枠 ↓↓↓
+  optionsAmount     Int?     @default(0)
+  totalAmount       Int?
+  studioId          String?
+  startTime         DateTime?
+  endTime           DateTime? // ← 先回りして追加
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
