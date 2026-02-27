@@ -66,6 +66,7 @@ model Reservation {
   startTime         DateTime?
   endTime           DateTime?
   
+  
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
