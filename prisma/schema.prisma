@@ -8,14 +8,15 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String       @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String?      @unique
   password      String?
   image         String?
-  role          String    @default("USER")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  role          String       @default("USER")
+  bandMembers   BandMember[] // ← ユーザーが所属するバンドメンバー情報のリンクを追加
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 }
 
 model Band {
@@ -23,7 +24,7 @@ model Band {
   name              String
   leaderId          String
   jocollaRegistered Boolean      @default(false)
-  inviteToken       String?      @unique // ← 今回のエラーを潰すための枠を追加
+  inviteToken       String?      @unique
   members           BandMember[]
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
@@ -34,6 +35,7 @@ model BandMember {
   bandId    String
   userId    String
   band      Band     @relation(fields: [bandId], references: [id])
+  user      User     @relation(fields: [userId], references: [id]) // ← 【今回の真犯人】ユーザー情報へのリンクを追加
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
