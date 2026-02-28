@@ -183,7 +183,7 @@ export async function checkAndFinalizeReservationAction(reservationId: string) {
             return { success: false, message: '予約が見つかりません' }
         }
 
-       const allPaid = (reservation as any).splitPayments.every((p: any) => p.status === 'Paid');
+       const allPaid = (reservation as any).splitPayments.every((p: any) => p.paymentStatus === 'Paid');
         if (!allPaid) {
             return { success: false, message: 'まだ全員が支払いを完了していません' }
         }
