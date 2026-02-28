@@ -189,45 +189,10 @@ try {
       where: { id: reservationId },
       data: { status: 'Confirmed' }
     });
-        // 3. 店舗（運営者）への完了メール
-        try {
-            await resend.emails.send({
-                from: 'Studi-Go <system@studi-go.com>',
-                to: [ADMIN_EMAIL],
-                subject: `【Studi-Go】割り勘決済完了 - ${studioInfo}`,
-                text: `割り勘決済がすべて完了しました。\n\n` +
-                    `予約ID: ${reservationId}\n` +
-                    `バンド/プロジェクト: ${studioInfo}\n` +
-                    `利用日時: ${startTime}\n` +
-                    `合計入金額: ¥${totalAmount.toLocaleString()}\n\n` +
-                    `全メンバーの支払いが確認されました。予約が正式に確定しています。\n` +
-                    `管理パネルの未入金リストが自動的に消し込まれました。`
-            })
-        } catch (emailErr) {
-            console.error('[Email] 店舗への完了メール送信失敗:', emailErr)
-        }
 
-        // 4. バンドリーダーへの確定通知
-        try {
-            const leaderEmail = reservation.band?.leader?.email
-            if (leaderEmail) {
-                await resend.emails.send({
-                    from: 'Studi-Go <system@studi-go.com>',
-                    to: [leaderEmail],
-                    subject: '【Studi-Go】割り勘決済が完了しました！予約確定',
-                    text: `${studioInfo} の全員の支払いが完了しました！\n\n` +
-                        `予約ID: ${reservationId}\n` +
-                        `利用日時: ${startTime}\n\n` +
-                        `予約が正式に確定しました。スタジオをお楽しみください！`
-                })
-            }
-        } catch (emailErr) {
-            console.error('[Email] バンドリーダーへの確定通知失敗:', emailErr)
-        }
-
-        return { success: true, message: '全員の支払いが完了し、予約が確定しました。' }
-    } catch (e: any) {
-        console.error('checkAndFinalizeReservationAction error:', e)
-        return { success: false, message: e.message }
-    }
+    return { success: true, message: '全員の支払いが完了し、予約が確定しました。' };
+  } catch (e: any) {
+    console.error('checkAndFinalizeReservationAction error:', e);
+    return { success: false, message: e.message };
+  }
 }
