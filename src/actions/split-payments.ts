@@ -169,20 +169,13 @@ try {
           },
         },
       } as any,
-    })
+    });
 
     if (!reservation) {
-      return { success: false, message: '予約が見つかりません' }
-    }
-            }
-        })
-
-       if (!(reservation as any)) {
-      return { success: false, message: '予約が見つかりません' }
+      return { success: false, message: '予約が見つかりません' };
     }
 
-    const allPaid = (reservation as any).splitPayments.every((p: any) => p.paymentStatus === 'Paid')
-    if (!allPaid) {
+    const allPaid = (reservation as any).splitPayments.every((p: any) => p.paymentStatus === 'Paid');
       return { success: false, message: 'まだ全員が支払いを完了していません' }
     }
 
