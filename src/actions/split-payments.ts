@@ -131,7 +131,7 @@ export async function getSplitPaymentsAction(reservationId: string) {
 
 export async function getCheckoutUrlAction(paymentId: string) {
     try {
-        const payment = await prisma.splitPayment.findUnique({
+        const payment = await (prisma as any).splitPayment.findUnique({
             where: { id: paymentId }
         })
         if (!payment || !payment.stripeSessionId) {
