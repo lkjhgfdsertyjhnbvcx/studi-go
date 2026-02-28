@@ -19,12 +19,12 @@ export async function GET() {
        const allBookings = await (prisma as any).booking.findMany();
 
         // 総売上（すべての予約の合計金額 = 売掛含む）
-        const totalRevenue = allBookings.reduce((sum, b) => sum + b.totalPrice, 0);
+        const totalRevenue = allBookings.reduce((sum: any, b: any) => sum + b.totalPrice, 0);
 
         // 入金済み売上（isPaid が true のもの = Stripe消込済み）
         const paidRevenue = allBookings
-            .filter((b) => b.isPaid === true)
-            .reduce((sum, b) => sum + b.totalPrice, 0);
+  .filter((b: any) => b.isPaid)
+  .reduce((sum: any, b: any) => sum + b.totalPrice, 0);
 
         // 未入金売上（売掛金 = 総売上 - 入金済み）
         const unpaidRevenue = totalRevenue - paidRevenue;
