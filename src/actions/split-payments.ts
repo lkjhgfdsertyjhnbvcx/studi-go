@@ -22,7 +22,7 @@ export async function createSplitPayments(reservationId: string, studioStripeAcc
     if (members.length === 0) throw new Error('No members in the band')
 
     const optionsAmount = reservation.optionsAmount || 0;
-    const roomAmount = reservation.totalAmount - optionsAmount;
+    const roomAmount = (reservation.totalAmount || 0) - optionsAmount;
     const baseSplitAmount = Math.ceil(roomAmount / members.length);
 
     const splitPayments = await Promise.all(
