@@ -30,10 +30,9 @@ export async function GET() {
         const unpaidRevenue = totalRevenue - paidRevenue;
 
         // 4. 店舗ごとのデータを整形
-        const storeStats = stores.map((store) => {
+        const storeStats = stores.map((store: any) => {
             // 店舗ごとの総売上
-            const storeTotal = store.bookings.reduce((sum, b) => sum + b.totalPrice, 0);
-
+            const storeTotal = store.bookings.reduce((sum: any, b: any) => sum + b.totalPrice, 0);
             return {
                 id: store.id,
                 name: store.name,
