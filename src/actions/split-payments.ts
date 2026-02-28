@@ -162,9 +162,13 @@ export async function checkAndFinalizeReservationAction(reservationId: string) {
     try {
         const reservation = await prisma.reservation.findUnique({
             where: { id: reservationId },
-            include: {
+    include: {
       splitPayments: true,
       band: {
+        include: {
+          leader: true,
+        },
+      },
     } as any,
                 band: {
                     include: {
