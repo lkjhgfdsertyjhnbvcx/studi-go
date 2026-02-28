@@ -1,57 +1,53 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import Stripe from "stripe";
+import { prisma } from "@/lib/prisma";
+import { stripe } from "@/lib/stripe";
 
-// 本来は .env から取得
-const stripe = new Stripe("sk_test_51P...", {
-    apiVersion: "2023-10-16" as any
-});
-const prisma = new PrismaClient();
-
+/**
+ * 手動消込（Reconciliation）実行
+ * Stripeの直近の支払い成功データを取得し、
+ * DB上の「未入金(isPaid: false)」かつ「Stripe IDが一致する」予約を
+ * 自動的に「入金済み(isPaid: true)」に更新する。
+ */
 export async function POST() {
-    try {
-        // 1. Stripeから「直近24時間の成功した支払い」を取得
-        const payments = await stripe.paymentIntents.list({
-            limit: 100,
-            created: { gte: Math.floor(Date.now() / 1000) - 86400 }
+  try {
+    // 1. Stripeから直近の支払い成功リストを取得（最大100件）
+    const paymentIntents = await stripe.paymentIntents.list({
+      limit: 100,
+    });
+
+    let updatedCount = 0;
+
+    // 2. 支払い成功データをループしてDBと照合
+    for (const payment of paymentIntents.data) {
+      if (payment.status === "succeeded") {
+        // StripeのPaymentIntent IDで予約データを検索
+        const booking = await (prisma as any).booking.findFirst({
+          where: {
+            stripePaymentId: payment.id,
+            isPaid: false // まだ未入金（売掛）のもの
+          }
         });
 
-        let count = 0;
-        let totalAmount = 0;
-
-        // 2. 決済データを一件ずつチェック
-        for (const payment of payments.data) {
-            if (payment.status === "succeeded") {
-                // StripeのPaymentIntent IDで予約データを検索
-                const booking = await prisma.booking.findFirst({
-                    where: {
-                        stripePaymentId: payment.id,
-                        isPaid: false // まだ未入金（売掛）のもの
-                    }
-                });
-
-                if (booking) {
-                    // 3. 一致したら「入金済み」に更新（消し込み）
-                    await prisma.booking.update({
-                        where: { id: booking.id },
-                        data: {
-                            isPaid: true,
-                            reconciled: true
-                        }
-                    });
-                    count++;
-                    totalAmount += booking.totalPrice;
-                }
-            }
+        if (booking) {
+          // 一致するものがあれば「入金済み」に更新
+          await (prisma as any).booking.update({
+            where: { id: booking.id },
+            data: { isPaid: true }
+          });
+          updatedCount++;
         }
-
-        return NextResponse.json({
-            success: true,
-            message: `${count}件（計 ¥${totalAmount.toLocaleString()}）の売掛金を消し込みました。`
-        });
-
-    } catch (error: any) {
-        console.error(error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
     }
+
+    return NextResponse.json({
+      success: true,
+      message: `${updatedCount} 件の予約を入金済みに更新しました。`
+    });
+  } catch (error: any) {
+    console.error("Reconciliation error:", error);
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
+  }
 }
