@@ -15,7 +15,8 @@ model User {
   image            String?
   role             String       @default("USER")
   resetToken       String?      
-  resetTokenExpiry Float?       
+  resetTokenExpiry Float?  
+　debugFlag        Boolean?     @default(false)
   bandMembers      BandMember[] 
   ledBands         Band[]       
   createdAt        DateTime     @default(now())
