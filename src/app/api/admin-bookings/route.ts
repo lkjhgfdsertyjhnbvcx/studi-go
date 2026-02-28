@@ -23,7 +23,7 @@ export async function GET() {
 export async function PUT(request: Request) {
     try {
         const body = await request.json();
-        const updatedBooking = await prisma.booking.update({
+        const updatedBooking = await (prisma as any).booking.update({
             where: { id: parseInt(body.id) },
             data: { status: body.status }
         });
