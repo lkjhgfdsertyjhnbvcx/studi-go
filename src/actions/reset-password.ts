@@ -105,7 +105,7 @@ export async function resetPasswordAction(formData: FormData) {
     }
 
     // Update Password and clear token
-    const { resetToken, resetTokenExpiry, ...cleanUser } = user;
+   const { resetToken, resetTokenExpiry, ...cleanUser } = user as any;
     const updatedUser = {
         ...cleanUser,
         password
