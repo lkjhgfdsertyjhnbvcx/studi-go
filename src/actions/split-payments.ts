@@ -183,20 +183,12 @@ try {
     if ((reservation as any).status === 'Confirmed') {
       return { success: true, message: '既に確定済みです', alreadyConfirmed: true };
     }
-            if (targetPayment) {
-                await updatePaymentStatusInFirestore(targetPayment.id, 'paid')
-                console.log(`[Firestore] Payment for ${reservationId} reconciled.`)
-            }
-        } catch (err) {
-            console.error('[Firestore] Reconciliation failed:', err)
-        }
 
-        const studioInfo = reservation.band?.name || '不明なバンド'
-        const startTime = reservation.startTime
-            ? new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(reservation.startTime))
-            : '不明'
-        const totalAmount = reservation.splitPayments.reduce((sum: number, p: any) => sum + p.amount, 0)
-
+    // 1. Prisma 予約を Confirmed に
+    await (prisma as any).reservation.update({
+      where: { id: reservationId },
+      data: { status: 'Confirmed' }
+    });
         // 3. 店舗（運営者）への完了メール
         try {
             await resend.emails.send({
