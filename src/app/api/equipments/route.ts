@@ -9,6 +9,7 @@ export async function GET() {
     });
 
     
+    
     return NextResponse.json(equipments);
   } catch (error: any) {
     console.error('Fetch equipments error:', error);
