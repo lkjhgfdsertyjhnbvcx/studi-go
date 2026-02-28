@@ -100,7 +100,7 @@ export async function resetPasswordAction(formData: FormData) {
     }
 
     // Check expiry
-    if (user.resetTokenExpiry && user.resetTokenExpiry < Date.now()) {
+    if ((user as any).resetTokenExpiry && (user as any).resetTokenExpiry < Date.now()) {
         return { success: false, message: 'リンクの有効期限が切れています。もう一度リクエストしてください。' };
     }
 
