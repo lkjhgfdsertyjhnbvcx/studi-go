@@ -40,7 +40,7 @@ export async function DELETE(request: Request) {
         const id = searchParams.get('id');
         if (!id) throw new Error("IDが指定されていません");
 
-        await prisma.booking.delete({ where: { id: parseInt(id) } });
+        await (prisma as any).booking.delete({ where: { id: parseInt(id) } });
         return NextResponse.json({ success: true });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
