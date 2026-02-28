@@ -1,5 +1,5 @@
 "use client";
-import UserListClient from '@/components/admin/UserListClient';
+import { UserListClient } from '@/components/admin/UserListClient';
 import React, { useEffect, useState } from "react";
 
 export default function StoreAdminPage() {
