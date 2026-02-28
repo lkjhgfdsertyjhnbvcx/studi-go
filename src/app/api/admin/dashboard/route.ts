@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 export async function GET() {
     try {
         // 1. 店舗一覧を、紐づく予約データ（売上計算用）と一緒に取得
-        const stores = await prisma.store.findMany({
+        const stores = await (prisma as any).store.findMany({
             include: {
                 bookings: true,
             },
