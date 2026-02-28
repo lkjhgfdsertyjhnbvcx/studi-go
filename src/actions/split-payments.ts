@@ -80,7 +80,7 @@ export async function createSplitPayments(reservationId: string, studioStripeAcc
             }
 
             // DBへ保存
-            return await prisma.splitPayment.create({
+            return await (prisma as any).splitPayment.create({
                 data: {
                     reservationId: reservation.id,
                     userId: member.userId,
