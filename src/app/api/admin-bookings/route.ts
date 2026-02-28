@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 // 予約一覧を全件取得（GET）
 export async function GET() {
     try {
-        const bookings = await prisma.booking.findMany({
+        const bookings = await (prisma as any).booking.findMany({
             include: {
                 user: true,   // 誰の予約か
                 studio: true  // どの部屋か
