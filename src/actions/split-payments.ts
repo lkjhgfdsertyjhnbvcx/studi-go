@@ -176,23 +176,13 @@ try {
     }
 
     const allPaid = (reservation as any).splitPayments.every((p: any) => p.paymentStatus === 'Paid');
-      return { success: false, message: 'まだ全員が支払いを完了していません' }
+    if (!allPaid) {
+      return { success: false, message: 'まだ全員が支払いを完了していません' };
     }
 
     if ((reservation as any).status === 'Confirmed') {
-      return { success: true, message: '既に確定済みです', alreadyConfirmed: true }
+      return { success: true, message: '既に確定済みです', alreadyConfirmed: true };
     }
-
-        // 1. Prisma 予約を Confirmed に
-        await prisma.reservation.update({
-            where: { id: reservationId },
-            data: { status: 'Confirmed' }
-        })
-
-        // 2. Firestore 支払いレコードを消し込み
-        try {
-            const firestorePayments = await getAllPaymentsFromFirestore()
-            const targetPayment = firestorePayments.find((p: any) => p.bookingId === reservationId)
             if (targetPayment) {
                 await updatePaymentStatusInFirestore(targetPayment.id, 'paid')
                 console.log(`[Firestore] Payment for ${reservationId} reconciled.`)
