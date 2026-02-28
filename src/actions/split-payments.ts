@@ -183,12 +183,12 @@ export async function checkAndFinalizeReservationAction(reservationId: string) {
             return { success: false, message: '予約が見つかりません' }
         }
 
-        const allPaid = reservation.splitPayments.every((p: any) => p.paymentStatus === 'Paid')
+       const allPaid = (reservation as any).splitPayments.every((p: any) => p.status === 'Paid');
         if (!allPaid) {
             return { success: false, message: 'まだ全員が支払いを完了していません' }
         }
 
-        if (reservation.status === 'Confirmed') {
+        if ((reservation as any).status === 'Confirmed') {
             return { success: true, message: '既に確定済みです', alreadyConfirmed: true }
         }
 
