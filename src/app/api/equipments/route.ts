@@ -7,6 +7,7 @@ export async function GET() {
     const equipments = await (prisma as any).equipment.findMany({ 
       orderBy: { id: 'asc' } 
     });
+
     
     return NextResponse.json(equipments);
   } catch (error: any) {
