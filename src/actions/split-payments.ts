@@ -158,24 +158,22 @@ export async function getCheckoutUrlAction(paymentId: string) {
  * 3. 店舗（運営者）へ完了通知メールを送信
  * 4. バンドリーダーへ確定通知メールを送信
  */
-export async function checkAndFinalizeReservationAction(reservationId: string) {
-    try {
-        const reservation = await prisma.reservation.findUnique({
-            where: { id: reservationId },
-    include: {
-      splitPayments: true,
-      band: {
-        include: {
-          leader: true,
+try {
+    const reservation = await (prisma as any).reservation.findUnique({
+      where: { id: reservationId },
+      include: {
+        splitPayments: true,
+        band: {
+          include: {
+            leader: true,
+          },
         },
-      },
-    } as any,
-                band: {
-                    include: {
-                        leader: true,
-                        members: { include: { user: true } }
-                    }
-                }
+      } as any,
+    })
+
+    if (!reservation) {
+      return { success: false, message: '予約が見つかりません' }
+    }
             }
         })
 
