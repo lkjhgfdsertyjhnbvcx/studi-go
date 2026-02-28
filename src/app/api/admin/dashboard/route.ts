@@ -16,7 +16,7 @@ export async function GET() {
         const userCount = await prisma.user.count();
 
         // 3. 全予約データを取得して、売上と消込状況を計算
-        const allBookings = await prisma.booking.findMany();
+       const allBookings = await (prisma as any).booking.findMany();
 
         // 総売上（すべての予約の合計金額 = 売掛含む）
         const totalRevenue = allBookings.reduce((sum, b) => sum + b.totalPrice, 0);
