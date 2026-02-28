@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 export async function GET() {
     try {
-        const config = await prisma.adminConfig.findFirst();
+        const config = await (prisma as any).adminConfig.findFirst();
         return NextResponse.json(config || { adCode: "" });
     } catch (error) {
         return NextResponse.json({ adCode: "" });
@@ -15,7 +15,7 @@ export async function GET() {
 export async function POST(request: Request) {
     try {
         const { adCode } = await request.json();
-        const updated = await prisma.adminConfig.upsert({
+       const updated = await (prisma as any).adminConfig.upsert({
             where: { id: 1 },
             update: { adCode },
             create: { id: 1, adCode }
