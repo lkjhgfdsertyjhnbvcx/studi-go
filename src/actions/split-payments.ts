@@ -158,7 +158,15 @@ export async function getCheckoutUrlAction(paymentId: string) {
  * 3. 店舗（運営者）へ完了通知メールを送信
  * 4. バンドリーダーへ確定通知メールを送信
  */
-try {
+/**
+ * 全員が支払い完了した場合に:
+ * 1. Prismaの予約ステータスを Confirmed に更新
+ * 2. Firestoreの支払いレコードを消し込み (paid)
+ * 3. 店舗（運営者）へ完了通知メールを送信
+ * 4. バンドリーダーへ確定通知メールを送信
+ */
+export async function checkAndFinalizeReservationAction(reservationId: string) {
+  try {
     const reservation = await (prisma as any).reservation.findUnique({
       where: { id: reservationId },
       include: {
@@ -195,4 +203,5 @@ try {
     console.error('checkAndFinalizeReservationAction error:', e);
     return { success: false, message: e.message };
   }
+}
 }
