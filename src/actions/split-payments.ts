@@ -98,7 +98,7 @@ export async function createSplitPayments(reservationId: string, studioStripeAcc
 export async function getSplitPaymentsAction(reservationId: string) {
     try {
         const [payments, reservation] = await Promise.all([
-            prisma.splitPayment.findMany({
+            await (prisma as any).splitPayment.findMany({
                 where: { reservationId },
                 include: { user: true }
             }),
