@@ -8,7 +8,6 @@ const StudiGoLogo = () => (
     </div>
 );
 
-// ダミーデータ
 const DUMMY_STORES = [
     { id: "d1", name: "Studio Alpha", prefecture: "東京都", image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=800&q=80", address: "渋谷区道玄坂", description: "最新機材完備のフラッグシップ店。プロのレコーディングにも対応。", studios: [{ id: "s1", name: "Ast", pricePerHour: 3500 }] },
     { id: "d2", name: "Sound Garden", prefecture: "大阪府", image: "https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?auto=format&fit=crop&w=800&q=80", address: "北区梅田", description: "アコースティック重視の落ち着いた空間。生楽器の響きが自慢です。", studios: [{ id: "s3", name: "L-Room", pricePerHour: 3000 }] },
@@ -119,10 +118,27 @@ export default function TopPage() {
                             <div className="p-6">
                                 <h4 className="text-xl font-black text-gray-900 leading-tight mb-2">{store.name}</h4>
                                 <p className="text-[11px] font-bold text-gray-400 mb-4 line-clamp-2 leading-relaxed">{store.description}</p>
-
                                 <div className="flex justify-between items-center pt-4 border-t border-gray-50">
                                     <div className="flex flex-col">
                                         <span className="text-[9px] font-black text-gray-400 uppercase">Min Price</span>
                                         <span className="font-black text-purple-800 text-base">¥{store.studios?.[0]?.pricePerHour || 1000}～</span>
                                     </div>
-                                    <span className="text-xs font-black text-purple-800 border-2 border-purple-800 px-4 py-2 rounded
+                                    <span className="text-xs font-black text-purple-800 border-2 border-purple-800 px-4 py-2 rounded-xl group-hover:bg-purple-800 group-hover:text-white transition-all">詳細を見る</span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <footer className="mt-20 text-center text-[10px] font-bold text-gray-300 tracking-[0.5em] uppercase border-t border-gray-100 pt-10">
+                &copy; 2026 Studi-Go. Beyond the Sound.
+            </footer>
+
+            <style jsx global>{`
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
+        </div>
+    );
+}
