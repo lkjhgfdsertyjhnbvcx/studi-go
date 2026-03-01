@@ -16,10 +16,7 @@ function BookingContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!storeId) {
-      router.push("/");
-      return;
-    }
+    if (!storeId) return;
 
     fetch(`/api/stores/${storeId}`)
       .then((res) => res.json())
@@ -27,38 +24,26 @@ function BookingContent() {
         if (data && !data.error) {
           setStore(data);
         } else {
-          setStore({
-            id: storeId,
-            storeName: "Demo Studio",
-            pricePerHour: 3000,
-          });
+          setStore({ id: storeId, storeName: "Demo Studio", pricePerHour: 3000 });
         }
         setLoading(false);
       })
-      .catch(() => {
-        setLoading(false);
-      });
-  }, [storeId, router]);
+      .catch(() => setLoading(false));
+  }, [storeId]);
 
   const toggleSlot = (slot: string) => {
-    setSelectedSlots((prev) => {
-      if (prev.includes(slot)) {
-        return prev.filter((s) => s !== slot);
-      } else {
-        return [...prev, slot].sort();
-      }
-    });
+    setSelectedSlots((prev) => 
+      prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot].sort()
+    );
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-400 italic">Loading Calendar...</div>;
+  if (!storeId) return null;
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-400 italic">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <header className="bg-white border-b border-gray-200 px-8 py-4 sticky top-0 z-40 shadow-sm flex justify-between items-center">
-        <div 
-          onClick={() => router.push("/")} 
-          className="cursor-pointer font-black text-2xl text-purple-800 tracking-tighter"
-        >
+        <div onClick={() => router.push("/")} className="cursor-pointer font-black text-2xl text-purple-800 tracking-tighter">
           {store?.storeName || "STUDIO"}
         </div>
       </header>
@@ -66,7 +51,7 @@ function BookingContent() {
       <main className="max-w-6xl mx-auto p-4 md:p-8">
         <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-100 overflow-hidden">
           <ScheduleView 
-            storeId={storeId as string} 
+            storeId={storeId} 
             selectedSlots={selectedSlots}
             onSlotClick={toggleSlot}
           />
@@ -76,9 +61,9 @@ function BookingContent() {
           <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-md px-4 z-50">
             <button
               onClick={() => setIsModalOpen(true)}
-              className="w-full py-5 bg-purple-800 text-white rounded-2xl font-black text-xl shadow-2xl shadow-purple-800/40 hover:scale-105 active:scale-95 transition-all"
+              className="w-full py-5 bg-purple-800 text-white rounded-2xl font-black text-xl shadow-2xl shadow-purple-800/40"
             >
-              予約へ進む
+              {selectedSlots.length * 0.5}時間予約する
             </button>
           </div>
         )}
@@ -97,7 +82,7 @@ function BookingContent() {
 
 export default function BookingPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
       <BookingContent />
     </Suspense>
   );
