@@ -88,11 +88,13 @@ export default function RoomSchedulePage() {
                 </header>
 
                 <div className="bg-card/60 backdrop-blur-xl border border-border rounded-xl overflow-hidden shadow-2xl">
-                    <ScheduleView
-                        bookings={bookings}
-                        roomId={room.name}
-                        onSlotSelect={handleSlotSelect}
-                    />
+                   <ScheduleView
+  selectedSlots={selectedSlots} // [] などの空配列を定義しておけばOK
+  onSlotClick={(slot: string) => {
+    // 既存の handleSlotSelect に繋ぐか、単に選択状態を更新する
+    console.log("Selected:", slot);
+  }}
+/>
                 </div>
 
                 {isBookingOpen && (
