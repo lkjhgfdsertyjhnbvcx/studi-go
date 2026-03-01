@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 
 export default function BookingsPage() {
-  const [bookedSlots, setBookedSlots] = useState([]);
+  // 🌟 <any[]> を追加することで、型エラーを解消します
+  const [bookedSlots, setBookedSlots] = useState<any[]>([]);
 
   useEffect(() => {
     fetch('/api/bookings')
