@@ -105,7 +105,6 @@ export default function TopPage() {
                     {filteredStores.map(store => (
                         <div
                             key={store.id}
-                            {/* 🌟 URL形式を /studios/[ID] に修正しました */}
                             onClick={() => router.push(`/studios/${store.id}`)}
                             className="min-w-[280px] md:min-w-[380px] bg-white border border-gray-100 rounded-[2.5rem] shadow-sm flex flex-col group hover:shadow-2xl transition-all cursor-pointer overflow-hidden"
                         >
