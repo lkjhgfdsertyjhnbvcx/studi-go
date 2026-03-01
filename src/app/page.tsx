@@ -40,7 +40,6 @@ export default function TopPage() {
         });
     }, []);
 
-    // 自動スライド機能
     useEffect(() => {
         if (loading) return;
         const interval = setInterval(() => {
@@ -71,7 +70,6 @@ export default function TopPage() {
                 <button onClick={() => router.push('/mypage')} className="px-6 py-2.5 text-sm font-bold text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition-all">👤 マイページ</button>
             </header>
 
-            {/* ヒーロー */}
             <div className="bg-gray-900 text-white py-20 px-4 text-center relative overflow-hidden">
                 <div className="relative z-10 max-w-3xl mx-auto">
                     <h2 className="text-4xl md:text-6xl font-black mb-6 tracking-tight italic">Find Your Sound.</h2>
@@ -79,7 +77,6 @@ export default function TopPage() {
                 </div>
             </div>
 
-            {/* 検索ボックス */}
             <div className="max-w-4xl mx-auto -mt-10 relative z-20 px-4">
                 <div className="bg-white border border-gray-200 rounded-[2.5rem] p-6 shadow-2xl flex flex-col md:flex-row gap-4 items-end">
                     <div className="flex-1 w-full text-left">
@@ -97,7 +94,6 @@ export default function TopPage() {
                 </div>
             </div>
 
-            {/* Recommended Studios スライダー */}
             <div className="max-w-[1400px] mx-auto pt-24 px-6 overflow-hidden">
                 <div className="flex justify-between items-end mb-8 border-l-8 border-purple-800 pl-5">
                     <div>
@@ -110,7 +106,6 @@ export default function TopPage() {
                     {filteredStores.map(store => (
                         <div
                             key={store.id}
-                            {/* 🌟 遷移先を店舗トップページに変更 */}
                             onClick={() => router.push(`/store-detail?id=${store.id}`)}
                             className="min-w-[280px] md:min-w-[380px] bg-white border border-gray-100 rounded-[2.5rem] shadow-sm flex flex-col group hover:shadow-2xl transition-all cursor-pointer overflow-hidden"
                         >
@@ -130,24 +125,4 @@ export default function TopPage() {
                                         <span className="text-[9px] font-black text-gray-400 uppercase">Min Price</span>
                                         <span className="font-black text-purple-800 text-base">¥{store.studios?.[0]?.pricePerHour || 1000}～</span>
                                     </div>
-                                    <span className="text-xs font-black text-purple-800 border-2 border-purple-800 px-4 py-2 rounded-xl group-hover:bg-purple-800 group-hover:text-white transition-all">
-                                        詳細を見る
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <footer className="mt-20 text-center text-[10px] font-bold text-gray-300 tracking-[0.5em] uppercase border-t border-gray-100 pt-10">
-                &copy; 2026 Studi-Go. Beyond the Sound.
-            </footer>
-
-            <style jsx global>{`
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-            `}</style>
-        </div>
-    );
-}
+                                    <span className="text-xs font-black text-purple-800 border-2 border-purple-800 px-4 py-2 rounded
