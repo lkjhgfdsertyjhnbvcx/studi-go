@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { fetchStudio } from "@/actions/studio";
 import { getBookingsAction } from "@/actions/schedule";
 import { ScheduleView } from "@/components/ScheduleView";
-import { BookingModal } from "@/components/BookingModal";
+import BookingModal from "@/components/BookingModal";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, XCircle } from "lucide-react";
 import { format } from "date-fns";
