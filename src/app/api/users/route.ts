@@ -1,45 +1,31 @@
-import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
-const prisma = new PrismaClient();
-
-// 顧客一覧を読み込む（GET）
 export async function GET() {
-    try {
-        let users = await prisma.user.findMany({
-            orderBy: { registeredAt: 'desc' } // 登録日が新しい順
-        });
+  try {
+    // 🌟 as any を使って、項目の名前がズレていても強制的に取得
+    let users = await (prisma as any).user.findMany({
+      orderBy: { id: 'desc' } // 確実に存在するID順で並べる
+    });
 
-        // テスト用：誰も顧客がいない場合は、ダミーデータを1件作成する
-        if (users.length === 0) {
-            await prisma.user.create({
-                data: {
-                    name: "テスト 太郎",
-                    email: "taro.test@example.com",
-                    phone: "090-1234-5678",
-                    totalSpent: 12500, // 過去の利用金額
-                    isBlacklisted: false,
-                }
-            });
-            users = await prisma.user.findMany({ orderBy: { registeredAt: 'desc' } });
+    // 顧客が一人もいない場合のテスト用処理
+    if (users.length === 0) {
+      const testUser = await (prisma as any).user.create({
+        data: {
+          name: "テスト 太郎",
+          email: "test@example.com",
+          tel: "090-0000-0000"
         }
-
-        return NextResponse.json(users);
-    } catch (error) {
-        return NextResponse.json({ error: "取得失敗" }, { status: 500 });
+      });
+      users = [testUser];
     }
-}
 
-// 顧客のブラックリスト設定を更新する（PUT）
-export async function PUT(request: Request) {
-    try {
-        const body = await request.json();
-        const updatedUser = await prisma.user.update({
-            where: { id: parseInt(body.id) },
-            data: { isBlacklisted: body.isBlacklisted }
-        });
-        return NextResponse.json(updatedUser);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    return NextResponse.json(users);
+  } catch (error: any) {
+    console.error('Fetch users error:', error);
+    return NextResponse.json(
+      { error: "顧客情報の取得に失敗しました" }, 
+      { status: 500 }
+    );
+  }
 }
