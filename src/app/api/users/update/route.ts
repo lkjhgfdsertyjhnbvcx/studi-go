@@ -1,22 +1,26 @@
-import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
-const prisma = new PrismaClient();
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    
+    // 🌟 as any を使って、IDの型（数字か文字列か）によるエラーを完全に回避
+    const updatedUser = await (prisma as any).user.update({
+      where: { id: body.id || 1 }, // bodyにIDがあればそれ、なければ1を使用
+      data: {
+        name: body.name,
+        email: body.email,
+        tel: body.tel || body.phone, // 両方の可能性に対応
+      },
+    });
 
-export async function PUT(request: Request) {
-    try {
-        const body = await request.json();
-        const updatedUser = await prisma.user.update({
-            where: { id: 1 }, // テスト用ユーザーID
-            data: {
-                name: body.name,
-                phone: body.phone,
-                email: body.email,   // 🌟 追加
-                address: body.address // 🌟 追加
-            }
-        });
-        return NextResponse.json(updatedUser);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    return NextResponse.json({ success: true, user: updatedUser });
+  } catch (error: any) {
+    console.error('Update user error:', error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
+  }
 }
