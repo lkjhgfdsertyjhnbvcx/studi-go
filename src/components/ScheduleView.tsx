@@ -2,15 +2,15 @@
 import React from "react";
 
 interface ScheduleViewProps {
-  selectedSlots: string[];
-  onSlotClick: (slot: string) => void;
-  // 🌟 他のページから送られてくる古いデータも受け流すように設定
+  selectedSlots?: string[]; // 🌟 ? を付けて任意項目に
+  onSlotClick?: (slot: string) => void; // 🌟 ? を付けて任意項目に
   [key: string]: any; 
 }
 
+// 🌟 デフォルト値を設定することで、Wrapper からの呼び出しエラーを防ぎます
 export const ScheduleView = ({ 
   selectedSlots = [], 
-  onSlotClick,
+  onSlotClick = () => {},
 }: ScheduleViewProps) => {
   const times = [];
   for (let i = 8; i < 22; i++) {
@@ -27,7 +27,7 @@ export const ScheduleView = ({
             <button
               key={time}
               type="button"
-              onClick={() => onSlotClick && onSlotClick(time)}
+              onClick={() => onSlotClick(time)}
               className={`py-4 rounded-2xl font-bold transition-all border-2 ${
                 isSelected
                   ? "bg-purple-800 border-purple-800 text-white shadow-lg scale-95"
