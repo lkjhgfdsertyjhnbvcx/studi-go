@@ -8,7 +8,7 @@ const StudiGoLogo = () => (
     </div>
 );
 
-// ダミーデータ（画像URLを追加）
+// ダミーデータ
 const DUMMY_STORES = [
     { id: "d1", name: "Studio Alpha", prefecture: "東京都", image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=800&q=80", address: "渋谷区道玄坂", description: "最新機材完備のフラッグシップ店。プロのレコーディングにも対応。", studios: [{ id: "s1", name: "Ast", pricePerHour: 3500 }] },
     { id: "d2", name: "Sound Garden", prefecture: "大阪府", image: "https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?auto=format&fit=crop&w=800&q=80", address: "北区梅田", description: "アコースティック重視の落ち着いた空間。生楽器の響きが自慢です。", studios: [{ id: "s3", name: "L-Room", pricePerHour: 3000 }] },
@@ -40,20 +40,19 @@ export default function TopPage() {
         });
     }, []);
 
-    // 🌟 自動スライド機能
+    // 自動スライド機能
     useEffect(() => {
         if (loading) return;
         const interval = setInterval(() => {
             if (scrollRef.current) {
                 const { scrollLeft, clientWidth, scrollWidth } = scrollRef.current;
-                // 最後まで行ったら最初に戻る
                 if (scrollLeft + clientWidth >= scrollWidth - 5) {
                     scrollRef.current.scrollTo({ left: 0, behavior: "smooth" });
                 } else {
                     scrollRef.current.scrollTo({ left: scrollLeft + clientWidth / 2, behavior: "smooth" });
                 }
             }
-        }, 3000); // 3秒ごとにスライド
+        }, 3000);
         return () => clearInterval(interval);
     }, [loading, stores]);
 
@@ -84,14 +83,14 @@ export default function TopPage() {
             <div className="max-w-4xl mx-auto -mt-10 relative z-20 px-4">
                 <div className="bg-white border border-gray-200 rounded-[2.5rem] p-6 shadow-2xl flex flex-col md:flex-row gap-4 items-end">
                     <div className="flex-1 w-full text-left">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-2 mb-2">エリアから探す</label>
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-2 mb-2">エリアから探す</div>
                         <select value={searchPref} onChange={(e) => setSearchPref(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3.5 text-gray-900 font-bold focus:border-purple-800 focus:outline-none appearance-none">
                             <option value="">全国</option>
                             {PREFECTURES.map(pref => <option key={pref} value={pref}>{pref}</option>)}
                         </select>
                     </div>
                     <div className="flex-1 w-full text-left">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-2 mb-2">キーワードで探す</label>
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-2 mb-2">キーワードで探す</div>
                         <input type="text" placeholder="スタジオ名、機材名など..." value={searchKeyword} onChange={(e) => setSearchKeyword(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3.5 text-gray-900 font-bold focus:border-purple-800 focus:outline-none" />
                     </div>
                     <button className="w-full md:w-36 py-3.5 bg-purple-800 text-white rounded-2xl font-black shadow-lg shadow-purple-800/30">検索</button>
@@ -111,10 +110,10 @@ export default function TopPage() {
                     {filteredStores.map(store => (
                         <div
                             key={store.id}
-                            onClick={() => router.push(`/booking?storeId=${store.id}`)}
+                            {/* 🌟 遷移先を店舗トップページに変更 */}
+                            onClick={() => router.push(`/store-detail?id=${store.id}`)}
                             className="min-w-[280px] md:min-w-[380px] bg-white border border-gray-100 rounded-[2.5rem] shadow-sm flex flex-col group hover:shadow-2xl transition-all cursor-pointer overflow-hidden"
                         >
-                            {/* 🌟 ダミー写真エリア */}
                             <div className="h-48 w-full overflow-hidden relative">
                                 <img src={store.image} alt={store.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                 <div className="absolute top-4 left-4">
@@ -131,7 +130,6 @@ export default function TopPage() {
                                         <span className="text-[9px] font-black text-gray-400 uppercase">Min Price</span>
                                         <span className="font-black text-purple-800 text-base">¥{store.studios?.[0]?.pricePerHour || 1000}～</span>
                                     </div>
-                                    {/* 🌟 ボタンを詳細を見るに変更 */}
                                     <span className="text-xs font-black text-purple-800 border-2 border-purple-800 px-4 py-2 rounded-xl group-hover:bg-purple-800 group-hover:text-white transition-all">
                                         詳細を見る
                                     </span>
@@ -147,9 +145,9 @@ export default function TopPage() {
             </footer>
 
             <style jsx global>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
         </div>
     );
 }
