@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { ThemeProvider, useTheme } from "@/lib/theme-context";
-import { PhysicsHero } from "@/components/PhysicsHero";
+import PhysicsHero from "@/components/PhysicsHero";
 // Removed SettingsPanel
 // Removed BookingModal usage here (users select room first)
 import { useLineLiff } from "@/hooks/use-line-liff";
