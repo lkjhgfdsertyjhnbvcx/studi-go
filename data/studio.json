@@ -60,7 +60,8 @@
             }
           ]
         }
-      }
+      },
+      "id": "1bcc6c03-e17b-4fc2-b445-6da5b88d7cb9"
     },
     {
       "name": "Studio 2",
@@ -107,7 +108,8 @@
             }
           ]
         }
-      }
+      },
+      "id": "ac53bc52-7e42-4797-b8f2-0c50ddfb5987"
     },
     {
       "name": "Mixing Room",
@@ -154,7 +156,8 @@
             }
           ]
         }
-      }
+      },
+      "id": "0762fbfa-e41b-4b12-a481-afc7896269e4"
     }
   ],
   "equipmentOptions": [
@@ -170,5 +173,7 @@
       "name": "Roland JUPITER 88鍵",
       "pricePerHour": 500
     }
-  ]
+  ],
+  "id": "801ed34f-8eec-4581-b80a-1109e28ce3da",
+  "logoUrl": "/logo-jocolla.png"
 }
