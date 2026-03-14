@@ -1,0 +1,451 @@
+"use client";
+import React, { useEffect, useState } from "react";
+
+// ===== 型定義 =====
+interface TimeSlot { start: string; end: string; price: number; }
+interface RoomPricing { weekday: TimeSlot[]; saturday: TimeSlot[]; sundayHoliday: TimeSlot[]; }
+interface Room {
+  id: string; name: string; description?: string; images?: string[];
+  basePrice: number; startType?: "0min" | "30min"; pricing?: RoomPricing;
+}
+interface Studio {
+  id: string; storeName: string; address?: string; logoUrl?: string;
+  bgColor?: string; bgImageUrl?: string; appealPoint?: string; images?: string[];
+  businessHours?: { weekday: string; saturday: string; sundayHoliday: string };
+  rooms?: Room[]; phone?: string; closedDays?: string; parkingInfo?: string;
+}
+
+// ===== 最安値を取得 =====
+function getMinPrice(studio: Studio): number | null {
+  const rooms = studio.rooms || [];
+  const prices: number[] = [];
+  for (const room of rooms) {
+    if (room.pricing) {
+      for (const key of ["weekday", "saturday", "sundayHoliday"]) {
+        const slots = (room.pricing as any)[key];
+        if (Array.isArray(slots)) {
+          for (const slot of slots) {
+            if (slot?.price > 0) prices.push(slot.price);
+          }
+        }
+      }
+    } else if (room.basePrice > 0) {
+      prices.push(room.basePrice);
+    }
+  }
+  return prices.length > 0 ? Math.min(...prices) : null;
+}
+
+// ===== エリア抽出（都道府県 or 市区町村） =====
+function extractArea(address?: string): string {
+  if (!address) return "エリア未設定";
+  // 都道府県を抽出
+  const match = address.match(/(.{2,3}[都道府県])/);
+  return match ? match[1] : address.slice(0, 6);
+}
+
+export default function TopPage() {
+  const [studios, setStudios] = useState<Studio[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [areaFilter, setAreaFilter] = useState("all");
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/studios")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.error) setStudios(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  // エリアリスト（重複なし）
+  const areas = Array.from(new Set(studios.map((s) => extractArea(s.address)))).filter(
+    (a) => a !== "エリア未設定"
+  );
+
+  const filtered = studios.filter((s) => {
+    const matchSearch =
+      search === "" ||
+      s.storeName.toLowerCase().includes(search.toLowerCase()) ||
+      (s.address || "").includes(search) ||
+      (s.appealPoint || "").includes(search);
+    const matchArea =
+      areaFilter === "all" || extractArea(s.address) === areaFilter;
+    return matchSearch && matchArea;
+  });
+
+  return (
+    <div
+      className="min-h-screen bg-gray-950 text-white"
+      style={{ fontFamily: "'DM Sans', sans-serif" }}
+    >
+      {/* ===== HEADER ===== */}
+      <header className="border-b border-gray-800/60 bg-gray-950/80 backdrop-blur-xl sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-black text-sm">S</span>
+            </div>
+            <span className="font-black text-xl tracking-tight text-white">
+              Studi<span className="text-purple-400">-Go</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <a
+              href="/store/login"
+              className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 rounded-lg transition-all"
+            >
+              店舗ログイン
+            </a>
+            <a
+              href="/login"
+              className="px-4 py-2 text-xs font-black bg-purple-600 hover:bg-purple-500 rounded-lg transition-all"
+            >
+              ユーザー登録
+            </a>
+          </div>
+        </div>
+      </header>
+
+      {/* ===== HERO ===== */}
+      <section className="relative overflow-hidden">
+        {/* 背景グラデーション */}
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 via-gray-950 to-gray-950 pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
+
+        <div className="relative max-w-7xl mx-auto px-6 py-20 text-center">
+          <p className="text-purple-400 text-xs font-black uppercase tracking-[0.3em] mb-4">
+            音楽スタジオ予約プラットフォーム
+          </p>
+          <h1 className="text-5xl md:text-6xl font-black leading-none tracking-tight mb-6">
+            あなたの音楽を
+            <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-purple-200">
+              鳴らす場所を探そう
+            </span>
+          </h1>
+          <p className="text-gray-400 text-base font-medium mb-10 max-w-lg mx-auto leading-relaxed">
+            全国の音楽スタジオをかんたん検索・予約。
+            バンド練習から個人練習まで対応。
+          </p>
+
+          {/* 検索バー */}
+          <div className="max-w-2xl mx-auto flex gap-2">
+            <div className="flex-1 relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">🔍</span>
+              <input
+                type="text"
+                placeholder="スタジオ名・エリアで検索..."
+                className="w-full pl-10 pr-4 py-4 bg-gray-900 border border-gray-700 rounded-2xl text-sm font-bold text-white placeholder-gray-600 outline-none focus:border-purple-500 transition-all"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <button className="px-8 py-4 bg-purple-600 hover:bg-purple-500 rounded-2xl text-sm font-black transition-all shrink-0">
+              検索
+            </button>
+          </div>
+
+          {/* 統計 */}
+          <div className="flex items-center justify-center gap-8 mt-10">
+            {[
+              { num: studios.length, label: "掲載スタジオ" },
+              {
+                num: studios.reduce((s, st) => s + (st.rooms?.length || 0), 0),
+                label: "練習部屋",
+              },
+              { num: "24h", label: "オンライン予約" },
+            ].map((stat, i) => (
+              <div key={i} className="text-center">
+                <p className="text-2xl font-black text-white">
+                  {typeof stat.num === "number" ? `${stat.num}+` : stat.num}
+                </p>
+                <p className="text-xs text-gray-600 font-bold">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ===== フィルター ===== */}
+      <section className="max-w-7xl mx-auto px-6 mb-8">
+        <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+          <button
+            onClick={() => setAreaFilter("all")}
+            className={`px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition-all border ${
+              areaFilter === "all"
+                ? "bg-purple-600 border-purple-500 text-white"
+                : "bg-gray-900 border-gray-700 text-gray-400 hover:text-white hover:border-gray-500"
+            }`}
+          >
+            すべてのエリア
+          </button>
+          {areas.map((area) => (
+            <button
+              key={area}
+              onClick={() => setAreaFilter(area)}
+              className={`px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition-all border ${
+                areaFilter === area
+                  ? "bg-purple-600 border-purple-500 text-white"
+                  : "bg-gray-900 border-gray-700 text-gray-400 hover:text-white hover:border-gray-500"
+              }`}
+            >
+              {area}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== メインコンテンツ ===== */}
+      <main className="max-w-7xl mx-auto px-6 pb-24">
+        {/* 件数表示 */}
+        <div className="flex items-center justify-between mb-6">
+          <p className="text-xs font-black text-gray-500 uppercase tracking-widest">
+            {loading ? "読み込み中..." : `${filtered.length} スタジオ`}
+          </p>
+        </div>
+
+        {/* ローディング */}
+        {loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="bg-gray-900 rounded-3xl overflow-hidden border border-gray-800 animate-pulse"
+              >
+                <div className="h-48 bg-gray-800" />
+                <div className="p-5 space-y-3">
+                  <div className="h-4 bg-gray-800 rounded-full w-2/3" />
+                  <div className="h-3 bg-gray-800 rounded-full w-1/2" />
+                  <div className="h-3 bg-gray-800 rounded-full w-3/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* スタジオ一覧 */}
+        {!loading && filtered.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filtered.map((studio) => (
+              <StudioCard
+                key={studio.id}
+                studio={studio}
+                hovered={hoveredId === studio.id}
+                onHover={() => setHoveredId(studio.id)}
+                onLeave={() => setHoveredId(null)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* 空状態 */}
+        {!loading && filtered.length === 0 && (
+          <div className="text-center py-32">
+            <p className="text-5xl mb-4">🎸</p>
+            <p className="font-black text-xl text-white mb-2">
+              {studios.length === 0
+                ? "まだスタジオが登録されていません"
+                : "条件に一致するスタジオが見つかりません"}
+            </p>
+            <p className="text-gray-600 text-sm">
+              {studios.length === 0
+                ? "スタジオオーナーの方はログインして登録してください"
+                : "検索条件を変えてお試しください"}
+            </p>
+            {studios.length === 0 && (
+              <a
+                href="/store/login"
+                className="inline-block mt-6 px-6 py-3 bg-purple-600 hover:bg-purple-500 rounded-xl text-sm font-black transition-all"
+              >
+                店舗登録はこちら
+              </a>
+            )}
+          </div>
+        )}
+      </main>
+
+      {/* ===== FOOTER ===== */}
+      <footer className="border-t border-gray-800/60 bg-gray-900/30">
+        <div className="max-w-7xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 bg-purple-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-black text-xs">S</span>
+            </div>
+            <span className="font-black text-base text-white">
+              Studi<span className="text-purple-400">-Go</span>
+            </span>
+          </div>
+          <p className="text-gray-700 text-xs font-bold">
+            © 2025 Studi-Go. All rights reserved.
+          </p>
+          <div className="flex gap-6">
+            {["利用規約", "プライバシー", "お問い合わせ"].map((l) => (
+              <a
+                key={l}
+                href="#"
+                className="text-gray-600 hover:text-gray-400 text-xs font-bold transition-all"
+              >
+                {l}
+              </a>
+            ))}
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+// ===== スタジオカード =====
+function StudioCard({
+  studio,
+  hovered,
+  onHover,
+  onLeave,
+}: {
+  studio: Studio;
+  hovered: boolean;
+  onHover: () => void;
+  onLeave: () => void;
+}) {
+  const minPrice = getMinPrice(studio);
+  const roomCount = studio.rooms?.length || 0;
+  const area = extractArea(studio.address);
+
+  // サムネイル画像（店舗写真 or 部屋写真の最初のもの）
+  const thumbnail =
+    studio.images?.[0] ||
+    studio.rooms?.find((r) => r.images?.[0])?.images?.[0] ||
+    null;
+
+  return (
+    <a
+      href={`/studio/${studio.id}`}
+      className={`group block bg-gray-900 rounded-3xl overflow-hidden border transition-all duration-300 ${
+        hovered
+          ? "border-purple-500/60 shadow-xl shadow-purple-900/20 -translate-y-1"
+          : "border-gray-800 hover:border-gray-700"
+      }`}
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
+    >
+      {/* サムネイル */}
+      <div className="relative h-48 overflow-hidden bg-gray-800">
+        {thumbnail ? (
+          <img
+            src={thumbnail}
+            alt={studio.storeName}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{
+              background: studio.bgColor
+                ? `linear-gradient(135deg, ${studio.bgColor}cc, ${studio.bgColor}44)`
+                : "linear-gradient(135deg, #1a0533, #0d0d1a)",
+            }}
+          >
+            {studio.logoUrl ? (
+              <img
+                src={studio.logoUrl}
+                alt={studio.storeName}
+                className="max-h-16 max-w-32 object-contain opacity-80"
+              />
+            ) : (
+              <span className="text-4xl opacity-30">🎸</span>
+            )}
+          </div>
+        )}
+
+        {/* ロゴバッジ（サムネイルあり時） */}
+        {thumbnail && studio.logoUrl && (
+          <div className="absolute bottom-3 left-3 w-10 h-10 rounded-xl overflow-hidden bg-black/60 backdrop-blur-sm border border-white/10">
+            <img
+              src={studio.logoUrl}
+              alt="logo"
+              className="w-full h-full object-contain p-1"
+            />
+          </div>
+        )}
+
+        {/* 部屋数バッジ */}
+        {roomCount > 0 && (
+          <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm border border-white/10 rounded-full px-2.5 py-1 text-[10px] font-black text-white">
+            {roomCount}部屋
+          </div>
+        )}
+      </div>
+
+      {/* コンテンツ */}
+      <div className="p-5">
+        {/* エリア */}
+        <div className="flex items-center gap-1.5 mb-2">
+          <span className="text-[10px] text-purple-400 font-black uppercase tracking-widest">
+            📍 {area}
+          </span>
+        </div>
+
+        {/* 店舗名 */}
+        <h3 className="font-black text-base text-white leading-tight mb-2 group-hover:text-purple-300 transition-colors">
+          {studio.storeName}
+        </h3>
+
+        {/* 紹介文 */}
+        {studio.appealPoint && (
+          <p className="text-gray-500 text-xs leading-relaxed mb-4 line-clamp-2">
+            {studio.appealPoint}
+          </p>
+        )}
+
+        {/* 区切り */}
+        <div className="border-t border-gray-800 pt-4 flex items-center justify-between">
+          {/* 料金 */}
+          <div>
+            {minPrice ? (
+              <>
+                <span className="text-[10px] text-gray-600 font-bold">
+                  ¥
+                </span>
+                <span className="text-lg font-black text-white">
+                  {minPrice.toLocaleString()}
+                </span>
+                <span className="text-[10px] text-gray-600 font-bold">
+                  〜/h
+                </span>
+              </>
+            ) : (
+              <span className="text-xs text-gray-600 font-bold">
+                要問合せ
+              </span>
+            )}
+          </div>
+
+          {/* 営業時間 */}
+          {studio.businessHours?.weekday && (
+            <div className="text-right">
+              <p className="text-[10px] text-gray-600 font-bold">平日</p>
+              <p className="text-xs text-gray-400 font-bold">
+                {studio.businessHours.weekday}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* 予約ボタン */}
+        <div
+          className={`mt-4 w-full py-3 rounded-2xl text-xs font-black text-center transition-all duration-300 ${
+            hovered
+              ? "bg-purple-600 text-white"
+              : "bg-gray-800 text-gray-400 group-hover:bg-gray-700 group-hover:text-white"
+          }`}
+        >
+          {hovered ? "予約する →" : "詳細を見る"}
+        </div>
+      </div>
+    </a>
+  );
+}

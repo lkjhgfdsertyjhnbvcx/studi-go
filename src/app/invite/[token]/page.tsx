@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { joinBandAction, getBandByTokenAction } from '@/actions/band'
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Loader2, CheckCircle2, XCircle, Users, ArrowRight } from 'lucide-react'
 
-export default function InvitePage() {
+function InviteContent() {
     const params = useParams()
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -139,5 +139,9 @@ export default function InvitePage() {
             </Card>
         </div>
     )
+}
+
+export default function InvitePage() {
+    return <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-white">読み込み中...</div>}><InviteContent /></Suspense>
 }
 

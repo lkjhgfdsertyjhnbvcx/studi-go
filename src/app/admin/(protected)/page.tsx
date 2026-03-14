@@ -111,7 +111,7 @@ export default async function AdminPage() {
                                         <TableCell className="font-mono text-xs text-muted-foreground py-4 px-8 group-hover:text-cyan-400 transition-colors">#{booking.id.toUpperCase()}</TableCell>
                                         <TableCell className="text-sm font-medium">{booking.date}</TableCell>
                                         <TableCell className="text-sm text-muted-foreground">{booking.startTime}</TableCell>
-                                        <TableCell className="font-mono text-sm font-bold text-foreground">¥{booking.totalPrice.toLocaleString()}</TableCell>
+                                        <TableCell className="font-mono text-sm font-bold text-foreground">¥{(booking.totalPrice || 0).toLocaleString()}</TableCell>
                                         <TableCell className="py-4 px-8 text-right">
                                             {booking.status === 'cancelled' ? (
                                                 <Badge variant="outline" className="text-[9px] border-red-500/50 text-red-500 bg-red-500/10 px-3 py-0">キャンセル</Badge>

@@ -46,7 +46,7 @@ export function UserListClient({ users, isAdmin }: UserListClientProps) {
 
     const handleExportCSV = () => {
         // Create CSV Content
-        const headers = ["ID", "Name", "Email", "Phone", "Address", "Created At", "JOCOLLA User"];
+        const headers = ["ID", "Name", "Email", "Phone", "Address", "Created At", "Auth Provider", "LINE UserID", "LINE DisplayName", "JOCOLLA User"];
         const rows = users.map(user => [
             user.id,
             user.name,
@@ -54,6 +54,9 @@ export function UserListClient({ users, isAdmin }: UserListClientProps) {
             user.phone || "",
             user.address || "",
             user.createdAt,
+            user.authProvider || "email",
+            user.lineUserId || "",
+            user.lineDisplayName || "",
             user.isJocollaUser ? "Yes" : "No"
         ]);
 
@@ -154,9 +157,17 @@ export function UserListClient({ users, isAdmin }: UserListClientProps) {
                                         </div>
                                     </TableCell>
                                     <TableCell className="py-6 px-8 text-right">
-                                        <Badge variant="outline" className="text-[9px] border-cyan-500/50 text-cyan-400 bg-cyan-500/10 px-3 py-0">
-                                            {user.isJocollaUser ? 'JOCOLLA認証済み' : '一般ユーザー'}
-                                        </Badge>
+                                        <div className="flex flex-col items-end gap-1">
+                                            {user.authProvider === "line" || user.lineUserId ? (
+                                                <Badge className="text-[9px] bg-[#06C755] text-white px-3 py-0 flex items-center gap-1">
+                                                    <svg width="10" height="10" viewBox="0 0 48 48" fill="white"><path d="M24 4C13 4 4 11.5 4 20.8c0 8 7.1 14.7 16.7 16.1l1.3 3.7c.3.9 1.5 1.1 2.1.4l3.8-3.8C38.1 35.5 44 28.6 44 20.8 44 11.5 35 4 24 4z"/></svg>
+                                                    LINE連携済
+                                                </Badge>
+                                            ) : null}
+                                            <Badge variant="outline" className="text-[9px] border-cyan-500/50 text-cyan-400 bg-cyan-500/10 px-3 py-0">
+                                                {user.isJocollaUser ? 'JOCOLLA認証済み' : '一般ユーザー'}
+                                            </Badge>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))
@@ -226,6 +237,37 @@ export function UserListClient({ users, isAdmin }: UserListClientProps) {
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* LINE連携情報 */}
+                                    {(userDetail.lineUserId || userDetail.authProvider === "line") && (
+                                        <div className="bg-[#06C755]/10 border border-[#06C755]/30 p-6 rounded-2xl">
+                                            <div className="flex flex-col md:flex-row md:items-center gap-6">
+                                                <div className="flex items-center gap-2 uppercase text-[10px] font-bold tracking-widest min-w-[120px]" style={{ color: "#06C755" }}>
+                                                    <svg width="14" height="14" viewBox="0 0 48 48" fill="#06C755"><path d="M24 4C13 4 4 11.5 4 20.8c0 8 7.1 14.7 16.7 16.1l1.3 3.7c.3.9 1.5 1.1 2.1.4l3.8-3.8C38.1 35.5 44 28.6 44 20.8 44 11.5 35 4 24 4z"/></svg>
+                                                    LINE連携
+                                                </div>
+                                                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div className="space-y-1">
+                                                        <p className="text-[10px] text-muted-foreground uppercase">LINE ユーザーID</p>
+                                                        <p className="text-xs font-bold text-foreground font-mono break-all">{userDetail.lineUserId || '—'}</p>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <p className="text-[10px] text-muted-foreground uppercase">LINE 表示名</p>
+                                                        <div className="flex items-center gap-2">
+                                                            {userDetail.linePictureUrl && (
+                                                                <img src={userDetail.linePictureUrl} alt="" className="w-6 h-6 rounded-full" />
+                                                            )}
+                                                            <p className="text-sm font-bold text-foreground">{userDetail.lineDisplayName || '—'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <p className="text-[10px] text-muted-foreground uppercase">登録方法</p>
+                                                        <Badge className="bg-[#06C755] text-white text-[9px]">LINEログイン</Badge>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className="bg-card/50 border border-border p-6 rounded-2xl">
                                         <div className="flex flex-col md:flex-row md:items-center gap-6">

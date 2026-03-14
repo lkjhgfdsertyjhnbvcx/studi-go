@@ -94,6 +94,10 @@ export interface StudioProfile {
     appealPoint?: string; // Marketing text
     monthlyRevenueTarget?: number; // Target for Analytics
     logoUrl?: string; // Studio Logo
+    bgColor?: string;
+    bgImageUrl?: string;
+    bgOpacity?: number; // Background image opacity (0-1)
+    textColor?: string; // Text color for studio page
     invoiceNumber?: string; // Qualified Invoice Issuer Number (T-number)
     staff?: StaffMember[];
     blacklist?: BlacklistEntry[];
@@ -110,6 +114,13 @@ export interface StudioProfile {
     }>;
     personalPracticeSettings?: PersonalPracticeSettings;
     designSettings?: DesignSettings;
+    stripeAccountId?: string;
+    stripeAccountStatus?: "pending" | "active" | "restricted";
+    feeBearer?: "store" | "user";
+    planKey?: string;
+    planOptions?: string[];
+    planPayMethod?: string;
+    planUpdatedAt?: string;
     createdAt: string;
 }
 

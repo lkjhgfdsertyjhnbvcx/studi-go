@@ -14,7 +14,9 @@ import {
     LogOut,
     BarChart3,
     Users,
-    Mail
+    Mail,
+    Package,
+    BookOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -53,6 +55,9 @@ export function AdminSidebar() {
         { name: 'キャンペーン管理', href: '/admin/campaigns', icon: Megaphone },
         { name: 'クーポン (Activa)', href: '/admin/coupons', icon: Ticket },
         { name: '売上分析', href: '/admin/analytics', icon: BarChart3 },
+        { name: 'プラン管理', href: '/admin/plans', icon: Package },
+        { name: '会計帳簿', href: '/admin/ledger', icon: BookOpen },
+        { name: '広告管理', href: '/admin/ads', icon: Megaphone },
     ] : [
         { name: '店舗情報', href: auth.studioId ? `/admin/studios/${auth.studioId}` : '/admin', icon: Store },
         { name: '顧客管理', href: '/admin/users', icon: Users },

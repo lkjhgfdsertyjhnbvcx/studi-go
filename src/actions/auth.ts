@@ -15,10 +15,17 @@ export interface User {
     address?: string;
     createdAt: string;
     password?: string;
-    // Simulate JOCOLLA SNS fields
+    // 認証方法
+    authProvider?: "email" | "line";
+    // LINE連携フィールド
+    lineUserId?: string;
+    lineDisplayName?: string;
+    linePictureUrl?: string;
+    // JOCOLLA SNS fields
     isJocollaUser: boolean;
-    jocollaId?: string; // Added field for future SNS sync
+    jocollaId?: string;
     myStudios?: string[];
+    bands?: Array<{ id: string; bandName: string; leaderName: string; createdAt: string; }>;
     coupons?: Array<{
         id: string;
         code: string;

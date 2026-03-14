@@ -1,95 +1,109 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
-    const router = useRouter();
-
-    // チェックボックスの状態を管理
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [phone, setPhone] = useState("");
     const [agreedTerms, setAgreedTerms] = useState(false);
     const [agreedPrivacy, setAgreedPrivacy] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState("");
 
-    // 登録ボタンを押した時の動き（仮）
-    const handleRegister = () => {
+    const handleRegister = async () => {
         if (!agreedTerms || !agreedPrivacy) {
-            alert("利用規約とプライバシーポリシーに同意してください。");
+            setError("利用規約とプライバシーポリシーに同意してください。");
             return;
         }
-        // 本来はここでDB保存しますが、今はデモ用に予約画面に戻るか、マイページへ飛ばします
-        alert("ユーザー登録が完了しました！Activaクーポンが付与されました。");
-        router.push("/reservation");
+        if (!name || !email || !password || !phone) {
+            setError("全ての項目を入力してください。");
+            return;
+        }
+        setIsSubmitting(true);
+        setError("");
+        try {
+            const formData = new FormData();
+            formData.append("name", name);
+            formData.append("email", email);
+            formData.append("password", password);
+            formData.append("phone", phone);
+            const res = await fetch("/api/users/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, email, password, phone }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                localStorage.setItem("userId", data.userId);
+                localStorage.setItem("userName", name);
+                window.location.href = "/band/register?new=1";
+            } else {
+                setError(data.error || "登録に失敗しました。");
+            }
+        } catch (e) {
+            setError("通信エラーが発生しました。");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
         <div className="max-w-md mx-auto p-6 bg-white min-h-screen">
             <h2 className="text-2xl font-bold mb-8 text-gray-800 text-center">新規ユーザー登録</h2>
 
-            {/* Activaクーポン訴求バナー */}
             <div className="mb-8 p-4 bg-purple-50 border border-purple-100 rounded-lg text-center">
                 <p className="text-purple-700 font-bold text-sm">🎁 今すぐ登録して</p>
                 <p className="text-purple-900 font-black text-lg">ActivaクーポンをGET！</p>
             </div>
 
-            <form className="space-y-5">
+            <div className="space-y-5">
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">お名前</label>
-                    <input type="text" placeholder="山田 太郎" className="w-full border border-gray-300 rounded-md p-3 focus:ring-2 focus:ring-purple-500 outline-none text-gray-800" />
+                    <input type="text" value={name} onChange={(e)=>setName(e.target.value)} placeholder="山田 太郎" className="w-full border border-gray-300 rounded-md p-3 focus:ring-2 focus:ring-purple-500 outline-none text-gray-800" />
                 </div>
-
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">メールアドレス</label>
-                    <input type="email" placeholder="example@studi-go.com" className="w-full border border-gray-300 rounded-md p-3 focus:ring-2 focus:ring-purple-500 outline-none text-gray-800" />
+                    <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="example@studi-go.com" className="w-full border border-gray-300 rounded-md p-3 focus:ring-2 focus:ring-purple-500 outline-none text-gray-800" />
                 </div>
-
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">パスワード</label>
-                    <input type="password" placeholder="8文字以上の英数字" className="w-full border border-gray-300 rounded-md p-3 focus:ring-2 focus:ring-purple-500 outline-none text-gray-800" />
+                    <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="8文字以上の英数字" className="w-full border border-gray-300 rounded-md p-3 focus:ring-2 focus:ring-purple-500 outline-none text-gray-800" />
                 </div>
-
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">電話番号</label>
-                    <input type="tel" placeholder="09012345678" className="w-full border border-gray-300 rounded-md p-3 focus:ring-2 focus:ring-purple-500 outline-none text-gray-800" />
+                    <input type="tel" value={phone} onChange={(e)=>setPhone(e.target.value)} placeholder="09012345678" className="w-full border border-gray-300 rounded-md p-3 focus:ring-2 focus:ring-purple-500 outline-none text-gray-800" />
                 </div>
 
-                {/* 規約同意 */}
                 <div className="space-y-3 pt-2">
                     <div className="flex items-center">
-                        <input
-                            type="checkbox"
-                            id="terms"
-                            checked={agreedTerms}
-                            onChange={(e) => setAgreedTerms(e.target.checked)}
-                            className="h-4 w-4 text-purple-600 border-gray-300 rounded"
-                        />
+                        <input type="checkbox" id="terms" checked={agreedTerms} onChange={(e)=>setAgreedTerms(e.target.checked)} className="h-4 w-4 text-purple-600 border-gray-300 rounded" />
                         <label htmlFor="terms" className="ml-2 text-sm text-gray-600">
                             <Link href="/terms" className="text-purple-600 underline">利用規約</Link> に同意する
                         </label>
                     </div>
                     <div className="flex items-center">
-                        <input
-                            type="checkbox"
-                            id="privacy"
-                            checked={agreedPrivacy}
-                            onChange={(e) => setAgreedPrivacy(e.target.checked)}
-                            className="h-4 w-4 text-purple-600 border-gray-300 rounded"
-                        />
+                        <input type="checkbox" id="privacy" checked={agreedPrivacy} onChange={(e)=>setAgreedPrivacy(e.target.checked)} className="h-4 w-4 text-purple-600 border-gray-300 rounded" />
                         <label htmlFor="privacy" className="ml-2 text-sm text-gray-600">
                             <Link href="/privacy" className="text-purple-600 underline">プライバシーポリシー</Link> に同意する
                         </label>
                     </div>
                 </div>
 
-                {/* 登録ボタンに動作（onClick）を追加しました */}
+                {error && <p className="text-red-500 text-sm font-bold">{error}</p>}
+
                 <button
                     type="button"
                     onClick={handleRegister}
-                    className={`w-full py-4 rounded-md font-bold text-lg shadow-sm transition-all mt-4 text-white ${agreedTerms && agreedPrivacy ? "bg-purple-600 hover:bg-purple-700" : "bg-gray-400 cursor-not-allowed"
-                        }`}
+                    disabled={isSubmitting}
+                    className={"w-full py-4 rounded-md font-bold text-lg shadow-sm transition-all mt-4 text-white " + (agreedTerms && agreedPrivacy && !isSubmitting ? "bg-purple-600 hover:bg-purple-700" : "bg-gray-400 cursor-not-allowed")}
                 >
-                    同意して新規登録する
+                    {isSubmitting ? "登録中..." : "同意して新規登録する"}
                 </button>
-            </form>
+
+                {/* LINE登録ボタン: 後日実装予定 */}
+            </div>
 
             <div className="mt-8 text-center">
                 <p className="text-sm text-gray-500">すでにアカウントをお持ちの方は</p>
@@ -97,4 +111,4 @@ export default function RegisterPage() {
             </div>
         </div>
     );
-}
+} 

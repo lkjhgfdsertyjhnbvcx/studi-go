@@ -1,106 +1,1617 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { uploadImageToStorage } from "@/lib/uploadImage";
+import { ThemeToggle } from "@/components/ThemeToggle";
+
+// ===== 型定義 =====
+interface TimeSlot { start: string; end: string; price: number; }
+interface RoomPricing { weekday: TimeSlot[]; saturday: TimeSlot[]; sundayHoliday: TimeSlot[]; }
+interface Room {
+    id: string; name: string; description?: string; images?: string[];
+    basePrice: number; startType?: "0min" | "30min"; pricing?: RoomPricing;
+}
+interface StaffMember { id: string; name: string; email: string; password?: string; role: "admin" | "staff"; createdAt: string; }
+interface BlacklistEntry { userId: string; userName: string; email?: string; reason: string; createdAt: string; }
+interface EquipmentOption { name: string; pricePerHour: number; priceType?: "per_use" | "per_hour"; imageUrl?: string; }
+interface Discount { name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; }
+interface Store {
+    id: string; storeName: string; companyName?: string; representative?: string; email?: string;
+    postalCode?: string; address?: string; phone?: string; invoiceNumber?: string; closedDays?: string;
+    logoUrl?: string; bgColor?: string; bgImageUrl?: string; bgOpacity?: number; appealPoint?: string; images?: string[]; parkingInfo?: string;
+    paymentMethod?: "store" | "studigo"; feeBearer?: "store" | "customer"; unpaidAction?: "cancel" | "force" | "notify"; useActivaCoupon?: boolean;
+    businessHours?: { weekday: string; saturday: string; sundayHoliday: string };
+    reservationLeadDays?: number;
+    personalPracticeSettings?: { enabled: boolean; maxPeople: number; advanceDays?: number; advanceHours?: number; pricePerHour?: number; };
+    studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number };
+    otherDiscounts?: Discount[]; rooms?: Room[]; equipmentOptions?: EquipmentOption[];
+    staff?: StaffMember[]; blacklist?: BlacklistEntry[]; monthlyRevenueTarget?: number;
+}
+interface Booking {
+    id: string; userId: string; studioId: string; roomName: string; date: string;
+    startTime: string; durationHours: number; totalPrice: number; status: string;
+    createdAt: string; userName?: string; userEmail?: string;
+}
+
+const MENU = [
+    { key: "profile", label: "プロフィール" },
+    { key: "branding", label: "ブランディング" },
+    { key: "settings", label: "設定" },
+    { key: "studios", label: "スタジオ設定" },
+    { key: "options", label: "オプション" },
+    { key: "promotions", label: "特典・クーポン" },
+    { key: "staff", label: "スタッフ" },
+    { key: "blacklist", label: "ブラックリスト" },
+    { key: "contact", label: "お問い合わせ" },
+    { key: "plan", label: "プラン・料金" },
+];
+const CENTER_TABS = [
+    { key: "calendar", label: "予約カレンダー" },
+    { key: "analytics", label: "予実管理" },
+    { key: "customers", label: "顧客管理" },
+    { key: "cancellations", label: "キャンセル・変更" },
+];
 
 export default function StoreDashboard() {
-    const [activeTab, setActiveTab] = useState("profile");
-    const [store, setStore] = useState<any>(null);
+    const [store, setStore] = useState<Store | null>(null);
+    const [activeMenu, setActiveMenu] = useState("profile");
+    const [centerTab, setCenterTab] = useState("calendar");
+    const [bookings, setBookings] = useState<Booking[]>([]);
+    const [customers, setCustomers] = useState<any[]>([]);
     const [showNotify, setShowNotify] = useState(false);
+    const [notifyMsg, setNotifyMsg] = useState("");
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     useEffect(() => {
-        const storeId = localStorage.getItem("storeId") || "1";
-        fetch(`/api/store/detail?id=${storeId}`).then(res => res.json()).then(data => {
-            const studiosWithPricing = data.studios.map((s: any) => ({
-                ...s,
-                pricing: s.pricingJson ? JSON.parse(s.pricingJson) : { weekday: Array(24).fill(2000), weekend: Array(24).fill(3000) }
-            }));
-            setStore({ ...data, studios: studiosWithPricing, options: data.options || [] });
-        });
+        const storeId = localStorage.getItem("storeId");
+        if (!storeId) { window.location.href = "/store/login"; return; }
+        fetch(`/api/store/detail?id=${storeId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) { window.location.href = "/store/login"; return; }
+                setStore({
+                    ...data,
+                    rooms: data.rooms || [],
+                    staff: data.staff || [],
+                    blacklist: data.blacklist || [],
+                    equipmentOptions: data.equipmentOptions || [],
+                    otherDiscounts: data.otherDiscounts || [],
+                    images: data.images || [],
+                });
+                return fetch(`/api/admin-bookings`);
+            })
+            .then(r => r?.json())
+            .then(b => { if (b && !b.error) setBookings(b); });
+        fetch("/api/users").then(r => r.json()).then(u => { if (!u.error) setCustomers(u); });
     }, []);
 
-    const saveAll = async () => {
-        const res = await fetch('/api/store/update-full', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(store)
-        });
-        if (res.ok) { setShowNotify(true); setTimeout(() => setShowNotify(false), 3000); }
+    const notify = (msg: string) => {
+        setNotifyMsg(msg);
+        setShowNotify(true);
+        setTimeout(() => setShowNotify(false), 3000);
     };
 
-    if (!store) return <div className="p-20 text-center font-black animate-pulse">SYNCING...</div>;
+    const saveAll = async () => {
+        if (!store) return;
+        notify("⏳ 保存中...");
+        const res = await fetch("/api/store/update-full", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(store),
+        });
+        if (res.ok) notify("✅ 保存しました！");
+        else notify("❌ 保存に失敗しました");
+    };
+
+    if (!store) return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+            <div className="text-foreground font-black text-2xl animate-pulse tracking-widest">SYNCING...</div>
+        </div>
+    );
+
+    const storeBookings = bookings.filter(b => b.studioId === store.id);
 
     return (
-        <div className="min-h-screen bg-[#F0F2F5] p-4 md:p-10 font-sans">
-            {showNotify && <div className="fixed top-10 left-1/2 -translate-x-1/2 z-50 bg-black text-white px-10 py-5 rounded-full font-black shadow-2xl border-2 border-purple-500">✅ SAVED!</div>}
-            <div className="max-w-6xl mx-auto bg-white rounded-[4rem] shadow-2xl overflow-hidden">
-                <div className="flex border-b p-4 gap-2 overflow-x-auto bg-gray-50">
-                    {["profile", "branding", "studios", "options", "bookings"].map((tab) => (
-                        <button key={tab} onClick={() => setActiveTab(tab)} className={`px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-black text-white' : 'text-gray-400'}`}>
-                            {tab === "bookings" ? "予約リスト" : tab}
+        <div className="min-h-screen bg-background text-foreground flex flex-col" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+            {showNotify && (
+                <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-white text-black px-8 py-4 rounded-full font-black shadow-2xl text-sm">
+                    {notifyMsg}
+                </div>
+            )}
+
+            <header className="bg-card border-b border-border px-6 py-4 flex justify-between items-center shrink-0">
+                <div className="flex items-center gap-4">
+                    {store.logoUrl && <img src={store.logoUrl} className="h-8 w-auto object-contain" alt="logo" />}
+                    <div>
+                        <p className="font-black text-foreground text-lg leading-none">{store.storeName}</p>
+                        <p className="text-muted-foreground text-xs mt-0.5">店舗管理ダッシュボード</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3">
+                    <ThemeToggle />
+                    <button onClick={() => window.location.href = "/"} className="px-4 py-2 text-xs font-bold text-muted-foreground hover:text-foreground border border-border rounded-lg transition-all">
+                        トップへ
+                    </button>
+                    <button onClick={saveAll} className="px-6 py-2 text-xs font-black bg-purple-600 hover:bg-purple-500 rounded-lg transition-all">
+                        SAVE ALL
+                    </button>
+                </div>
+            </header>
+
+            <div className="flex flex-1 overflow-hidden">
+                {/* 常時表示のメニュー */}
+                <aside className="w-48 bg-card border-r border-border flex flex-col py-3 overflow-y-auto shrink-0">
+                    {MENU.map(m => (
+                        <button
+                            key={m.key}
+                            title={m.label}
+                            onClick={() => {
+                                if (activeMenu === m.key && sidebarOpen) { setSidebarOpen(false); }
+                                else { setActiveMenu(m.key); setSidebarOpen(true); }
+                            }}
+                            className={`flex items-center gap-2 px-4 py-3 text-left text-xs font-bold transition-all w-full ${activeMenu === m.key && sidebarOpen ? "bg-purple-600/20 text-purple-400 border-r-2 border-purple-500" : "text-muted-foreground hover:text-foreground hover:bg-accent/10"}`}
+                        >
+                            <span className="leading-tight">{m.label}</span>
                         </button>
                     ))}
-                </div>
-                <div className="p-10 text-black">
-                    {activeTab === "profile" && (
-                        <div className="grid grid-cols-2 gap-6">
-                            <Input label="店名" value={store.name} onChange={(v: any) => setStore({ ...store, name: v })} />
-                            <Input label="代表者名" value={store.ownerName} onChange={(v: any) => setStore({ ...store, ownerName: v })} />
-                            <Input label="電話" value={store.tel} onChange={(v: any) => setStore({ ...store, tel: v })} />
-                            <Input label="住所" className="col-span-2" value={store.address} onChange={(v: any) => setStore({ ...store, address: v })} />
+                </aside>
+                {/* クリックで開く設定パネル */}
+                {sidebarOpen && (
+                    <div className="w-96 bg-card/50 border-r border-border overflow-y-auto shrink-0 relative">
+                        <button onClick={() => setSidebarOpen(false)} className="absolute top-3 right-3 z-10 text-muted-foreground hover:text-foreground text-xs p-1 rounded-lg hover:bg-accent/10 transition-all">✕</button>
+                        <div className="p-6">
+                            {activeMenu === "profile" && <ProfileTab store={store} setStore={setStore} />}
+                            {activeMenu === "branding" && <BrandingTab store={store} setStore={setStore} />}
+                            {activeMenu === "settings" && <SettingsTab store={store} setStore={setStore} />}
+                            {activeMenu === "studios" && <StudiosTab store={store} setStore={setStore} />}
+                            {activeMenu === "options" && <OptionsTab store={store} setStore={setStore} />}
+                            {activeMenu === "staff" && <StaffTab store={store} setStore={setStore} notify={notify} />}
+                            {activeMenu === "blacklist" && <BlacklistTab store={store} setStore={setStore} />}
+                            {activeMenu === "contact" && <ContactTab store={store} notify={notify} />}
+                            {activeMenu === "promotions" && <PromotionsTab store={store} setStore={setStore} />}
+                            {activeMenu === "plan" && <PlanTab store={store} setStore={setStore} notify={notify} />}
                         </div>
-                    )}
-                    {activeTab === "branding" && (
-                        <div className="space-y-8">
-                            <div className="grid grid-cols-2 gap-10">
-                                <ImageUploadBox label="ロゴ" image={store.logoUrl} onUpload={(b64: any) => setStore({ ...store, logoUrl: b64 })} />
-                                <ImageUploadBox label="背景" image={store.bgImageUrl} onUpload={(b64: any) => setStore({ ...store, bgImageUrl: b64 })} />
-                            </div>
-                            <textarea className="w-full p-8 bg-gray-50 rounded-[3rem] font-bold h-40 outline-none border-2 focus:border-purple-800" value={store.description || ""} onChange={(e) => setStore({ ...store, description: e.target.value })} placeholder="紹介文..." />
-                        </div>
-                    )}
-                    {activeTab === "studios" && (
-                        <div className="space-y-12">
-                            {store.studios.map((s: any, idx: number) => (
-                                <div key={idx} className="p-10 border-2 rounded-[4rem] bg-gray-50 space-y-4">
-                                    <Input label="スタジオ名" value={s.name} onChange={(v: any) => { const n = [...store.studios]; n[idx].name = v; setStore({ ...store, studios: n }); }} />
-                                    <Input label="広さ" value={s.size} onChange={(v: any) => { const n = [...store.studios]; n[idx].size = v; setStore({ ...store, studios: n }); }} />
-                                </div>
-                            ))}
-                            <button onClick={() => setStore({ ...store, studios: [...store.studios, { name: "NEW", pricing: { weekday: Array(24).fill(2000), weekend: Array(24).fill(3000) } }] })} className="w-full py-10 border-4 border-dashed rounded-[4rem] font-black">+ ADD STUDIO</button>
-                        </div>
-                    )}
-                    {activeTab === "bookings" && (
-                        <div className="space-y-4">
-                            {store.bookings?.map((b: any) => (
-                                <div key={b.id} className="bg-gray-50 p-6 rounded-[2rem] flex justify-between items-center shadow-sm">
-                                    <div><p className="text-xs font-black text-purple-800 uppercase">{b.studioName}</p><p className="text-xl font-black">{b.date} / {b.startTime}:00</p></div>
-                                    <div className="text-right font-black">¥{b.totalPrice.toLocaleString()}</div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    <button onClick={saveAll} className="w-full py-8 bg-purple-800 text-white rounded-[3rem] font-black text-2xl mt-12 hover:bg-black transition-all shadow-xl">SAVE ALL SETTINGS</button>
+                    </div>
+                )}
+
+                <div className="flex-1 overflow-hidden flex flex-col bg-background">
+                    <div className="flex border-b border-border bg-card/50 px-6 pt-4 shrink-0">
+                        {CENTER_TABS.map(t => (
+                            <button
+                                key={t.key}
+                                onClick={() => setCenterTab(t.key)}
+                                className={`px-5 py-3 text-xs font-black uppercase tracking-widest border-b-2 transition-all -mb-px ${centerTab === t.key ? "border-purple-500 text-purple-400" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                            >
+                                {t.label}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-6">
+                        {centerTab === "calendar" && <CalendarTab bookings={storeBookings} rooms={store.rooms || []} setBookings={setBookings} allBookings={bookings} />}
+                        {centerTab === "analytics" && <AnalyticsTab bookings={storeBookings} store={store} setStore={setStore} />}
+                        {centerTab === "customers" && <CustomersTab customers={customers} bookings={storeBookings} />}
+                        {centerTab === "cancellations" && <CancellationsTab bookings={storeBookings} setBookings={setBookings} allBookings={bookings} />}
+                    </div>
                 </div>
             </div>
         </div>
     );
 }
 
-function Input({ label, value, onChange, className = "" }: any) {
+// ===== 左パネルタブ =====
+
+function ProfileTab({ store, setStore }: any) {
+    const u = (k: string, v: any) => setStore({ ...store, [k]: v });
     return (
-        <div className={className}><label className="block text-[10px] font-black text-purple-800 uppercase mb-2 ml-4">{label}</label>
-            <input className="w-full p-5 bg-gray-50 rounded-2xl font-bold border-2 border-transparent focus:border-purple-800 outline-none transition-all" value={value || ""} onChange={(e) => onChange(e.target.value)} /></div>
+        <Section title="プロフィール">
+            <Field label="店舗名" value={store.storeName} onChange={v => u("storeName", v)} />
+            <Field label="会社名" value={store.companyName} onChange={v => u("companyName", v)} />
+            <Field label="郵便番号" value={store.postalCode} onChange={v => u("postalCode", v)} placeholder="000-0000" />
+            <Field label="住所" value={store.address} onChange={v => u("address", v)} />
+            <Field label="電話番号" value={store.phone} onChange={v => u("phone", v)} />
+            <Field label="代表者氏名" value={store.representative} onChange={v => u("representative", v)} />
+            <div className="bg-accent/10/50 rounded-xl p-3">
+                <p className="text-[10px] text-muted-foreground font-bold uppercase mb-1">登録メールアドレス</p>
+                <p className="text-sm font-bold text-muted-foreground">{store.email || "未設定"}</p>
+            </div>
+            <Field label="定休日" value={store.closedDays} onChange={v => u("closedDays", v)} placeholder="例：毎週月曜日" />
+            <Field label="インボイス番号（T-）" value={store.invoiceNumber} onChange={v => u("invoiceNumber", v)} placeholder="T1234567890123" />
+        </Section>
     );
 }
 
-function ImageUploadBox({ label, image, onUpload }: any) {
+function BrandingTab({ store, setStore }: any) {
+    const u = (k: string, v: any) => setStore({ ...store, [k]: v });
     return (
-        <div><label className="block text-[10px] font-black text-purple-800 uppercase mb-2 ml-4">{label}</label>
-            <div className="relative bg-gray-50 h-48 rounded-[2.5rem] overflow-hidden border-2 border-dashed flex items-center justify-center">
-                {image ? <img src={image} className="w-full h-full object-cover" /> : <span className="text-gray-300 font-black">NO IMAGE</span>}
-                <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e: any) => {
-                    const file = e.target.files?.[0]; if (!file) return;
-                    const reader = new FileReader(); reader.onloadend = () => onUpload(reader.result as string); reader.readAsDataURL(file);
-                }} />
-            </div></div>
+        <Section title="ブランディング">
+            <div>
+                <StorageImageUpload label="ロゴ（推奨サイズ: 横400px × 縦200px以内、PNG透過推奨）" image={store.logoUrl} storagePath={`studios/${store.id}/logo`} onUpload={url => u("logoUrl", url)} />
+                {store.logoUrl && (
+                    <div className="mt-3">
+                        <Label>ロゴ表示サイズ: {store.logoSize || 80}px</Label>
+                        <input type="range" min="40" max="200" value={store.logoSize || 80}
+                            onChange={e => u("logoSize", parseInt(e.target.value))}
+                            className="w-full mt-2 accent-purple-500" />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                            <span>小（40px）</span><span>大（200px）</span>
+                        </div>
+                        <div className="mt-3 p-4 bg-accent/10 rounded-xl flex items-center justify-center border border-border">
+                            <img src={store.logoUrl} alt="logo preview" style={{height: `${store.logoSize || 80}px`}} className="object-contain" />
+                        </div>
+                    </div>
+                )}
+            </div>
+            <div>
+                <Label>背景色</Label>
+                <div className="flex gap-2 items-center mt-1">
+                    <input type="color" value={store.bgColor || "#1a1a2e"} onChange={e => u("bgColor", e.target.value)} className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-0" />
+                    <span className="text-sm font-bold text-muted-foreground">{store.bgColor || "#1a1a2e"}</span>
+                </div>
+            </div>
+            <StorageImageUpload label="背景画像" image={store.bgImageUrl} storagePath={`studios/${store.id}/bg`} onUpload={url => u("bgImageUrl", url)} />
+            {store.bgImageUrl && (
+                <div>
+                    <Label>背景画像の暗さ（オーバーレイ）: {Math.round((store.bgOpacity ?? 0.15) * 100)}%</Label>
+                    <input type="range" min="0" max="90" value={Math.round((store.bgOpacity ?? 0.15) * 100)}
+                        onChange={e => u("bgOpacity", parseInt(e.target.value) / 100)}
+                        className="w-full mt-2 accent-purple-500" />
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                        <span>画像そのまま（0%）</span><span>暗く（90%）</span>
+                    </div>
+                    <div className="mt-3 rounded-xl overflow-hidden relative h-32">
+                        <img src={store.bgImageUrl} alt="preview" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0" style={{ backgroundColor: `rgba(0,0,0,${store.bgOpacity ?? 0.15})` }} />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            {store.logoUrl && <img src={store.logoUrl} alt="logo" className="h-10 object-contain" />}
+                            <span className="text-white text-xs font-black ml-2 drop-shadow">{store.storeName}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <div>
+                <Label>テキストカラー</Label>
+                <div className="flex gap-3 mt-1">
+                    {["#ffffff","#1d1d1f","#f5f5f7","#333333"].map(c => (
+                        <button key={c} onClick={() => u("textColor", c)}
+                            className={`w-8 h-8 rounded-full border-2 transition-all ${store.textColor===c ? "border-purple-500 scale-110" : "border-transparent"}`}
+                            style={{backgroundColor: c, boxShadow: "0 0 0 1px rgba(0,0,0,0.2)"}} />
+                    ))}
+                    <input type="color" value={store.textColor || "#ffffff"} onChange={e => u("textColor", e.target.value)}
+                        className="w-8 h-8 rounded-full cursor-pointer bg-transparent border-0" title="カスタムカラー" />
+                </div>
+            </div>
+            <div>
+                <Label>店舗紹介文</Label>
+                <textarea className="w-full mt-1 p-3 bg-accent/10 border border-border rounded-xl text-sm font-bold text-foreground outline-none focus:border-purple-500 resize-none" rows={4} value={store.appealPoint || ""} onChange={e => u("appealPoint", e.target.value)} placeholder="お店の魅力を書いてください..." />
+            </div>
+            <StorageMultiImageUpload label="店舗紹介写真" images={store.images || []} storagePath={`studios/${store.id}/photos`} onChange={urls => u("images", urls)} />
+            <div>
+                <Label>駐車場について</Label>
+                <textarea className="w-full mt-1 p-3 bg-accent/10 border border-border rounded-xl text-sm font-bold text-foreground outline-none focus:border-purple-500 resize-none" rows={3} value={store.parkingInfo || ""} onChange={e => u("parkingInfo", e.target.value)} placeholder="例：店舗前に3台分あり" />
+            </div>
+        </Section>
+    );
+}
+
+function SettingsTab({ store, setStore }: any) {
+    const u = (k: string, v: any) => setStore({ ...store, [k]: v });
+    const uDiscount = (idx: number, key: string, val: any) => {
+        const arr = [...(store.otherDiscounts || [])];
+        arr[idx] = { ...arr[idx], [key]: val };
+        setStore({ ...store, otherDiscounts: arr });
+    };
+    return (
+        <Section title="設定">
+            <Subsection title="決済方法">
+                <div className="space-y-2">
+                    <label className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${(store.paymentMethod || "store") === "store" ? "border-purple-500 bg-purple-600/10" : "border-border hover:border-gray-500"}`}>
+                        <input type="radio" name="payMethod" value="store" checked={(store.paymentMethod || "store") === "store"} onChange={() => u("paymentMethod", "store")} className="mt-0.5 accent-purple-600" />
+                        <div>
+                            <p className="text-sm font-black text-foreground">予約のみ（決済なし）</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">店舗独自で決済。Studi-Goは予約管理のみ行います</p>
+                        </div>
+                    </label>
+                    <label className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${store.paymentMethod === "studigo" ? "border-purple-500 bg-purple-600/10" : "border-border hover:border-gray-500"}`}>
+                        <input type="radio" name="payMethod" value="studigo" checked={store.paymentMethod === "studigo"} onChange={() => u("paymentMethod", "studigo")} className="mt-0.5 accent-purple-600" />
+                        <div>
+                            <p className="text-sm font-black text-foreground">Studi-Goで事前決済</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">予約時にStripeでオンライン決済。手数料5%</p>
+                        </div>
+                    </label>
+                </div>
+                {store.paymentMethod === "studigo" && (
+                    <div className="mt-3 ml-4 space-y-2">
+                        <p className="text-[10px] text-muted-foreground font-black uppercase">決済手数料負担者</p>
+                        <RadioGroup value={store.feeBearer || "store"} onChange={v => u("feeBearer", v)} options={[{ value: "store", label: "店舗が負担（5%）" }, { value: "customer", label: "お客様が負担（5%）" }]} />
+                        <div className="mt-4 pt-4 border-t border-border">
+                            <p className="text-[10px] text-muted-foreground font-black uppercase mb-3">当日までに未決済メンバーがいた場合</p>
+                            <RadioGroup value={store.unpaidAction || "notify"} onChange={v => u("unpaidAction", v)} options={[
+                                { value: "notify", label: "代表者にメール通知のみ" },
+                                { value: "force", label: "代表者のカードで強制決済" },
+                                { value: "cancel", label: "予約をキャンセル" },
+                            ]} />
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-border">
+                            <p className="text-[10px] text-muted-foreground font-black uppercase mb-3">振込口座（Stripe Connect）</p>
+                            <ConnectBankAccount store={store} setStore={setStore} />
+                        </div>
+                    </div>
+                )}
+            </Subsection>
+            <Subsection title="バウチャクーポン（Activa）">
+                <p className="text-xs text-muted-foreground mb-3">⚠️ 詳細設定は「特典・クーポン」タブで行ってください</p>
+                <div className="space-y-2 mb-3">
+                    <label className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${(store.promotions?.vowcha?.enabled) ? "border-purple-500 bg-purple-600/10" : "border-border hover:border-gray-500"}`}>
+                        <input type="radio" name="activaCoupon" value="yes" checked={!!(store.promotions?.vowcha?.enabled)} onChange={() => setStore({ ...store, promotions: { ...store.promotions, vowcha: { ...store.promotions?.vowcha, enabled: true } } })} className="mt-0.5 accent-purple-600" />
+                        <div>
+                            <p className="text-sm font-black text-foreground">利用する</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">ユーザーの予約ページにクーポン情報を表示します</p>
+                        </div>
+                    </label>
+                    <label className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${!(store.promotions?.vowcha?.enabled) ? "border-purple-500 bg-purple-600/10" : "border-border hover:border-gray-500"}`}>
+                        <input type="radio" name="activaCoupon" value="no" checked={!(store.promotions?.vowcha?.enabled)} onChange={() => setStore({ ...store, promotions: { ...store.promotions, vowcha: { ...store.promotions?.vowcha, enabled: false } } })} className="mt-0.5 accent-purple-600" />
+                        <div>
+                            <p className="text-sm font-black text-foreground">利用しない</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">予約ページにクーポン情報を表示しません</p>
+                        </div>
+                    </label>
+                </div>
+            </Subsection>
+            <Subsection title="営業時間">
+                <Field label="平日" value={store.businessHours?.weekday || ""} onChange={v => u("businessHours", { ...store.businessHours, weekday: v })} placeholder="10:00-22:00" />
+                <Field label="土曜" value={store.businessHours?.saturday || ""} onChange={v => u("businessHours", { ...store.businessHours, saturday: v })} placeholder="10:00-22:00" />
+                <Field label="日祝" value={store.businessHours?.sundayHoliday || ""} onChange={v => u("businessHours", { ...store.businessHours, sundayHoliday: v })} placeholder="10:00-22:00" />
+            </Subsection>
+            <Subsection title="何日先まで予約できるか">
+                <div className="flex items-center gap-2">
+                    <input type="number" className="w-20 p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none focus:border-purple-500 text-center" value={store.reservationLeadDays || 30} onChange={e => u("reservationLeadDays", parseInt(e.target.value))} />
+                    <span className="text-sm text-muted-foreground font-bold">日先まで</span>
+                </div>
+            </Subsection>
+            <Subsection title="個人練習設定">
+                <Toggle label="個人練習を受け付ける" value={store.personalPracticeSettings?.enabled ?? true} onChange={v => u("personalPracticeSettings", { ...store.personalPracticeSettings, enabled: v })} />
+                {store.personalPracticeSettings?.enabled && (
+                    <div className="space-y-3 mt-3 ml-4">
+                        <div>
+                            <p className="text-xs text-muted-foreground font-bold mb-1.5">最大人数</p>
+                            <div className="flex items-center gap-2">
+                                <input type="number" min="1" className="w-16 p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none text-center" value={store.personalPracticeSettings?.maxPeople || 2} onChange={e => u("personalPracticeSettings", { ...store.personalPracticeSettings, maxPeople: parseInt(e.target.value) })} />
+                                <span className="text-sm text-muted-foreground">人まで個人利用可</span>
+                            </div>
+                        </div>
+                        <div>
+                            <p className="text-xs text-muted-foreground font-bold mb-1.5">料金（通常料金と異なる場合）</p>
+                            <div className="flex items-center gap-2">
+                                <input type="number" min="0" step="100" className="w-24 p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none text-center" placeholder="通常料金" value={store.personalPracticeSettings?.pricePerHour || ""} onChange={e => u("personalPracticeSettings", { ...store.personalPracticeSettings, pricePerHour: parseInt(e.target.value) || 0 })} />
+                                <span className="text-sm text-muted-foreground">円 / 1時間</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-1">空欄の場合はスタジオの通常料金を使用</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-muted-foreground font-bold mb-1.5">何日前から予約できるか</p>
+                            <div className="flex items-center gap-2">
+                                <input type="number" min="0" className="w-16 p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none text-center" value={store.personalPracticeSettings?.advanceDays ?? 1} onChange={e => u("personalPracticeSettings", { ...store.personalPracticeSettings, advanceDays: parseInt(e.target.value) })} />
+                                <span className="text-sm text-muted-foreground">日前から</span>
+                            </div>
+                        </div>
+                        <div>
+                            <p className="text-xs text-muted-foreground font-bold mb-1.5">何時間前まで予約できるか</p>
+                            <div className="flex items-center gap-2">
+                                <input type="number" min="0" max="48" className="w-16 p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none text-center" value={store.personalPracticeSettings?.advanceHours ?? 2} onChange={e => u("personalPracticeSettings", { ...store.personalPracticeSettings, advanceHours: parseInt(e.target.value) })} />
+                                <span className="text-sm text-muted-foreground">時間前まで予約可</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </Subsection>
+            <Subsection title="割引設定">
+                <Toggle label="学割" value={store.studentDiscount?.enabled ?? false} onChange={v => u("studentDiscount", { ...store.studentDiscount, enabled: v })} />
+                {store.studentDiscount?.enabled && (
+                    <div className="ml-4 flex gap-2 items-center mt-2">
+                        <input type="number" className="w-20 p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none text-center" value={store.studentDiscount?.value || 0} onChange={e => u("studentDiscount", { ...store.studentDiscount, value: parseInt(e.target.value) })} />
+                        <select className="p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none" value={store.studentDiscount?.discountType || "amount"} onChange={e => u("studentDiscount", { ...store.studentDiscount, discountType: e.target.value })}>
+                            <option value="amount">円引き</option>
+                            <option value="percentage">%割引</option>
+                        </select>
+                    </div>
+                )}
+                <div className="mt-3 space-y-3">
+                    {(store.otherDiscounts || []).map((d: Discount, idx: number) => (
+                        <div key={idx} className="bg-accent/10/50 rounded-xl p-3 space-y-2">
+                            <div className="flex gap-2">
+                                <input className="flex-1 p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none" placeholder="割引名（早割など）" value={d.name} onChange={e => uDiscount(idx, "name", e.target.value)} />
+                                <button onClick={() => { const arr = [...(store.otherDiscounts || [])]; arr.splice(idx, 1); setStore({ ...store, otherDiscounts: arr }); }} className="text-red-400 px-2">✕</button>
+                            </div>
+                            <div className="flex gap-2 items-center">
+                                <input type="number" className="w-20 p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none text-center" value={d.value} onChange={e => uDiscount(idx, "value", parseInt(e.target.value))} />
+                                <select className="flex-1 p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none" value={d.discountType} onChange={e => uDiscount(idx, "discountType", e.target.value)}>
+                                    <option value="amount">円引き</option>
+                                    <option value="percentage">%割引</option>
+                                </select>
+                                <Toggle label="有効" value={d.enabled} onChange={v => uDiscount(idx, "enabled", v)} />
+                            </div>
+                        </div>
+                    ))}
+                    <button onClick={() => setStore({ ...store, otherDiscounts: [...(store.otherDiscounts || []), { name: "", enabled: true, discountType: "amount", value: 0 }] })} className="w-full py-2 border border-dashed border-border rounded-xl text-xs font-black text-muted-foreground hover:text-foreground transition-all">
+                        + 割引を追加
+                    </button>
+                </div>
+            </Subsection>
+        </Section>
+    );
+}
+
+// ===== 時間別料金エディタ =====
+function PricingEditor({ pricing, onChange }: { pricing: RoomPricing; onChange: (p: RoomPricing) => void }) {
+    const [activeDay, setActiveDay] = useState<"weekday" | "saturday" | "sundayHoliday">("weekday");
+    const dayLabels = { weekday: "平日", saturday: "土曜", sundayHoliday: "日祝" } as const;
+    const rawSlots = pricing[activeDay];
+    const slots = Array.isArray(rawSlots) ? rawSlots : Array.isArray(rawSlots?.slots) ? rawSlots.slots : [];
+
+    const addSlot = () => onChange({ ...pricing, [activeDay]: [...slots, { start: "10:00", end: "22:00", price: 2000 }] });
+    const updateSlot = (idx: number, key: string, val: any) => {
+        const updated = slots.map((s, i) => i === idx ? { ...s, [key]: val } : s);
+        onChange({ ...pricing, [activeDay]: updated });
+    };
+    const removeSlot = (idx: number) => onChange({ ...pricing, [activeDay]: slots.filter((_, i) => i !== idx) });
+
+    return (
+        <div className="mt-2">
+            <div className="flex gap-1 mb-3">
+                {(Object.keys(dayLabels) as Array<keyof typeof dayLabels>).map(d => (
+                    <button key={d} onClick={() => setActiveDay(d)} className={`flex-1 py-1.5 text-xs font-black rounded-lg transition-all ${activeDay === d ? "bg-purple-600 text-white" : "bg-accent/10 text-muted-foreground hover:text-foreground"}`}>
+                        {dayLabels[d]}
+                    </button>
+                ))}
+            </div>
+            <div className="space-y-2">
+                {slots.map((slot, idx) => (
+                    <div key={idx} className="flex gap-2 items-center bg-accent/10/50 rounded-xl p-2">
+                        <input type="text" placeholder="10:00" className="p-1.5 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none w-24 text-center" value={slot.start} onChange={e => updateSlot(idx, "start", e.target.value)} />
+                        <span className="text-muted-foreground text-xs">〜</span>
+                        <input type="text" placeholder="24:00" className="p-1.5 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none w-24 text-center" value={slot.end} onChange={e => updateSlot(idx, "end", e.target.value)} />
+                        <input type="number" className="p-1.5 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none w-20 text-center" value={slot.price} onChange={e => updateSlot(idx, "price", parseInt(e.target.value) || 0)} />
+                        <span className="text-muted-foreground text-xs">円/h</span>
+                        <button onClick={() => removeSlot(idx)} className="text-red-400 text-xs ml-auto">✕</button>
+                    </div>
+                ))}
+                {slots.length === 0 && <p className="text-muted-foreground text-xs text-center py-2">時間帯を追加してください</p>}
+            </div>
+            <button onClick={addSlot} className="w-full mt-2 py-2 border border-dashed border-border rounded-xl text-xs font-black text-muted-foreground hover:text-foreground hover:border-purple-600 transition-all">
+                + 時間帯を追加
+            </button>
+        </div>
+    );
+}
+
+function StudiosTab({ store, setStore }: any) {
+    const [expandedIdx, setExpandedIdx] = useState<number | null>(0);
+    const defaultPricing = (): RoomPricing => ({
+        weekday: [{ start: "10:00", end: "22:00", price: 2000 }],
+        saturday: [{ start: "10:00", end: "22:00", price: 2500 }],
+        sundayHoliday: [{ start: "10:00", end: "22:00", price: 2500 }],
+    });
+    const addRoom = () => {
+        const newRoom: Room = { id: crypto.randomUUID(), name: "新しいスタジオ", basePrice: 2000, startType: "0min", images: [], pricing: defaultPricing() };
+        setStore({ ...store, rooms: [...(store.rooms || []), newRoom] });
+        setExpandedIdx((store.rooms || []).length);
+    };
+    const updateRoom = (idx: number, key: string, val: any) => {
+        const arr = [...(store.rooms || [])];
+        arr[idx] = { ...arr[idx], [key]: val };
+        setStore({ ...store, rooms: arr });
+    };
+    const removeRoom = (idx: number) => {
+        const arr = [...(store.rooms || [])]; arr.splice(idx, 1);
+        setStore({ ...store, rooms: arr });
+        if (expandedIdx === idx) setExpandedIdx(null);
+    };
+    return (
+        <Section title="スタジオ設定">
+            {(store.rooms || []).map((room: Room, idx: number) => (
+                <div key={room.id} className="border border-border rounded-2xl overflow-hidden mb-3">
+                    <div className="w-full flex justify-between items-center p-4 bg-accent/10/40 hover:bg-accent/10/60 transition-all cursor-pointer" onClick={() => setExpandedIdx(expandedIdx === idx ? null : idx)}>
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs font-black text-purple-400">ROOM {idx + 1}</span>
+                            <span className="text-sm font-bold text-foreground">{room.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button onClick={e => { e.stopPropagation(); removeRoom(idx); }} className="text-red-400 text-xs px-2 hover:text-red-300">削除</button>
+                            <span className="text-muted-foreground text-sm">{expandedIdx === idx ? "▲" : "▼"}</span>
+                        </div>
+                    </div>
+                    {expandedIdx === idx && (
+                        <div className="p-4 space-y-4 bg-card/30">
+                            <Field label="スタジオ名" value={room.name} onChange={v => updateRoom(idx, "name", v)} />
+                            <Field label="基本料金（円/時）" value={String(room.basePrice)} onChange={v => updateRoom(idx, "basePrice", parseInt(v) || 0)} type="number" />
+                            <div>
+                                <Label>説明文</Label>
+                                <textarea className="w-full mt-1 p-3 bg-accent/10 border border-border rounded-xl text-sm font-bold text-foreground outline-none focus:border-purple-500 resize-none" rows={3} value={room.description || ""} onChange={e => updateRoom(idx, "description", e.target.value)} placeholder="このスタジオの特徴..." />
+                            </div>
+                            <div>
+                                <Label>開始時間</Label>
+                                <RadioGroup value={room.startType || "0min"} onChange={v => updateRoom(idx, "startType", v)} options={[{ value: "0min", label: "0分スタート（12:00〜）" }, { value: "30min", label: "30分スタート（12:30〜）" }]} />
+                            </div>
+                            <div>
+                                <Label>時間別料金設定</Label>
+                                <PricingEditor pricing={room.pricing || defaultPricing()} onChange={p => updateRoom(idx, "pricing", p)} />
+                            </div>
+                            <StorageMultiImageUpload label="写真" images={room.images || []} storagePath={`studios/${store.id}/rooms/${room.id}`} onChange={urls => updateRoom(idx, "images", urls)} />
+                        </div>
+                    )}
+                </div>
+            ))}
+            <button onClick={addRoom} className="w-full py-3 border-2 border-dashed border-border rounded-2xl text-sm font-black text-muted-foreground hover:text-foreground hover:border-purple-600 transition-all">
+                + スタジオを追加
+            </button>
+        </Section>
+    );
+}
+
+function OptionsTab({ store, setStore }: any) {
+    const addOption = () => setStore({ ...store, equipmentOptions: [...(store.equipmentOptions || []), { name: "", pricePerHour: 0, priceType: "per_use" }] });
+    const updateOption = (idx: number, key: string, val: any) => {
+        const arr = [...(store.equipmentOptions || [])]; arr[idx] = { ...arr[idx], [key]: val };
+        setStore({ ...store, equipmentOptions: arr });
+    };
+    const removeOption = (idx: number) => {
+        const arr = [...(store.equipmentOptions || [])]; arr.splice(idx, 1);
+        setStore({ ...store, equipmentOptions: arr });
+    };
+    return (
+        <Section title="オプション設定">
+            {(store.equipmentOptions || []).map((opt: EquipmentOption, idx: number) => (
+                <div key={idx} className="bg-accent/10/40 rounded-2xl p-4 space-y-3 mb-3">
+                    <div className="flex justify-between"><p className="text-[10px] font-black text-muted-foreground uppercase">OPTION {idx + 1}</p><button onClick={() => removeOption(idx)} className="text-red-400 text-xs">削除</button></div>
+                    <Field label="オプション名" value={opt.name} onChange={v => updateOption(idx, "name", v)} placeholder="マイク、ドラム台等" />
+                    <div className="flex gap-2">
+                        <Field label="金額（円）" value={String(opt.pricePerHour)} onChange={v => updateOption(idx, "pricePerHour", parseInt(v) || 0)} type="number" />
+                        <div className="flex-1">
+                            <Label>課金方式</Label>
+                            <select className="w-full mt-1 p-2.5 bg-accent/10 border border-border rounded-xl text-sm font-bold text-foreground outline-none" value={opt.priceType || "per_use"} onChange={e => updateOption(idx, "priceType", e.target.value)}>
+                                <option value="per_use">1回あたり</option>
+                                <option value="per_hour">1時間あたり</option>
+                            </select>
+                        </div>
+                    </div>
+                    <StorageImageUpload label="写真" image={opt.imageUrl} storagePath={`studios/${store.id}/options/${idx}`} onUpload={url => updateOption(idx, "imageUrl", url)} />
+                </div>
+            ))}
+            <button onClick={addOption} className="w-full py-3 border-2 border-dashed border-border rounded-2xl text-sm font-black text-muted-foreground hover:text-foreground hover:border-purple-600 transition-all">
+                + オプションを追加
+            </button>
+        </Section>
+    );
+}
+
+function StaffTab({ store, setStore, notify }: any) {
+    const [newStaff, setNewStaff] = useState({ name: "", email: "", password: "", role: "staff" });
+    const addStaff = () => {
+        if (!newStaff.name || !newStaff.email) return;
+        const member: StaffMember = { id: crypto.randomUUID(), name: newStaff.name, email: newStaff.email, password: newStaff.password, role: newStaff.role as "admin" | "staff", createdAt: new Date().toISOString() };
+        setStore({ ...store, staff: [...(store.staff || []), member] });
+        setNewStaff({ name: "", email: "", password: "", role: "staff" });
+        notify("スタッフを追加しました");
+    };
+    return (
+        <Section title="スタッフ登録">
+            <div className="space-y-2 mb-4">
+                {(store.staff || []).map((s: StaffMember) => (
+                    <div key={s.id} className="bg-accent/10/40 rounded-xl p-3 flex justify-between items-center">
+                        <div>
+                            <p className="text-sm font-black text-foreground">{s.name}</p>
+                            <p className="text-xs text-muted-foreground">{s.email}</p>
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${s.role === "admin" ? "bg-purple-600/30 text-purple-400" : "bg-accent/20 text-muted-foreground"}`}>{s.role}</span>
+                        </div>
+                        <button onClick={() => setStore({ ...store, staff: (store.staff || []).filter((x: StaffMember) => x.id !== s.id) })} className="text-red-400 text-xs">削除</button>
+                    </div>
+                ))}
+            </div>
+            <div className="bg-accent/10/40 rounded-2xl p-4 space-y-3">
+                <p className="text-xs font-black text-muted-foreground uppercase">新しいスタッフを追加</p>
+                <Field label="名前" value={newStaff.name} onChange={v => setNewStaff({ ...newStaff, name: v })} />
+                <Field label="メールアドレス" value={newStaff.email} onChange={v => setNewStaff({ ...newStaff, email: v })} />
+                <Field label="パスワード" value={newStaff.password} onChange={v => setNewStaff({ ...newStaff, password: v })} type="password" />
+                <div>
+                    <Label>権限</Label>
+                    <select className="w-full mt-1 p-2.5 bg-accent/10 border border-border rounded-xl text-sm font-bold text-foreground outline-none" value={newStaff.role} onChange={e => setNewStaff({ ...newStaff, role: e.target.value })}>
+                        <option value="staff">スタッフ</option>
+                        <option value="admin">管理者</option>
+                    </select>
+                </div>
+                <button onClick={addStaff} className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 rounded-xl text-sm font-black transition-all">追加する</button>
+            </div>
+        </Section>
+    );
+}
+
+function BlacklistTab({ store, setStore }: any) {
+    const [newEntry, setNewEntry] = useState({ userId: "", userName: "", email: "", reason: "" });
+    const add = () => {
+        if (!newEntry.userName) return;
+        setStore({ ...store, blacklist: [...(store.blacklist || []), { ...newEntry, createdAt: new Date().toISOString() }] });
+        setNewEntry({ userId: "", userName: "", email: "", reason: "" });
+    };
+    return (
+        <Section title="ブラックリスト">
+            <p className="text-xs text-muted-foreground mb-3">登録されたユーザーはこの店舗を予約できなくなります。</p>
+            {(store.blacklist || []).map((b: BlacklistEntry, idx: number) => (
+                <div key={idx} className="bg-red-900/20 border border-red-800/30 rounded-xl p-3 mb-2 flex justify-between items-start">
+                    <div>
+                        <p className="text-sm font-black text-foreground">{b.userName}</p>
+                        <p className="text-xs text-muted-foreground">{b.email}</p>
+                        <p className="text-xs text-red-400 mt-1">{b.reason}</p>
+                    </div>
+                    <button onClick={() => { const arr = [...(store.blacklist || [])]; arr.splice(idx, 1); setStore({ ...store, blacklist: arr }); }} className="text-red-400 text-xs">解除</button>
+                </div>
+            ))}
+            <div className="bg-accent/10/40 rounded-2xl p-4 space-y-3 mt-4">
+                <Field label="ユーザー名" value={newEntry.userName} onChange={v => setNewEntry({ ...newEntry, userName: v })} />
+                <Field label="メールアドレス" value={newEntry.email} onChange={v => setNewEntry({ ...newEntry, email: v })} />
+                <Field label="理由" value={newEntry.reason} onChange={v => setNewEntry({ ...newEntry, reason: v })} />
+                <button onClick={add} className="w-full py-2.5 bg-red-700 hover:bg-red-600 rounded-xl text-sm font-black transition-all">ブラックリストに追加</button>
+            </div>
+        </Section>
+    );
+}
+
+function ContactTab({ store, notify }: any) {
+    const [title, setTitle] = useState("");
+    const [body, setBody] = useState("");
+    const [sending, setSending] = useState(false);
+
+    const send = () => {
+        if (!title || !body) { notify("❌ タイトルと内容を入力してください"); return; }
+        setSending(true);
+        const subject = `【${store.storeName}様よりお問合せ】${title}`;
+        window.location.href = `mailto:support@studi-go.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        setTimeout(() => setSending(false), 1000);
+        notify("✅ メールアプリを開きました");
+    };
+
+    return (
+        <Section title="お問い合わせ">
+            <p className="text-xs text-muted-foreground leading-relaxed">Studi-Goサポートへのお問い合わせです。送信するとメールアプリが開きます。</p>
+            <div className="bg-accent/10/50 rounded-xl p-3">
+                <p className="text-[10px] text-muted-foreground font-black uppercase mb-1">送信先</p>
+                <p className="text-purple-400 font-black text-sm">support@studi-go.com</p>
+            </div>
+            <div className="bg-accent/10/30 rounded-xl p-3">
+                <p className="text-[10px] text-muted-foreground font-black uppercase mb-1">件名プレビュー</p>
+                <p className="text-xs text-muted-foreground font-bold">【{store.storeName}様よりお問合せ】{title || "（タイトルを入力）"}</p>
+            </div>
+            <Field label="タイトル" value={title} onChange={setTitle} placeholder="お問い合わせ内容のタイトル" />
+            <div>
+                <Label>お問い合わせ内容</Label>
+                <textarea className="w-full mt-1 p-3 bg-accent/10 border border-border rounded-xl text-sm font-bold text-foreground outline-none focus:border-purple-500 resize-none" rows={6} value={body} onChange={e => setBody(e.target.value)} placeholder="お問い合わせ内容を入力してください..." />
+            </div>
+            <button onClick={send} disabled={sending} className="w-full py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded-xl text-sm font-black transition-all">
+                {sending ? "送信中..." : "メールで送信する"}
+            </button>
+        </Section>
+    );
+}
+
+// ===== カレンダー =====
+type CalendarView = "month" | "week" | "day";
+
+function CalendarTab({ bookings, rooms, setBookings, allBookings }: { bookings: Booking[]; rooms: Room[]; setBookings: any; allBookings: Booking[] }) {
+    const [view, setView] = useState<CalendarView>("day");
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [selectedRoom, setSelectedRoom] = useState("all");
+    const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+    const [actionLoading, setActionLoading] = useState(false);
+    const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+    const filtered = bookings.filter(b => b.status !== "cancelled" && (selectedRoom === "all" || b.roomName === selectedRoom));
+
+    const go = (dir: number) => {
+        const d = new Date(currentDate);
+        if (view === "day") d.setDate(d.getDate() + dir);
+        else if (view === "week") d.setDate(d.getDate() + dir * 7);
+        else d.setMonth(d.getMonth() + dir);
+        setCurrentDate(d);
+    };
+
+    const dateLabel = () => {
+        if (view === "day") return currentDate.toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
+        if (view === "week") {
+            const s = new Date(currentDate); s.setDate(s.getDate() - s.getDay());
+            const e = new Date(s); e.setDate(e.getDate() + 6);
+            return `${s.toLocaleDateString("ja-JP", { month: "long", day: "numeric" })} 〜 ${e.toLocaleDateString("ja-JP", { month: "long", day: "numeric" })}`;
+        }
+        return currentDate.toLocaleDateString("ja-JP", { year: "numeric", month: "long" });
+    };
+
+    const updateBookingStatus = async (id: string, status: string) => {
+        setActionLoading(true);
+        setActionMsg(null);
+        try {
+            const res = await fetch("/api/admin-bookings", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id, status }),
+            });
+            if (res.ok) {
+                setBookings(allBookings.map((b: Booking) => b.id === id ? { ...b, status } : b));
+                setActionMsg({ type: "success", text: status === "confirmed" ? "✓ 予約を確定しました" : "予約をキャンセルしました" });
+                setTimeout(() => { setSelectedBooking(null); setActionMsg(null); }, 1500);
+            } else {
+                setActionMsg({ type: "error", text: "操作に失敗しました" });
+            }
+        } catch {
+            setActionMsg({ type: "error", text: "通信エラーが発生しました" });
+        }
+        setActionLoading(false);
+    };
+
+    return (
+        <div>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                    <button onClick={() => go(-1)} className="p-2 bg-accent/10 hover:bg-accent/20 rounded-lg text-muted-foreground transition-all">◀</button>
+                    <span className="font-black text-foreground text-base min-w-52 text-center">{dateLabel()}</span>
+                    <button onClick={() => go(1)} className="p-2 bg-accent/10 hover:bg-accent/20 rounded-lg text-muted-foreground transition-all">▶</button>
+                    <button onClick={() => setCurrentDate(new Date())} className="px-3 py-2 bg-accent/10 hover:bg-accent/20 rounded-lg text-xs font-black text-muted-foreground transition-all">今日</button>
+                </div>
+                <div className="flex items-center gap-3">
+                    <select className="p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none" value={selectedRoom} onChange={e => setSelectedRoom(e.target.value)}>
+                        <option value="all">全スタジオ</option>
+                        {rooms.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                    </select>
+                    <div className="flex bg-accent/10 rounded-lg overflow-hidden">
+                        {(["month", "week", "day"] as CalendarView[]).map(v => (
+                            <button key={v} onClick={() => setView(v)} className={`px-3 py-2 text-xs font-black transition-all ${view === v ? "bg-purple-600 text-white" : "text-muted-foreground hover:text-foreground"}`}>
+                                {v === "month" ? "月" : v === "week" ? "週" : "日"}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {view === "day" && <DayView date={currentDate} bookings={filtered} onBookingClick={setSelectedBooking} />}
+            {view === "week" && <WeekView date={currentDate} bookings={filtered} onBookingClick={setSelectedBooking} />}
+            {view === "month" && <MonthView date={currentDate} bookings={filtered} onDayClick={d => { setCurrentDate(d); setView("day"); }} />}
+
+            {/* 予約詳細・操作モーダル */}
+            {selectedBooking && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => { setSelectedBooking(null); setActionMsg(null); }}>
+                    <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-black text-foreground text-lg">予約詳細</h3>
+                            <button onClick={() => { setSelectedBooking(null); setActionMsg(null); }} className="text-muted-foreground hover:text-foreground text-xl font-bold w-8 h-8 flex items-center justify-center rounded-lg hover:bg-accent/10">✕</button>
+                        </div>
+
+                        <div className="space-y-3 mb-5">
+                            <div className="bg-accent/10 rounded-xl p-3 space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">ルーム</span>
+                                    <span className="text-sm font-bold text-foreground">{selectedBooking.roomName}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">日時</span>
+                                    <span className="text-sm font-bold text-foreground">{selectedBooking.date} {selectedBooking.startTime}〜 ({selectedBooking.durationHours}h)</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">金額</span>
+                                    <span className="text-sm font-black text-purple-400">¥{selectedBooking.totalPrice?.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">予約者</span>
+                                    <span className="text-sm font-bold text-foreground">{selectedBooking.userName || "不明"}</span>
+                                </div>
+                                {selectedBooking.userEmail && (
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">メール</span>
+                                        <span className="text-xs text-muted-foreground">{selectedBooking.userEmail}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">ステータス</span>
+                                    <span className={`text-xs font-black px-2 py-1 rounded-full ${selectedBooking.status === "confirmed" ? "bg-purple-600/20 text-purple-400" : "bg-amber-600/20 text-amber-400"}`}>
+                                        {selectedBooking.status === "confirmed" ? "✓ 確定済" : selectedBooking.status === "pending" ? "⚠ 未確定" : selectedBooking.status}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {actionMsg && (
+                            <div className={`mb-3 px-3 py-2 rounded-lg text-sm font-bold ${actionMsg.type === "success" ? "bg-emerald-600/20 text-emerald-400" : "bg-red-600/20 text-red-400"}`}>
+                                {actionMsg.text}
+                            </div>
+                        )}
+
+                        <div className="flex flex-col gap-2">
+                            {selectedBooking.status !== "confirmed" && (
+                                <button
+                                    onClick={() => updateBookingStatus(selectedBooking.id, "confirmed")}
+                                    disabled={actionLoading}
+                                    className="w-full py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded-xl text-sm font-black text-white transition-all"
+                                >
+                                    {actionLoading ? "処理中..." : "✓ 予約を確定する"}
+                                </button>
+                            )}
+                            {selectedBooking.status === "confirmed" && (
+                                <div className="w-full py-3 bg-emerald-600/20 rounded-xl text-sm font-black text-emerald-400 text-center">
+                                    ✓ 確定済み
+                                </div>
+                            )}
+                            <button
+                                onClick={() => {
+                                    if (!confirm("この予約をキャンセルしますか？")) return;
+                                    updateBookingStatus(selectedBooking.id, "cancelled");
+                                }}
+                                disabled={actionLoading}
+                                className="w-full py-3 bg-red-800 hover:bg-red-700 disabled:opacity-50 rounded-xl text-sm font-black text-white transition-all"
+                            >
+                                {actionLoading ? "処理中..." : "✕ 予約をキャンセル"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function DayView({ date, bookings, onBookingClick }: { date: Date; bookings: Booking[]; onBookingClick?: (b: Booking) => void }) {
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+    const dayBookings = bookings.filter(b => b.date === dateStr);
+    const ROW_H = 48;
+    const START_H = 8;
+    const HOURS = 15;
+    const COL_W = 160;
+    // 部屋ごとにグループ化
+    const rooms = Array.from(new Set(dayBookings.map(b => b.roomName)));
+    return (
+        <div className="bg-card rounded-2xl overflow-hidden border border-border">
+            <div className="overflow-x-auto">
+                <div style={{minWidth: 64 + Math.max(rooms.length, 1) * COL_W + 16}}>
+                    {/* ヘッダー行 */}
+                    <div className="flex border-b border-border bg-accent/10 sticky top-0 z-10">
+                        <div className="w-16 shrink-0 border-r border-border" />
+                        {rooms.length > 0 ? rooms.map(r => (
+                            <div key={r} className="text-xs font-black text-muted-foreground p-2 text-center border-r border-border" style={{width: COL_W}}>{r}</div>
+                        )) : <div className="text-xs font-black text-muted-foreground p-2" style={{width: COL_W}}>予約なし</div>}
+                    </div>
+                    {/* タイムライン */}
+                    <div className="relative" style={{height: ROW_H * HOURS}}>
+                        {Array.from({ length: HOURS }, (_, i) => i + START_H).map(h => (
+                            <div key={h} className="flex border-b border-border absolute w-full" style={{top: (h - START_H) * ROW_H, height: ROW_H}}>
+                                <div className="w-16 p-2 text-xs font-bold text-muted-foreground border-r border-border shrink-0">{String(h).padStart(2,"0")}:00</div>
+                                {rooms.map(r => (
+                                    <div key={r} className="border-r border-border/50" style={{width: COL_W}} />
+                                ))}
+                            </div>
+                        ))}
+                        {dayBookings.map(b => {
+                            const startH = parseInt((b.startTime || "00:00").split(":")[0]);
+                            const startM = parseInt((b.startTime || "00:00").split(":")[1] || "0");
+                            const top = (startH - START_H + startM / 60) * ROW_H + 2;
+                            const height = (b.durationHours || 1) * ROW_H - 4;
+                            const endH = String(startH + (b.durationHours || 1)).padStart(2,"00");
+                            const colIdx = rooms.indexOf(b.roomName);
+                            const left = 64 + colIdx * COL_W + 4;
+                            const bgColor = b.status === "confirmed"
+                                ? "rgba(124,58,237,0.85)"
+                                : b.status === "pending"
+                                ? "rgba(245,158,11,0.85)"
+                                : "rgba(220,38,38,0.75)";
+                            return (
+                                <div
+                                    key={b.id}
+                                    onClick={() => onBookingClick?.(b)}
+                                    className="absolute rounded-lg px-2 py-1.5 text-xs font-bold text-white overflow-hidden transition-all"
+                                    style={{
+                                        top, height, left,
+                                        width: COL_W - 8,
+                                        background: bgColor,
+                                        cursor: onBookingClick ? "pointer" : "default",
+                                        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                                    }}
+                                    title="クリックで詳細を表示"
+                                >
+                                    <p className="truncate font-black">{b.userName || b.userId}</p>
+                                    <p className="opacity-90 text-[10px]">{b.startTime}〜{endH}:00 ({b.durationHours}h)</p>
+                                    <p className="opacity-80 text-[10px]">¥{b.totalPrice?.toLocaleString()}</p>
+                                    <div className="flex items-center justify-between mt-0.5">
+                                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full inline-block" style={{background: "rgba(255,255,255,0.25)"}}>
+                                            {b.status === "confirmed" ? "✓ 確定" : b.status === "pending" ? "⚠ 未確定" : b.status}
+                                        </span>
+                                        {onBookingClick && <span className="text-[9px] opacity-70">詳細▸</span>}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+            {dayBookings.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                    <p className="text-3xl mb-2">📅</p>
+                    <p className="font-bold text-sm">この日の予約はありません</p>
+                </div>
+            )}
+        </div>
+    );
+}
+function WeekView({ date, bookings, onBookingClick }: { date: Date; bookings: Booking[]; onBookingClick?: (b: Booking) => void }) {
+    const start = new Date(date);
+    start.setDate(start.getDate() - start.getDay());
+    const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(start); d.setDate(d.getDate() + i); return d; });
+    const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    return (
+        <div className="grid grid-cols-7 gap-1">
+            {days.map((d, i) => {
+                const dateStr = d.toISOString().split("T")[0];
+                const dayBkgs = bookings.filter(b => b.date === dateStr);
+                const isToday = dateStr === todayStr;
+                return (
+                    <div key={i} className={`bg-card rounded-xl p-2 min-h-32 border ${isToday ? "border-purple-500" : "border-border"}`}>
+                        <p className={`text-xs font-black mb-2 ${i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-muted-foreground"}`}>{dayNames[i]} {d.getDate()}</p>
+                        <div className="space-y-1">
+                            {dayBkgs.map(b => (
+                                <div
+                                    key={b.id}
+                                    onClick={() => onBookingClick?.(b)}
+                                    className="rounded px-1.5 py-1 text-[10px] font-bold text-foreground leading-tight transition-all"
+                                    style={{
+                                        background: b.status === "confirmed" ? "rgba(124,58,237,0.7)" : "rgba(245,158,11,0.7)",
+                                        cursor: onBookingClick ? "pointer" : "default",
+                                    }}
+                                >
+                                    <p className="truncate">{b.userName || b.roomName}</p>
+                                    <p className="opacity-75">{b.startTime}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+function MonthView({ date, bookings, onDayClick }: { date: Date; bookings: Booking[]; onDayClick: (d: Date) => void }) {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells = Array.from({ length: firstDay + daysInMonth }, (_, i) => i < firstDay ? null : i - firstDay + 1);
+    const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    return (
+        <div>
+            <div className="grid grid-cols-7 mb-1">
+                {dayNames.map((d, i) => <div key={i} className={`text-center text-xs font-black py-2 ${i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-muted-foreground"}`}>{d}</div>)}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+                {cells.map((day, i) => {
+                    if (!day) return <div key={i} />;
+                    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                    const dayBkgs = bookings.filter(b => b.date === dateStr);
+                    const isToday = dateStr === todayStr;
+                    return (
+                        <div key={i} onClick={() => onDayClick(new Date(year, month, day))} className={`bg-card rounded-xl p-2 min-h-16 border cursor-pointer hover:border-purple-500 transition-all ${isToday ? "border-purple-500" : "border-border"}`}>
+                            <p className={`text-xs font-black mb-1 ${isToday ? "text-purple-400" : i % 7 === 0 ? "text-red-400" : i % 7 === 6 ? "text-blue-400" : "text-muted-foreground"}`}>{day}</p>
+                            {dayBkgs.slice(0, 2).map((b, bi) => <div key={bi} className="bg-purple-600/70 rounded px-1 py-0.5 text-[9px] font-bold text-white mb-0.5 truncate">{b.roomName}</div>)}
+                            {dayBkgs.length > 2 && <p className="text-[9px] text-muted-foreground">+{dayBkgs.length - 2}</p>}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+function AnalyticsTab({ bookings, store, setStore }: any) {
+    const activeBookings = bookings.filter((b: Booking) => b.status !== "cancelled");
+    const totalRevenue = activeBookings.reduce((s: number, b: Booking) => s + (b.totalPrice || 0), 0);
+    const [targetInput, setTargetInput] = useState(String(store.monthlyRevenueTarget || 300000));
+    const target = parseInt(targetInput) || 300000;
+    const rate = Math.min(Math.round((totalRevenue / target) * 100), 100);
+    const uniqueUsers = new Set(activeBookings.map((b: Booking) => b.userId)).size;
+
+    const downloadCSV = () => {
+        const headers = ["予約ID", "スタジオ", "日付", "開始時間", "時間", "金額", "ステータス"];
+        const rows = bookings.map((b: Booking) => [b.id, b.roomName, b.date, b.startTime, b.durationHours, b.totalPrice, b.status]);
+        const csv = [headers, ...rows].map((r: any[]) => r.join(",")).join("\n");
+        const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = url; a.download = `sales_${new Date().toISOString().split("T")[0]}.csv`; a.click();
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="grid grid-cols-3 gap-4">
+                <StatCard label="総売上" value={`¥${totalRevenue.toLocaleString()}`} sub={`目標: ¥${target.toLocaleString()}`} />
+                <StatCard label="達成率" value={`${rate}%`} sub={`予約件数: ${activeBookings.length}件`} />
+                <StatCard label="利用者数" value={`${uniqueUsers}人`} sub="ユニークユーザー" />
+            </div>
+            <div className="bg-card border border-border rounded-2xl p-5">
+                <p className="text-xs font-black text-muted-foreground uppercase mb-3">月間売上目標</p>
+                <div className="flex gap-3 items-center">
+                    <input
+                        type="number"
+                        className="w-40 p-3 bg-accent/10 border border-border rounded-xl text-sm font-black text-foreground outline-none focus:border-purple-500"
+                        value={targetInput}
+                        onChange={e => setTargetInput(e.target.value)}
+                        onBlur={() => setStore({ ...store, monthlyRevenueTarget: parseInt(targetInput) || 0 })}
+                        placeholder="300000"
+                    />
+                    <span className="text-muted-foreground font-bold">円</span>
+                </div>
+                <div className="mt-3 bg-accent/10 rounded-full h-3 overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-purple-600 to-purple-400 transition-all" style={{ width: `${rate}%` }} />
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">{rate}% 達成</p>
+            </div>
+            <button onClick={downloadCSV} className="flex items-center gap-2 px-6 py-3 bg-accent/10 hover:bg-accent/20 border border-border rounded-xl text-sm font-black text-foreground transition-all">
+                📥 売上データをCSVダウンロード
+            </button>
+        </div>
+    );
+}
+
+function CustomersTab({ customers, bookings }: { customers: any[]; bookings: Booking[] }) {
+    return (
+        <div>
+            <h2 className="font-black text-lg text-foreground mb-4">顧客一覧</h2>
+            {customers.length === 0
+                ? <div className="text-center py-20 text-muted-foreground"><p className="text-4xl mb-3">👥</p><p className="font-bold">顧客データがありません</p></div>
+                : <div className="space-y-3">{customers.map((c: any) => {
+                    const userBookings = bookings.filter(b => b.userId === c.id);
+                    const ltv = userBookings.reduce((s, b) => s + (b.totalPrice || 0), 0);
+                    const isLine = c.authProvider === "line" || !!c.lineUserId;
+                    return (
+                        <div key={c.id} className="bg-card border border-border rounded-2xl p-4 flex justify-between items-center gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                                {c.linePictureUrl ? (
+                                    <img src={c.linePictureUrl} alt="" className="w-10 h-10 rounded-full shrink-0 border-2" style={{ borderColor: "#06C755" }} />
+                                ) : (
+                                    <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center shrink-0 text-base font-black text-muted-foreground">
+                                        {(c.name || "?")[0]}
+                                    </div>
+                                )}
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="font-black text-foreground">{c.name || c.lineDisplayName || "名前未設定"}</p>
+                                        {isLine && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white shrink-0" style={{ background: "#06C755" }}>
+                                                <svg width="9" height="9" viewBox="0 0 48 48" fill="white"><path d="M24 4C13 4 4 11.5 4 20.8c0 8 7.1 14.7 16.7 16.1l1.3 3.7c.3.9 1.5 1.1 2.1.4l3.8-3.8C38.1 35.5 44 28.6 44 20.8 44 11.5 35 4 24 4z"/></svg>
+                                                LINE
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground truncate">{c.email || (isLine ? "LINE登録" : "メール未設定")}</p>
+                                    {c.lineDisplayName && c.lineDisplayName !== c.name && (
+                                        <p className="text-[10px] text-muted-foreground">LINE名: {c.lineDisplayName}</p>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                                <p className="text-sm font-black text-purple-400">LTV: ¥{ltv.toLocaleString()}</p>
+                                <p className="text-xs text-muted-foreground">利用{userBookings.length}回</p>
+                            </div>
+                        </div>
+                    );
+                })}</div>
+            }
+        </div>
+    );
+}
+
+function CancellationsTab({ bookings, setBookings, allBookings }: { bookings: Booking[]; setBookings: any; allBookings: Booking[] }) {
+    const cancelled = bookings.filter(b => b.status === "cancelled");
+    const active = bookings.filter(b => b.status !== "cancelled");
+    const cancel = async (id: string) => {
+        if (!confirm("この予約をキャンセルしますか？")) return;
+        const res = await fetch("/api/admin-bookings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status: "cancelled" }) });
+        if (res.ok) setBookings(allBookings.map((b: Booking) => b.id === id ? { ...b, status: "cancelled" } : b));
+    };
+    return (
+        <div className="space-y-6">
+            <div>
+                <h2 className="font-black text-foreground mb-3">アクティブな予約 ({active.length}件)</h2>
+                <div className="space-y-3">
+                    {active.map(b => (
+                        <div key={b.id} className="bg-card border border-border rounded-2xl p-4 flex justify-between items-center">
+                            <div><p className="text-xs font-black text-purple-400">{b.roomName}</p><p className="font-black text-foreground">{b.date} {b.startTime}</p><p className="text-xs text-muted-foreground">{b.userName || b.userId}</p></div>
+                            <div className="flex gap-3 items-center"><p className="font-black text-foreground">¥{b.totalPrice?.toLocaleString()}</p><button onClick={() => cancel(b.id)} className="px-3 py-1.5 bg-red-800 hover:bg-red-700 rounded-lg text-xs font-black transition-all">キャンセル</button></div>
+                        </div>
+                    ))}
+                    {active.length === 0 && <p className="text-muted-foreground text-center py-8">アクティブな予約はありません</p>}
+                </div>
+            </div>
+            <div>
+                <h2 className="font-black text-foreground mb-3">キャンセル済 ({cancelled.length}件)</h2>
+                <div className="space-y-2">
+                    {cancelled.map(b => (
+                        <div key={b.id} className="bg-card/50 border border-border/50 rounded-xl p-3 flex justify-between opacity-60">
+                            <div><p className="text-xs font-bold text-muted-foreground">{b.roomName}</p><p className="text-sm font-bold text-muted-foreground">{b.date} {b.startTime}</p></div>
+                            <p className="text-sm font-bold text-muted-foreground">¥{b.totalPrice?.toLocaleString()}</p>
+                        </div>
+                    ))}
+                    {cancelled.length === 0 && <p className="text-muted-foreground text-center py-6">キャンセルはありません</p>}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ===== 共通UIパーツ =====
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+    return <div><h2 className="text-xs font-black text-purple-400 uppercase tracking-widest mb-4">{title}</h2><div className="space-y-4">{children}</div></div>;
+}
+function Subsection({ title, children }: { title: string; children: React.ReactNode }) {
+    return <div className="bg-accent/10/30 rounded-2xl p-4 space-y-3"><p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{title}</p>{children}</div>;
+}
+function Label({ children }: { children: React.ReactNode }) {
+    return <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{children}</p>;
+}
+function Field({ label, value, onChange, placeholder = "", type = "text" }: any) {
+    return (
+        <div>
+            <Label>{label}</Label>
+            <input type={type} className="w-full mt-1 p-2.5 bg-accent/10 border border-border rounded-xl text-sm font-bold text-foreground outline-none focus:border-purple-500 transition-all" value={value || ""} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+        </div>
+    );
+}
+function RadioGroup({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
+    return (
+        <div className="space-y-2">
+            {options.map(opt => (
+                <label key={opt.value} className="flex items-center gap-2 cursor-pointer">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${value === opt.value ? "border-purple-500" : "border-border"}`}>
+                        {value === opt.value && <div className="w-2 h-2 rounded-full bg-purple-500" />}
+                    </div>
+                    <input type="radio" className="hidden" value={opt.value} checked={value === opt.value} onChange={() => onChange(opt.value)} />
+                    <span className="text-sm font-bold text-muted-foreground">{opt.label}</span>
+                </label>
+            ))}
+        </div>
+    );
+}
+function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
+    return (
+        <label className="flex items-center gap-3 cursor-pointer">
+            <div onClick={() => onChange(!value)} className={`w-10 h-6 rounded-full transition-all relative ${value ? "bg-purple-600" : "bg-accent/20"}`}>
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${value ? "left-5" : "left-1"}`} />
+            </div>
+            <span className="text-sm font-bold text-muted-foreground">{label}</span>
+        </label>
+    );
+}
+function StorageImageUpload({ label, image, storagePath, onUpload }: { label: string; image?: string; storagePath: string; onUpload: (url: string) => void }) {
+    const [uploading, setUploading] = useState(false);
+    const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]; if (!file) return;
+        setUploading(true);
+        try {
+            const reader = new FileReader();
+            reader.onloadend = async () => { const url = await uploadImageToStorage(reader.result as string, storagePath); onUpload(url); setUploading(false); };
+            reader.readAsDataURL(file);
+        } catch { setUploading(false); }
+    };
+    return (
+        <div><Label>{label}</Label>
+            <div className="relative mt-1 bg-accent/10 border border-border h-32 rounded-xl overflow-hidden flex items-center justify-center cursor-pointer hover:border-purple-500 transition-all group">
+                {uploading ? <span className="text-purple-400 font-black text-xs animate-pulse">アップロード中...</span> : image ? <img src={image} className="w-full h-full object-cover" alt={label} /> : <span className="text-muted-foreground font-black text-xs group-hover:text-muted-foreground">クリックしてアップロード</span>}
+                {!uploading && <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFile} />}
+            </div>
+        </div>
+    );
+}
+function StorageMultiImageUpload({ label, images, storagePath, onChange }: { label: string; images: string[]; storagePath: string; onChange: (urls: string[]) => void }) {
+    const [uploading, setUploading] = useState(false);
+    const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]; if (!file) return;
+        setUploading(true);
+        try {
+            const reader = new FileReader();
+            reader.onloadend = async () => { const url = await uploadImageToStorage(reader.result as string, `${storagePath}/${Date.now()}`); onChange([...images, url]); setUploading(false); };
+            reader.readAsDataURL(file);
+        } catch { setUploading(false); }
+    };
+    return (
+        <div><Label>{label}</Label>
+            <div className="mt-1 grid grid-cols-3 gap-2">
+                {images.map((img, idx) => (
+                    <div key={idx} className="relative aspect-square bg-accent/10 rounded-lg overflow-hidden">
+                        <img src={img} className="w-full h-full object-cover" alt="" />
+                        <button onClick={() => onChange(images.filter((_, i) => i !== idx))} className="absolute top-1 right-1 bg-black/70 rounded-full w-5 h-5 text-red-400 text-xs flex items-center justify-center">✕</button>
+                    </div>
+                ))}
+                <label className={`aspect-square bg-accent/10 border border-dashed border-border rounded-lg flex items-center justify-center cursor-pointer hover:border-purple-500 transition-all ${uploading ? "opacity-50" : ""}`}>
+                    {uploading ? <span className="text-purple-400 text-xs animate-pulse">...</span> : <span className="text-muted-foreground text-xl">+</span>}
+                    {!uploading && <input type="file" accept="image/*" className="hidden" onChange={handleFile} />}
+                </label>
+            </div>
+        </div>
+    );
+}
+function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+    return (
+        <div className="bg-card border border-border rounded-2xl p-5">
+            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">{label}</p>
+            <p className="text-2xl font-black text-foreground">{value}</p>
+            <p className="text-xs text-muted-foreground mt-1">{sub}</p>
+        </div>
+    );
+}
+
+// ==================== PlanTab ====================
+const PLANS = [
+    {
+        key: "basic",
+        name: "ベーシック",
+        price: 3000,
+        desc: "小規模スタジオ向け",
+        features: ["スタジオ掲載1件", "予約管理", "メール通知"],
+    },
+    {
+        key: "standard",
+        name: "スタンダード",
+        price: 8000,
+        desc: "成長中のスタジオ向け",
+        features: ["スタジオ掲載3件", "予約管理", "メール通知", "クーポン発行", "分析レポート"],
+    },
+    {
+        key: "premium",
+        name: "プレミアム",
+        price: 15000,
+        desc: "大規模・複数店舗向け",
+        features: ["スタジオ掲載無制限", "予約管理", "メール通知", "クーポン発行", "分析レポート", "優先サポート", "カスタムブランディング"],
+    },
+];
+
+const PLAN_OPTIONS = [
+    { key: "sms", name: "SMS通知", price: 1000, desc: "予約時にSMSで通知" },
+    { key: "custom_domain", name: "カスタムドメイン", price: 2000, desc: "独自ドメインでページ公開" },
+    { key: "api_access", name: "API連携", price: 3000, desc: "外部システムとの連携" },
+];
+
+function PromotionsTab({ store, setStore }: any) {
+    const promotions = store.promotions || {};
+    const vowcha = promotions.vowcha || { enabled: false, qrImageUrl: "", discountText: "500円×12枚クーポン", description: "バウチャアプリでデジタルクーポンをゲット！" };
+    const customList: any[] = promotions.customList || [];
+    const [uploadingId, setUploadingId] = React.useState<string | null>(null);
+
+    const updateVowcha = (field: string, val: any) => {
+        setStore((s: any) => ({ ...s, promotions: { ...s.promotions, vowcha: { ...vowcha, [field]: val } } }));
+    };
+    const addCustom = () => {
+        const newItem = { id: Date.now().toString(), title: "新しい特典", description: "内容を入力してください", imageUrl: "", validUntil: "", requiresLogin: true };
+        setStore((s: any) => ({ ...s, promotions: { ...s.promotions, customList: [...customList, newItem] } }));
+    };
+    const updateCustom = (id: string, field: string, val: any) => {
+        setStore((s: any) => ({ ...s, promotions: { ...s.promotions, customList: customList.map((c: any) => c.id === id ? { ...c, [field]: val } : c) } }));
+    };
+    const removeCustom = (id: string) => {
+        setStore((s: any) => ({ ...s, promotions: { ...s.promotions, customList: customList.filter((c: any) => c.id !== id) } }));
+    };
+    const handleCustomImageUpload = async (id: string, file: File) => {
+        setUploadingId(id);
+        try {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onloadend = async () => {
+                try {
+                    const base64 = reader.result as string;
+                    const url = await uploadImageToStorage(base64, `studios/${store.id}/promotions/${id}`);
+                    updateCustom(id, "imageUrl", url);
+                    setUploadingId(null);
+                } catch (uploadError: any) {
+                    console.error("Upload error:", uploadError);
+                    alert(`画像アップロードに失敗しました: ${uploadError.message || "不明なエラー"}`);
+                    setUploadingId(null);
+                }
+            };
+            reader.onerror = () => {
+                alert("ファイルの読み込みに失敗しました");
+                setUploadingId(null);
+            };
+        } catch (e: any) {
+            alert(`エラーが発生しました: ${e.message}`);
+            setUploadingId(null);
+        }
+    };
+
+    return (
+        <div className="space-y-8">
+            <div>
+                <h3 className="font-black text-foreground text-base mb-1">特典・クーポン設定</h3>
+                <p className="text-muted-foreground text-xs mb-4">店舗ページに表示される特典・クーポン情報を設定します</p>
+            </div>
+
+            {/* バウチャクーポン設定 */}
+            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <p className="font-black text-foreground text-sm">バウチャクーポン</p>
+                            <a href="/about/voucha" target="_blank" className="text-[10px] text-purple-400 hover:text-purple-300 underline font-bold transition-colors">バウチャクーポンとは？</a>
+                        </div>
+                        <p className="text-muted-foreground text-xs mt-0.5">株式会社ACTIVAのデジタルクーポンサービス</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" className="sr-only peer" checked={vowcha.enabled} onChange={e => updateVowcha("enabled", e.target.checked)} />
+                        <div className="w-10 h-5 bg-gray-600 peer-checked:bg-purple-600 rounded-full transition-all after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-5" />
+                    </label>
+                </div>
+                {vowcha.enabled ? (
+                    <div className="space-y-4 p-5">
+                        <div>
+                            <label className="text-xs font-bold text-foreground block mb-1">クーポン説明文</label>
+                            <input value={vowcha.discountText} onChange={e => updateVowcha("discountText", e.target.value)} className="w-full bg-accent/10 border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-purple-500" placeholder="例: 500円×12枚クーポン" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-foreground block mb-1">サブ説明文</label>
+                            <input value={vowcha.description} onChange={e => updateVowcha("description", e.target.value)} className="w-full bg-accent/10 border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-purple-500" placeholder="例: バウチャアプリでデジタルクーポンをゲット！" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-foreground block mb-1">QRコード画像URL（任意）</label>
+                            <input value={vowcha.qrImageUrl} onChange={e => updateVowcha("qrImageUrl", e.target.value)} className="w-full bg-accent/10 border border-border rounded-lg px-3 py-2 text-sm text-foreground font-mono outline-none focus:border-purple-500" placeholder="https://..." />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-foreground block mb-1">バウチャリンクURL（任意）</label>
+                            <input value={vowcha.linkUrl || ""} onChange={e => updateVowcha("linkUrl", e.target.value)} className="w-full bg-accent/10 border border-border rounded-lg px-3 py-2 text-sm text-foreground font-mono outline-none focus:border-purple-500" placeholder="https://vowcha.net/..." />
+                        </div>
+                        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3">
+                            <p className="text-xs text-blue-400 font-bold">ログイン済みユーザーのみ表示されます</p>
+                            <p className="text-xs text-blue-300/70 mt-0.5">未ログインのユーザーにはログイン促進メッセージを表示します</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="px-5 py-4">
+                        <p className="text-xs text-muted-foreground">オフの場合、ユーザーの予約ページにバウチャクーポン情報は表示されません</p>
+                    </div>
+                )}
+            </div>
+
+            {/* 店舗独自特典 */}
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <p className="font-black text-foreground text-sm">店舗独自特典</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">店舗ページに表示する独自の特典・サービス</p>
+                    </div>
+                    <button onClick={addCustom} className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-black text-white transition-all">+ 追加</button>
+                </div>
+                {customList.length === 0 && (
+                    <div className="text-center py-8 border border-dashed border-border rounded-2xl">
+                        <p className="text-muted-foreground text-xs">特典がまだありません</p>
+                        <p className="text-muted-foreground text-xs mt-1">「＋追加」ボタンで作成できます</p>
+                    </div>
+                )}
+                {customList.map((item: any) => (
+                    <div key={item.id} className="bg-card border border-border rounded-2xl overflow-hidden">
+                        {/* 画像エリア */}
+                        <div className="relative">
+                            {item.imageUrl ? (
+                                <div className="relative h-28 bg-accent/10">
+                                    <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                                    <button onClick={() => updateCustom(item.id, "imageUrl", "")} className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-lg hover:bg-black/80 transition-all">画像を削除</button>
+                                </div>
+                            ) : (
+                                <label className="flex flex-col items-center justify-center h-20 bg-accent/10 border-b border-border cursor-pointer hover:bg-accent/20 transition-all">
+                                    <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleCustomImageUpload(item.id, f); }} />
+                                    {uploadingId === item.id ? (
+                                        <p className="text-xs text-muted-foreground font-bold animate-pulse">アップロード中...</p>
+                                    ) : (
+                                        <>
+                                            <p className="text-2xl text-muted-foreground/50">+</p>
+                                            <p className="text-xs text-muted-foreground font-bold mt-1">画像をアップロード</p>
+                                        </>
+                                    )}
+                                </label>
+                            )}
+                        </div>
+                        <div className="p-4 space-y-3">
+                            <div className="flex gap-2 items-start">
+                                <div className="flex-1">
+                                    <label className="text-xs font-bold text-muted-foreground">タイトル</label>
+                                    <input value={item.title} onChange={e => updateCustom(item.id, "title", e.target.value)} className="w-full mt-1 bg-accent/10 border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-purple-500" />
+                                </div>
+                                <button onClick={() => removeCustom(item.id)} className="text-red-500 hover:text-red-400 text-xs font-bold mt-5 shrink-0">削除</button>
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-muted-foreground">説明文</label>
+                                <textarea value={item.description} onChange={e => updateCustom(item.id, "description", e.target.value)} rows={2} className="w-full mt-1 bg-accent/10 border border-border rounded-lg px-3 py-2 text-sm text-foreground resize-none outline-none focus:border-purple-500" />
+                            </div>
+                            <div className="flex gap-3 items-end">
+                                <div className="flex-1">
+                                    <label className="text-xs font-bold text-muted-foreground">有効期限（任意）</label>
+                                    <input type="date" value={item.validUntil} onChange={e => updateCustom(item.id, "validUntil", e.target.value)} className="w-full mt-1 bg-accent/10 border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none" />
+                                </div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-foreground cursor-pointer mb-2">
+                                    <input type="checkbox" checked={item.requiresLogin} onChange={e => updateCustom(item.id, "requiresLogin", e.target.checked)} className="w-4 h-4 accent-purple-600" />
+                                    ログイン必須
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function PlanTab({ store, setStore, notify }: any) {
+    const currentPlan = store.planKey || null;
+    const currentOptions = store.planOptions || [];
+    const [selectedPlan, setSelectedPlan] = React.useState(currentPlan);
+    const [selectedOptions, setSelectedOptions] = React.useState<string[]>(currentOptions);
+    const [payMethod, setPayMethod] = React.useState("stripe");
+    const [saving, setSaving] = React.useState(false);
+
+    const toggleOption = (key: string) => {
+        setSelectedOptions(prev =>
+            prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+        );
+    };
+
+    const totalMonthly = () => {
+        const plan = PLANS.find(p => p.key === selectedPlan);
+        const planPrice = plan ? plan.price : 0;
+        const optPrice = selectedOptions.reduce((sum, k) => {
+            const o = PLAN_OPTIONS.find(o => o.key === k);
+            return sum + (o ? o.price : 0);
+        }, 0);
+        return planPrice + optPrice;
+    };
+
+    const handleSave = async () => {
+        if (!selectedPlan) { notify("プランを選択してください", "error"); return; }
+        setSaving(true);
+        try {
+            const updated = { ...store, planKey: selectedPlan, planOptions: selectedOptions, planPayMethod: payMethod, planUpdatedAt: new Date().toISOString() };
+            const { saveStudioToFirestore } = await import("@/lib/db-firestore");
+            await saveStudioToFirestore(updated);
+            setStore(updated);
+            if (payMethod === "stripe") {
+                const res = await fetch("/api/store/subscribe", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ studioId: store.id, planKey: selectedPlan, options: selectedOptions, storeEmail: store.email }),
+                });
+                const data = await res.json();
+                if (data.sessionUrl) {
+                    window.location.href = data.sessionUrl;
+                    return;
+                }
+            }
+            notify("プランを保存しました", "success");
+        } catch (e) {
+            notify("保存に失敗しました", "error");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="p-6 space-y-8 max-w-2xl">
+            <div>
+                <h2 className="text-foreground font-black text-lg mb-1">プラン選択</h2>
+                <p className="text-muted-foreground text-xs mb-4">月額料金はStudi-Goへの掲載・利用料です</p>
+                <div className="grid gap-3">
+                    {PLANS.map(plan => (
+                        <button key={plan.key} onClick={() => setSelectedPlan(plan.key)}
+                            className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${selectedPlan === plan.key ? "border-purple-500 bg-purple-600/10" : "border-border bg-card hover:border-gray-500"}`}>
+                            <div className="flex justify-between items-center mb-1">
+                                <span className="font-black text-foreground">{plan.name}</span>
+                                <span className="text-purple-400 font-black">¥{plan.price.toLocaleString()}<span className="text-muted-foreground text-xs font-normal">/月</span></span>
+                            </div>
+                            <p className="text-muted-foreground text-xs mb-2">{plan.desc}</p>
+                            <div className="flex flex-wrap gap-1">
+                                {plan.features.map(f => (
+                                    <span key={f} className="text-xs bg-accent/10 text-muted-foreground px-2 py-0.5 rounded-full">{f}</span>
+                                ))}
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div>
+                <h2 className="text-foreground font-black text-lg mb-1">オプション</h2>
+                <p className="text-muted-foreground text-xs mb-4">必要なオプションを追加できます（月額）</p>
+                <div className="grid gap-3">
+                    {PLAN_OPTIONS.map(opt => (
+                        <button key={opt.key} onClick={() => toggleOption(opt.key)}
+                            className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${selectedOptions.includes(opt.key) ? "border-purple-500 bg-purple-600/10" : "border-border bg-card hover:border-gray-500"}`}>
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <span className="font-black text-foreground text-sm">{opt.name}</span>
+                                    <p className="text-muted-foreground text-xs mt-0.5">{opt.desc}</p>
+                                </div>
+                                <span className="text-purple-400 font-black text-sm">+¥{opt.price.toLocaleString()}<span className="text-muted-foreground text-xs font-normal">/月</span></span>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div>
+                <h2 className="text-foreground font-black text-lg mb-3">お支払い方法</h2>
+                <div className="grid grid-cols-2 gap-3">
+                    {[{key:"stripe",label:"💳 クレジットカード"},{key:"invoice",label:"🧾 請求書払い"}].map(m => (
+                        <button key={m.key} onClick={() => setPayMethod(m.key)}
+                            className={`p-4 rounded-2xl border-2 font-black text-sm transition-all ${payMethod === m.key ? "border-purple-500 bg-purple-600/10 text-white" : "border-border bg-card text-muted-foreground hover:border-gray-500"}`}>
+                            {m.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="bg-card border border-border rounded-2xl p-4">
+                <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground font-bold">月額合計</span>
+                    <span className="text-3xl font-black text-purple-400">¥{totalMonthly().toLocaleString()}<span className="text-muted-foreground text-sm font-normal">/月</span></span>
+                </div>
+                {currentPlan && (
+                    <p className="text-muted-foreground text-xs mt-1">現在: {PLANS.find(p=>p.key===currentPlan)?.name} プラン</p>
+                )}
+            </div>
+
+            <button onClick={handleSave} disabled={saving || !selectedPlan}
+                className="w-full py-4 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded-2xl font-black text-white transition-all">
+                {saving ? "処理中..." : payMethod === "stripe" ? "Stripeで契約する" : "プランを保存する"}
+            </button>
+        </div>
+    );
+}
+
+function ConnectBankAccount({ store, setStore }: any) {
+    const [loading, setLoading] = React.useState(false);
+    const [status, setStatus] = React.useState(store.stripeAccountStatus || "none");
+
+    React.useEffect(() => {
+        if (store.id) {
+            fetch(`/api/store/connect?studioId=${store.id}`)
+                .then(r => r.json())
+                .then(d => { if (d.status) setStatus(d.status); });
+        }
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("connect") === "success") {
+            setStatus("active");
+        }
+    }, [store.id]);
+
+    const handleConnect = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch("/api/store/connect", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ studioId: store.id }),
+            });
+            const data = await res.json();
+            if (data.url) window.location.href = data.url;
+            else alert("エラー: " + data.error);
+        } catch (e) {
+            alert("通信エラーが発生しました");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="space-y-3">
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold ${
+                status === "active" ? "bg-green-500/10 text-green-400" :
+                status === "pending" ? "bg-yellow-500/10 text-yellow-400" :
+                "bg-accent/10 text-muted-foreground"
+            }`}>
+                <span>{status === "active" ? "✅ 口座登録済み・有効" : status === "pending" ? "⏳ 審査中・設定未完了" : "❌ 未登録"}</span>
+            </div>
+            <button onClick={handleConnect} disabled={loading || status === "active"}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded-lg text-xs font-black text-white transition-all">
+                {loading ? "処理中..." : status === "active" ? "登録済み" : status === "pending" ? "設定を続ける" : "振込口座を登録する"}
+            </button>
+            <p className="text-xs text-muted-foreground">Stripeのセキュアな画面で銀行口座を登録します。登録後、ユーザーの決済金額が直接振り込まれます。</p>
+        </div>
     );
 }

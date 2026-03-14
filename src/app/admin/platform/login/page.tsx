@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import Image from 'next/image';
 
 export default function PlatformAdminLoginPage() {
+    const [showPw, setShowPw] = useState(false)
     const [error, setError] = useState('');
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
@@ -62,13 +63,19 @@ export default function PlatformAdminLoginPage() {
                     </div>
                     <div className="space-y-2">
                         <label className="text-[10px] font-bold text-muted-foreground tracking-wider ml-1 uppercase">パスワード</label>
-                        <Input
-                            name="password"
-                            type="password"
-                            placeholder="パスワードを入力"
-                            className="bg-muted/50 border-border text-foreground focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 h-12 rounded-xl"
-                            required
-                        />
+                        <div className="relative">
+                            <Input
+                                name="password"
+                                type={showPw ? "text" : "password"}
+                                placeholder="パスワードを入力"
+                                className="bg-muted/50 border-border text-foreground focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 h-12 rounded-xl pr-12"
+                                required
+                            />
+                            <button type="button" onClick={() => setShowPw(p => !p)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors text-xs font-bold">
+                                {showPw ? "隠す" : "表示"}
+                            </button>
+                        </div>
                     </div>
 
                     {error && (

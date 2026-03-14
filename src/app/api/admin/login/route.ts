@@ -1,21 +1,16 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
-
+// 環境変数で管理。.envに ADMIN_EMAIL / ADMIN_PASSWORD を設定すること
 export async function POST(request: Request) {
     try {
         const body = await request.json();
+        const adminEmail = process.env.ADMIN_EMAIL ?? "kantoku@studi-go.com";
+        const adminPassword = process.env.ADMIN_PASSWORD ?? "password123";
 
-        const admin = await prisma.admin.findUnique({
-            where: { email: body.email }
-        });
-
-        if (admin && admin.password === body.password) {
+        if (body.email === adminEmail && body.password === adminPassword) {
             return NextResponse.json({ success: true });
-        } else {
-            return NextResponse.json({ success: false }, { status: 401 });
         }
+        return NextResponse.json({ success: false }, { status: 401 });
     } catch (error: any) {
         return NextResponse.json({ error: "Server Error" }, { status: 500 });
     }

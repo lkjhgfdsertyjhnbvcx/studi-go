@@ -32,7 +32,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [backgroundColor, setBackgroundColor] = useState<string>("#000000");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoSize, setLogoSize] = useState<number>(100);
-  const [mode, setMode] = useState<Mode>("dark");
+  const [mode, setMode] = useState<Mode>("light");
   const [mounted, setMounted] = useState(false);
 
   // Load theme from localStorage on mount

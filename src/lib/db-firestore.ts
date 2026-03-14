@@ -47,7 +47,7 @@ function toPlainObject(obj: any): any {
             if (key === 'designSettings' && value && typeof value === 'object') {
                 result[key] = {
                     logoSize: Number(value.logoSize) || 100,
-                    backgroundColor: String(value.backgroundColor || "#000000"),
+                    backgroundColor: String(value.backgroundColor || "#ffffff"),
                     backgroundType: String(value.backgroundType || "color"),
                     backgroundImageUrl: value.backgroundImageUrl ? String(value.backgroundImageUrl) : "",
                     showMap: value.showMap !== false
@@ -350,3 +350,5 @@ export const deleteCouponFromFirestore = async (id: string): Promise<void> => {
         throw e;
     }
 };
+
+// ← これは残す（既存の正しいコード）

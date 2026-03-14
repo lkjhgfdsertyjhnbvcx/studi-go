@@ -190,3 +190,121 @@
     padding: 0 !important;
   }
 }
+
+/* ===== ブランドカラー: #4910bc（ロイヤルパープル）で全紫を統一 ===== */
+.bg-purple-400,
+.bg-purple-500,
+.bg-purple-600,
+.bg-purple-700,
+.bg-purple-800,
+.bg-purple-900 {
+  background-color: #4910bc !important;
+  color: #ffffff !important;
+}
+
+/* ホバー時は少し暗く */
+.hover\:bg-purple-400:hover,
+.hover\:bg-purple-500:hover,
+.hover\:bg-purple-600:hover,
+.hover\:bg-purple-700:hover,
+.hover\:bg-purple-800:hover,
+.hover\:bg-purple-900:hover {
+  background-color: #37099a !important;
+}
+
+/* 選択・アクティブ状態のボーダー */
+.border-purple-400,
+.border-purple-500,
+.border-purple-600,
+.border-purple-700,
+.border-purple-800 {
+  border-color: #6b2fe0 !important;
+}
+
+/* 薄い紫背景（bg-purple-xxx/xx や bg-purple-900/20 など）*/
+.bg-purple-900\/20 { background-color: rgba(73, 16, 188, 0.15) !important; }
+.bg-purple-600\/20 { background-color: rgba(73, 16, 188, 0.12) !important; }
+.bg-purple-600\/40 { background-color: rgba(73, 16, 188, 0.28) !important; }
+.hover\:bg-purple-600\/40:hover { background-color: rgba(73, 16, 188, 0.35) !important; }
+
+/* 薄い紫文字・背景（bg-purple-100 等）*/
+.bg-purple-100 { background-color: rgba(73, 16, 188, 0.10) !important; }
+.text-purple-800 { color: #4910bc !important; }
+.text-purple-300 { color: #a67ff5 !important; }
+
+/* グロー付きボタン（メインアクションボタン） */
+button.bg-purple-600,
+a.bg-purple-600,
+button.bg-purple-800,
+a.bg-purple-800 {
+  box-shadow: 0 4px 20px rgba(73, 16, 188, 0.40), 0 1px 4px rgba(0,0,0,0.2) !important;
+  transition: background-color 0.2s ease, box-shadow 0.25s ease, transform 0.15s ease !important;
+}
+button.bg-purple-600:hover,
+a.bg-purple-600:hover,
+button.bg-purple-800:hover,
+a.bg-purple-800:hover {
+  box-shadow: 0 6px 28px rgba(73, 16, 188, 0.55), 0 2px 8px rgba(0,0,0,0.25) !important;
+  transform: translateY(-1px) !important;
+}
+button.bg-purple-600:active,
+a.bg-purple-600:active,
+button.bg-purple-800:active,
+a.bg-purple-800:active {
+  transform: translateY(0px) !important;
+  box-shadow: 0 2px 12px rgba(73, 16, 188, 0.35) !important;
+}
+
+/* ===== 高級感ボタン共通スタイル ===== */
+[style*="--sg-accent"],
+button[class*="bg-[var(--sg-accent)]"],
+a[class*="bg-[var(--sg-accent)]"] {
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+/* sg-accentを背景に持つボタン全般にグロー */
+.sg-btn-primary {
+  background: var(--sg-accent);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 18px var(--sg-accent-glow), 0 1px 4px rgba(0,0,0,0.2);
+  transition: background 0.2s ease, box-shadow 0.25s ease, transform 0.15s ease;
+}
+.sg-btn-primary:hover {
+  background: var(--sg-accent-hover);
+  box-shadow: 0 6px 28px var(--sg-accent-glow), 0 2px 8px rgba(0,0,0,0.25);
+  transform: translateY(-1px);
+}
+.sg-btn-primary:active {
+  transform: translateY(0px);
+  box-shadow: 0 2px 10px var(--sg-accent-glow);
+}
+
+/* ===== Studi-Go Theme Variables ===== */
+:root {
+  --sg-bg: #f5f5f7;
+  --sg-surface: #ffffff;
+  --sg-text-primary: #1d1d1f;
+  --sg-text-secondary: #6e6e73;
+  --sg-border: #d2d2d7;
+  --sg-accent: #4910bc;
+  --sg-accent-hover: #37099a;
+  --sg-accent-soft: rgba(73, 16, 188, 0.08);
+  --sg-accent-glow: rgba(73, 16, 188, 0.35);
+  --sg-error: #ff3b30;
+  --sg-shadow-card: 0 8px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.dark {
+  --sg-bg: #000000;
+  --sg-surface: #1c1c1e;
+  --sg-text-primary: #f5f5f7;
+  --sg-text-secondary: #98989d;
+  --sg-border: #38383a;
+  --sg-accent: #5c1fd4;
+  --sg-accent-hover: #4910bc;
+  --sg-accent-soft: rgba(73, 16, 188, 0.15);
+  --sg-accent-glow: rgba(92, 31, 212, 0.4);
+  --sg-error: #ff453a;
+  --sg-shadow-card: 0 8px 40px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
+}

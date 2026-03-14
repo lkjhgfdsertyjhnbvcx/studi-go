@@ -1,129 +1,576 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
 
 export default function MyPage() {
-    const router = useRouter();
-    const [user, setUser] = useState<any>(null);
-    const [bookings, setBookings] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [isEditing, setIsEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState("profile");
+  const [userId, setUserId] = useState("");
+  const [user, setUser] = useState<any>(null);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [saveMsg, setSaveMsg] = useState("");
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
+  const [cancelMsg, setCancelMsg] = useState<{type: "success"|"error", text: string} | null>(null);
 
-    // 編集用ステート
-    const [editName, setEditName] = useState("");
-    const [editPhone, setEditPhone] = useState("");
-    const [editEmail, setEditEmail] = useState("");
-    const [editAddress, setEditAddress] = useState("");
+  useEffect(() => {
+    const id = localStorage.getItem("userId");
+    if (!id) { window.location.href = "/login"; return; }
+    setUserId(id);
+    fetchUser(id);
+    fetchBookings(id);
+  }, []);
 
-    useEffect(() => {
-        fetch('/api/my-bookings').then(res => res.json()).then(data => {
-            if (!data.error) {
-                setUser(data.user);
-                setBookings(data.bookings);
-                setEditName(data.user.name);
-                setEditPhone(data.user.phone || "");
-                setEditEmail(data.user.email || "");
-                setEditAddress(data.user.address || "");
-            }
-            setLoading(false);
-        });
-    }, []);
+  const fetchUser = async (id: string) => {
+    try {
+      const res = await fetch("/api/users/" + id);
+      const data = await res.json();
+      if (data && !data.error) {
+        setUser(data);
+        setEditName(data.name || "");
+        setEditEmail(data.email || "");
+        setEditPhone(data.phone || "");
+      }
+    } catch(e) {}
+    setLoading(false);
+  };
 
-    const handleUpdate = async () => {
-        const res = await fetch('/api/users/update', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name: editName,
-                phone: editPhone,
-                email: editEmail,
-                address: editAddress
-            })
-        });
-        if (res.ok) {
-            setUser({ ...user, name: editName, phone: editPhone, email: editEmail, address: editAddress });
-            setIsEditing(false);
-            alert("プロフィールを更新しました！");
-        }
-    };
+  const fetchBookings = async (id: string) => {
+    try {
+      const res = await fetch("/api/my-bookings?userId=" + id);
+      const data = await res.json();
+      if (data.bookings) setBookings(data.bookings);
+      else if (Array.isArray(data)) setBookings(data);
+    } catch(e) {}
+  };
 
-    if (loading) return <div className="p-20 text-center font-black animate-pulse text-purple-800">LOADING...</div>;
+  const handleCancelBooking = async (bookingId: string) => {
+    if (!confirm("この予約をキャンセルしますか？\nキャンセルした予約は元に戻せません。")) return;
+    setCancelingId(bookingId);
+    setCancelMsg(null);
+    try {
+      const res = await fetch("/api/cancel-booking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId, userId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: "cancelled" } : b));
+        const msg = data.refund?.success
+          ? "予約をキャンセルしました。返金処理が開始されました。"
+          : "予約をキャンセルしました。";
+        setCancelMsg({ type: "success", text: msg });
+      } else {
+        setCancelMsg({ type: "error", text: data.error || "キャンセルに失敗しました" });
+      }
+    } catch(e) {
+      setCancelMsg({ type: "error", text: "通信エラーが発生しました" });
+    }
+    setCancelingId(null);
+    setTimeout(() => setCancelMsg(null), 5000);
+  };
 
-    return (
-        <div className="min-h-screen bg-[#F8F9FD] p-6 md:p-12 font-sans">
-            <div className="max-w-4xl mx-auto">
-                <div className="flex justify-between items-center mb-10">
-                    <h1 className="text-4xl font-black italic tracking-tighter text-gray-900">MY PAGE</h1>
-                    <button onClick={() => router.push('/booking')} className="px-6 py-2 bg-white border border-gray-200 rounded-full font-bold text-sm shadow-sm hover:bg-gray-50 transition-all">予約に戻る</button>
-                </div>
+  const isFutureBooking = (b: any): boolean => {
+    if (!b.date || !b.startTime) return false;
+    const bookingDT = new Date(`${b.date}T${b.startTime}:00`);
+    return bookingDT > new Date();
+  };
 
-                {/* 🌟 プロフィールカード */}
-                <div className="bg-white rounded-[2.5rem] p-10 shadow-2xl border border-gray-100 mb-10 relative overflow-hidden">
-                    <div className="relative z-10">
-                        {isEditing ? (
-                            <div className="space-y-4 max-w-lg">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <input value={editName} onChange={(e) => setEditName(e.target.value)} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none" placeholder="名前" />
-                                    <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none" placeholder="電話番号" />
-                                </div>
-                                <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="w-full p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none" placeholder="メールアドレス" />
-                                <input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} className="w-full p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none" placeholder="住所" />
-                                <div className="flex gap-2">
-                                    <button onClick={handleUpdate} className="flex-1 py-3 bg-purple-800 text-white rounded-xl font-black shadow-lg">保存</button>
-                                    <button onClick={() => setIsEditing(false)} className="flex-1 py-3 bg-gray-100 text-gray-400 rounded-xl font-black">キャンセル</button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex justify-between items-start">
-                                <div className="space-y-6">
-                                    <div>
-                                        <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">Active Member</p>
-                                        <h2 className="text-3xl font-black text-gray-900">{user.name} 様</h2>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-y-6 gap-x-12">
-                                        <div>
-                                            <p className="text-[10px] font-black text-gray-300 uppercase">Email</p>
-                                            <p className="text-sm font-black text-gray-900">{user.email || "未登録"}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-black text-gray-300 uppercase">Phone</p>
-                                            <p className="text-sm font-black text-gray-900">{user.phone || "未登録"}</p>
-                                        </div>
-                                        <div className="col-span-2">
-                                            <p className="text-[10px] font-black text-gray-300 uppercase">Address</p>
-                                            <p className="text-sm font-black text-gray-900">{user.address || "未登録"}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <button onClick={() => setIsEditing(true)} className="p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 text-xl">📝</button>
-                            </div>
-                        )}
-                    </div>
-                </div>
+  const handleSaveProfile = async () => {
+    try {
+      const res = await fetch("/api/users/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: userId, name: editName, email: editEmail, phone: editPhone }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUser({ ...user, name: editName, email: editEmail, phone: editPhone });
+        localStorage.setItem("userName", editName);
+        setEditMode(false);
+        setSaveMsg("保存しました！");
+        setTimeout(() => setSaveMsg(""), 3000);
+      }
+    } catch(e) {}
+  };
 
-                {/* 🌟 予約履歴 */}
-                <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
-                    <span className="w-2 h-8 bg-purple-800 rounded-full"></span>
-                    予約履歴
-                </h3>
-                <div className="space-y-4">
-                    {bookings.map(b => (
-                        <div key={b.id} className="bg-white border border-gray-100 rounded-[1.5rem] p-6 flex justify-between items-center shadow-sm">
-                            <div className="flex items-center gap-6">
-                                <div className="text-center bg-gray-50 px-4 py-2 rounded-xl min-w-[60px]">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase">{new Date(b.startTime).toLocaleDateString('ja-JP', { weekday: 'short' })}</p>
-                                    <p className="text-lg font-black text-gray-900">{new Date(b.startTime).getDate()}</p>
-                                </div>
-                                <div>
-                                    <p className="font-black text-gray-900">{new Date(b.startTime).getHours()}:00 〜 {new Date(b.endTime).getHours()}:00</p>
-                                    <p className="text-xs font-bold text-gray-400">{b.studio?.name}</p>
-                                </div>
-                            </div>
-                            <p className="text-lg font-black text-purple-800">¥{b.totalPrice.toLocaleString()}</p>
-                        </div>
-                    ))}
-                </div>
+  const tabs = [
+    { id: "profile",   label: "プロフィール" },
+    { id: "bookings",  label: "予約履歴" },
+    { id: "bands",     label: "バンド" },
+    { id: "coupons",   label: "クーポン" },
+    { id: "favorites", label: "お気に入り" },
+  ];
+
+  if (loading) return (
+    <>
+      <style>{baseStyles}</style>
+      <div className="sg-loading">
+        <div className="sg-spinner" />
+      </div>
+    </>
+  );
+
+  return (
+    <>
+      <style>{`${baseStyles}${pageStyles}`}</style>
+
+      <div className="sg-page">
+        {/* ヘッダー */}
+        <header className="sg-header">
+          <div className="sg-header-inner">
+            <Link href="/studios">
+              <Image src="/logo-new.png" alt="Studi-Go" width={100} height={28} style={{ height: 28, width: "auto" }} priority />
+            </Link>
+            <span className="sg-header-label">マイページ</span>
+          </div>
+        </header>
+
+        <div className="sg-content">
+          {/* アバc��ー */}
+          <div className="sg-avatar-section">
+            <div className="sg-avatar">
+              {user?.name?.[0] || "?"}
             </div>
+            <h1 className="sg-user-name">{user?.name || "ゲスト"}</h1>
+            <p className="sg-user-email">{user?.email || ""}</p>
+          </div>
+
+          {/* タブ */}
+          <div className="sg-tabs-wrap">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                className={`sg-tab${activeTab === tab.id ? " active" : ""}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* プロフィール */}
+          {activeTab === "profile" && (
+            <div className="sg-card">
+              <div className="sg-card-header">
+                <span className="sg-card-title">プロフィール</span>
+                <button className="sg-link-btn" onClick={() => setEditMode(!editMode)}>
+                  {editMode ? "キャンセル" : "編集"}
+                </button>
+              </div>
+              {saveMsg && <p className="sg-success-msg">{saveMsg}</p>}
+              {editMode ? (
+                <div className="sg-form">
+                  {[
+                    { label: "お名前", value: editName, setter: setEditName },
+                    { label: "メールアドレス", value: editEmail, setter: setEditEmail },
+                    { label: "電話番号", value: editPhone, setter: setEditPhone },
+                  ].map((f, i) => (
+                    <div key={i} className="sg-form-group">
+                      <label className="sg-form-label">{f.label}</label>
+                      <input
+                        className="sg-form-input"
+                        value={f.value}
+                        onChange={e => f.setter(e.target.value)}
+                      />
+                    </div>
+                  ))}
+                  <button className="sg-btn-primary" onClick={handleSaveProfile}>保存する</button>
+                </div>
+              ) : (
+                <div className="sg-info-list">
+                  {[
+                    { label: "お名前", value: user?.name },
+                    { label: "メール", value: user?.email },
+                    { label: "電話番号", value: user?.phone },
+                    { label: "登録日", value: user?.createdAt ? new Date(user.createdAt).toLocaleDateString("ja-JP") : "" },
+                  ].map((item, i) => (
+                    <div key={i} className="sg-info-row">
+                      <span className="sg-info-label">{item.label}</span>
+                      <span className="sg-info-value">{item.value || "-"}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 予約履歴 */}
+          {activeTab === "bookings" && (
+            <div>
+              <p className="sg-section-eyebrow">予約履歴</p>
+
+              {/* キャンセル結果メッセージ */}
+              {cancelMsg && (
+                <div style={{
+                  padding: "12px 16px",
+                  borderRadius: 12,
+                  marginBottom: 12,
+                  fontWeight: 700,
+                  fontSize: 14,
+                  background: cancelMsg.type === "success" ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
+                  color: cancelMsg.type === "success" ? "#059669" : "#dc2626",
+                  border: `1px solid ${cancelMsg.type === "success" ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)"}`,
+                }}>
+                  {cancelMsg.type === "success" ? "✓ " : "✗ "}{cancelMsg.text}
+                </div>
+              )}
+
+              {bookings.length === 0 ? (
+                <div className="sg-empty">
+                  <div className="sg-empty-icon">
+                    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><rect x="3" y="4" width="20" height="19" rx="3" stroke="currentColor" strokeWidth="1.5"/><path d="M8 2v4M18 2v4M3 10h20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  </div>
+                  <p className="sg-empty-title">予約履歴がありません</p>
+                  <Link href="/" className="sg-empty-link">スタジオを探す →</Link>
+                </div>
+              ) : bookings.map((b, i) => (
+                <div key={i} className="sg-booking-card" style={{
+                  opacity: b.status === "cancelled" ? 0.55 : 1,
+                }}>
+                  <div className="sg-booking-top">
+                    <p className="sg-booking-studio">{b.studioName || b.studioId}</p>
+                    <span className={`sg-status-badge ${
+                      b.status === "confirmed" ? "confirmed" :
+                      b.status === "cancelled" ? "cancelled" : ""
+                    }`} style={{
+                      background: b.status === "cancelled" ? "rgba(239,68,68,0.12)" : undefined,
+                      color: b.status === "cancelled" ? "#dc2626" : undefined,
+                    }}>
+                      {b.status === "confirmed" ? "✓ 確定" :
+                       b.status === "cancelled" ? "キャンセル済" :
+                       b.status === "pending" ? "決済待ち" : b.status}
+                    </span>
+                  </div>
+                  <p className="sg-booking-date">{b.date} {b.startTime}〜</p>
+                  {b.roomName && <p style={{ fontSize: 12, color: "var(--sg-text-secondary)", marginBottom: 4 }}>{b.roomName}</p>}
+                  <p className="sg-booking-price">¥{(b.totalPrice || 0).toLocaleString()}</p>
+                  <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    {b.status !== "cancelled" && (
+                      <a href={`/receipt?studioName=${b.studioName||b.studioId}&roomName=${b.roomName||""}&date=${b.date||""}&startTime=${b.startTime||""}&total=${b.totalPrice||0}&bookingId=${b.id||""}&options=${b.options||""}`}
+                        className="sg-receipt-btn">領収証を発行</a>
+                    )}
+                    {b.status !== "cancelled" && isFutureBooking(b) && (
+                      <button
+                        onClick={() => handleCancelBooking(b.id)}
+                        disabled={cancelingId === b.id}
+                        style={{
+                          padding: "8px 14px",
+                          borderRadius: 10,
+                          border: "1px solid rgba(239,68,68,0.4)",
+                          background: "rgba(239,68,68,0.08)",
+                          color: "#dc2626",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: cancelingId === b.id ? "not-allowed" : "pointer",
+                          opacity: cancelingId === b.id ? 0.6 : 1,
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        {cancelingId === b.id ? "処理中..." : "キャンセル"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* バンド */}
+          {activeTab === "bands" && (
+            <div>
+              <div className="sg-section-header">
+                <p className="sg-section-eyebrow">登録バンド</p>
+                <Link href="/band/register" className="sg-link-btn">+ バンドを追加</Link>
+              </div>
+              {(!user?.bands || user.bands.length === 0) ? (
+                <div className="sg-empty">
+                  <div className="sg-empty-icon">
+                    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M3 20c0-3.3 2.7-6 6-6h8c3.3 0 6 2.7 6 6M13 10a4 4 0 100-8 4 4 0 000 8z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  </div>
+                  <p className="sg-empty-title">バンドが登録されていません</p>
+                  <Link href="/band/register" className="sg-empty-link">バンドを登録する →</Link>
+                </div>
+              ) : user.bands.map((band: any, i: number) => (
+                <div key={i} className="sg-card" style={{ marginBottom: 12 }}>
+                  <p className="sg-card-title">{band.bandName}</p>
+                  <p style={{ fontSize: 13, color: "var(--sg-text-secondary)", marginTop: 4 }}>代表者: {band.leaderName}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* クーポン */}
+          {activeTab === "coupons" && (
+            <div>
+              <p className="sg-section-eyebrow">クーポン</p>
+              {(!user?.coupons || user.coupons.length === 0) ? (
+                <div className="sg-empty">
+                  <div className="sg-empty-icon">
+                    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M3 9a2 2 0 012-2h16a2 2 0 012 2v2a2 2 0 000 4v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 000-4V9z" stroke="currentColor" strokeWidth="1.5"/></svg>
+                  </div>
+                  <p className="sg-empty-title">クーポンがありません</p>
+                </div>
+              ) : user.coupons.map((c: any, i: number) => (
+                <div key={i} className={`sg-coupon-card${c.isUsed ? " used" : ""}`}>
+                  <div className="sg-coupon-left">
+                    <p className="sg-coupon-title">{c.title}</p>
+                    <p className="sg-coupon-discount">
+                      {c.discountType === "percentage" ? `${c.discountValue}% OFF` : `¥${c.discountValue} OFF`}
+                    </p>
+                    <p className="sg-coupon-code">コード: {c.code}</p>
+                  </div>
+                  <span className={`sg-coupon-badge${c.isUsed ? " used" : ""}`}>
+                    {c.isUsed ? "使用済" : "有効"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* お気に入り */}
+          {activeTab === "favorites" && (
+            <div>
+              <p className="sg-section-eyebrow">お気に入りスタジオ</p>
+              {(!user?.myStudios || user.myStudios.length === 0) ? (
+                <div className="sg-empty">
+                  <div className="sg-empty-icon">
+                    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 3l2.5 7.5H23l-6.5 4.7 2.5 7.5L13 18l-6 4.7 2.5-7.5L3 10.5h7.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>
+                  </div>
+                  <p className="sg-empty-title">お気に入りがありません</p>
+                  <Link href="/" className="sg-empty-link">スタジオを探す →</Link>
+                </div>
+              ) : user.myStudios.map((studioId: string, i: number) => (
+                <Link key={i} href={`/studio/${studioId}`} className="sg-favorite-card">
+                  <span>{studioId}</span>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
-    );
+
+        {/* 下部固定ボタン */}
+        <div className="sg-bottom-bar">
+          <div className="sg-bottom-inner">
+            <Link href="/" className="sg-bottom-btn secondary">🏠 トップへ</Link>
+            <button className="sg-bottom-btn danger" onClick={() => { localStorage.clear(); window.location.href = "/"; }}>
+              ログアウト
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
+
+const baseStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, 'SF Pro Display', 'Noto Sans JP', BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    background: var(--sg-bg);
+    color: var(--sg-text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+  .sg-loading {
+    min-height: 100vh; background: var(--sg-bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .sg-spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--sg-border);
+    border-top-color: var(--sg-accent);
+    border-radius: 50%;
+    animation: sg-spin 0.7s linear infinite;
+  }
+  @keyframes sg-spin { to { transform: rotate(360deg); } }
+`;
+
+const pageStyles = `
+  .sg-page { min-height: 100vh; background: var(--sg-bg); padding-bottom: 100px; }
+
+  /* ヘッダー */
+  .sg-header {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--sg-border);
+  }
+  html.dark .sg-header { background: rgba(28,28,30,0.85); }
+  .sg-header-inner {
+    max-width: 560px; margin: 0 auto; padding: 0 20px;
+    height: 56px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .sg-header-label {
+    font-size: 13px; font-weight: 600;
+    color: var(--sg-text-secondary); letter-spacing: 0.02em;
+  }
+
+  /* コンテンツ */
+  .sg-content { max-width: 560px; margin: 0 auto; padding: 32px 20px; }
+
+  /* アバc��ー */
+  .sg-avatar-section { text-align: center; margin-bottom: 28px; }
+  .sg-avatar {
+    width: 68px; height: 68px; border-radius: 50%;
+    background: var(--sg-accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; font-weight: 700; color: white;
+    margin: 0 auto 12px;
+    box-shadow: 0 4px 16px rgba(98,70,234,0.35);
+  }
+  .sg-user-name { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; color: var(--sg-text-primary); margin-bottom: 4px; }
+  .sg-user-email { font-size: 13px; color: var(--sg-text-secondary); }
+
+  /* タブ */
+  .sg-tabs-wrap {
+    display: flex; gap: 8px; overflow-x: auto;
+    padding-bottom: 4px; margin-bottom: 24px;
+    scrollbar-width: none;
+  }
+  .sg-tabs-wrap::-webkit-scrollbar { display: none; }
+  .sg-tab {
+    flex-shrink: 0; padding: 7px 16px; border-radius: 20px;
+    font-size: 13px; font-weight: 500; font-family: inherit;
+    cursor: pointer; border: 1.5px solid var(--sg-border);
+    background: transparent; color: var(--sg-text-secondary);
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .sg-tab:hover { border-color: var(--sg-accent); color: var(--sg-accent); }
+  .sg-tab.active { background: var(--sg-accent); border-color: var(--sg-accent); color: white; }
+
+  /* カード */
+  .sg-card {
+    background: var(--sg-surface); border: 1px solid var(--sg-border);
+    border-radius: 16px; padding: 20px;
+  }
+  .sg-card-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+  }
+  .sg-card-title { font-size: 13px; font-weight: 600; color: var(--sg-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+  .sg-link-btn { font-size: 13px; font-weight: 600; color: var(--sg-accent); background: none; border: none; cursor: pointer; text-decoration: none; transition: opacity 0.15s; }
+  .sg-link-btn:hover { opacity: 0.7; }
+
+  /* 情報リスト */
+  .sg-info-list { display: flex; flex-direction: column; gap: 0; }
+  .sg-info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0; border-bottom: 1px solid var(--sg-border);
+  }
+  .sg-info-row:last-child { border-bottom: none; }
+  .sg-info-label { font-size: 13px; color: var(--sg-text-secondary); }
+  .sg-info-value { font-size: 14px; font-weight: 600; color: var(--sg-text-primary); }
+
+  /* フォーム */
+  .sg-form { display: flex; flex-direction: column; gap: 14px; }
+  .sg-form-group { display: flex; flex-direction: column; gap: 6px; }
+  .sg-form-label { font-size: 12px; font-weight: 500; color: var(--sg-text-secondary); }
+  .sg-form-input {
+    padding: 12px 14px; font-size: 14px; font-family: inherit;
+    color: var(--sg-text-primary); background: var(--sg-bg);
+    border: 1.5px solid var(--sg-border); border-radius: 10px;
+    outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .sg-form-input:focus { border-color: var(--sg-accent); box-shadow: 0 0 0 3px var(--sg-accent-soft); }
+  .sg-btn-primary {
+    padding: 13px; font-size: 15px; font-weight: 600; font-family: inherit;
+    color: white; background: var(--sg-accent); border: none; border-radius: 12px;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .sg-btn-primary:hover { background: var(--sg-accent-hover); }
+  .sg-success-msg { font-size: 13px; color: #34c759; font-weight: 600; text-align: center; margin-bottom: 12px; }
+
+  /* セクション */
+  .sg-section-eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sg-text-secondary); margin-bottom: 14px; }
+  .sg-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+
+  /* 予約カード */
+  .sg-booking-card {
+    background: var(--sg-surface); border: 1px solid var(--sg-border);
+    border-radius: 14px; padding: 16px 18px; margin-bottom: 12px;
+    transition: border-color 0.15s;
+  }
+  .sg-booking-card:hover { border-color: var(--sg-accent); }
+  .sg-booking-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .sg-booking-studio { font-size: 15px; font-weight: 700; color: var(--sg-text-primary); }
+  .sg-status-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: var(--sg-border); color: var(--sg-text-secondary); }
+  .sg-status-badge.confirmed { background: rgba(52,199,89,0.12); color: #34c759; }
+  .sg-booking-date { font-size: 13px; color: var(--sg-text-secondary); margin-bottom: 4px; }
+  .sg-booking-price { font-size: 14px; font-weight: 700; color: var(--sg-accent); margin-bottom: 10px; }
+  .sg-receipt-btn {
+    font-size: 12px; font-weight: 600; color: var(--sg-text-secondary);
+    border: 1px solid var(--sg-border); border-radius: 8px; padding: 5px 12px;
+    text-decoration: none; transition: all 0.15s; display: inline-block;
+  }
+  .sg-receipt-btn:hover { color: var(--sg-accent); border-color: var(--sg-accent); }
+
+  /* クーポンカード */
+  .sg-coupon-card {
+    background: var(--sg-surface); border: 1.5px solid var(--sg-accent);
+    border-radius: 14px; padding: 16px 18px; margin-bottom: 12px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .sg-coupon-card.used { border-color: var(--sg-border); opacity: 0.5; }
+  .sg-coupon-title { font-size: 14px; font-weight: 700; color: var(--sg-text-primary); margin-bottom: 4px; }
+  .sg-coupon-discount { font-size: 16px; font-weight: 800; color: var(--sg-accent); margin-bottom: 4px; }
+  .sg-coupon-card.used .sg-coupon-discount { color: var(--sg-text-secondary); }
+  .sg-coupon-code { font-size: 12px; color: var(--sg-text-secondary); }
+  .sg-coupon-badge { font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px; background: var(--sg-accent-soft); color: var(--sg-accent); white-space: nowrap; }
+  .sg-coupon-badge.used { background: var(--sg-border); color: var(--sg-text-secondary); }
+
+  /* お気に入りカード */
+  .sg-favorite-card {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--sg-surface); border: 1px solid var(--sg-border);
+    border-radius: 14px; padding: 16px 18px; margin-bottom: 12px;
+    text-decoration: none; color: var(--sg-text-primary);
+    font-size: 14px; font-weight: 600;
+    transition: border-color 0.15s;
+  }
+  .sg-favorite-card:hover { border-color: var(--sg-accent); color: var(--sg-accent); }
+
+  /* 空状態 */
+  .sg-empty {
+    text-align: center; padding: 48px 24px;
+    background: var(--sg-surface); border: 1px solid var(--sg-border);
+    border-radius: 16px;
+  }
+  .sg-empty-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: var(--sg-accent-soft); margin: 0 auto 14px;
+    display: flex; align-items: center; justify-content: center; color: var(--sg-accent);
+  }
+  .sg-empty-title { font-size: 15px; font-weight: 600; color: var(--sg-text-primary); margin-bottom: 8px; }
+  .sg-empty-link { font-size: 13px; color: var(--sg-accent); font-weight: 600; text-decoration: none; }
+  .sg-empty-link:hover { opacity: 0.7; }
+
+  /* 下部バー */
+  .sg-bottom-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-top: 1px solid var(--sg-border);
+    padding: 12px 16px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  html.dark .sg-bottom-bar { background: rgba(28,28,30,0.9); }
+  .sg-bottom-inner { max-width: 560px; margin: 0 auto; display: flex; gap: 10px; }
+  .sg-bottom-btn {
+    flex: 1; padding: 13px; font-size: 14px; font-weight: 600; font-family: inherit;
+    border-radius: 14px; cursor: pointer; border: none; text-align: center;
+    text-decoration: none; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .sg-bottom-btn.secondary { background: var(--sg-accent-soft); color: var(--sg-accent); }
+  .sg-bottom-btn.secondary:hover { background: var(--sg-accent); color: white; }
+  .sg-bottom-btn.danger { background: var(--sg-surface); color: var(--sg-text-secondary); border: 1px solid var(--sg-border); }
+  .sg-bottom-btn.danger:hover { color: var(--sg-error); border-color: var(--sg-error); }
+`;

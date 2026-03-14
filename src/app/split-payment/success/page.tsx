@@ -3,11 +3,11 @@
 import { useSearchParams } from 'next/navigation'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { CheckCircle, Users } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 
-export default function SplitPaymentSuccessPage() {
+function SplitPaymentSuccessContent() {
     const searchParams = useSearchParams()
     const sessionId = searchParams.get('session_id')
     const [allRegistered, setAllRegistered] = useState(false)
@@ -57,5 +57,13 @@ export default function SplitPaymentSuccessPage() {
                 </CardContent>
             </Card>
         </div>
+    )
+}
+
+export default function SplitPaymentSuccessPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">読み込み中...</div>}>
+            <SplitPaymentSuccessContent />
+        </Suspense>
     )
 }

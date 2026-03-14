@@ -1,155 +1,225 @@
 "use client";
-import React, { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import { useTheme } from "@/lib/theme-context";
 
-const StudiGoLogo = () => (
-    <div className="flex items-center cursor-pointer hover:opacity-80 transition-all">
-        <img src="/logo-new.png" alt="Studi-Go Logo" className="h-12 w-auto object-contain" />
+interface TimeSlot { start: string; end: string; price: number; }
+interface RoomPricing { weekday: TimeSlot[]; saturday: TimeSlot[]; sundayHoliday: TimeSlot[]; }
+interface Room { id: string; name: string; description?: string; images?: string[]; basePrice: number; startType?: "0min" | "30min"; pricing?: RoomPricing; }
+interface Studio { id: string; storeName: string; address?: string; logoUrl?: string; bgColor?: string; bgImageUrl?: string; appealPoint?: string; images?: string[]; businessHours?: { weekday: string; saturday: string; sundayHoliday: string }; rooms?: Room[]; phone?: string; closedDays?: string; parkingInfo?: string; }
+
+function getMinPrice(studio: Studio): number | null {
+  const prices: number[] = [];
+  for (const room of studio.rooms || []) {
+    if (room.pricing) {
+      for (const key of ["weekday", "saturday", "sundayHoliday"]) {
+        const d = (room.pricing as any)[key];
+        const slots = Array.isArray(d) ? d : Array.isArray(d?.slots) ? d.slots : [];
+        for (const s of slots) { if (s?.price > 0) prices.push(s.price); }
+      }
+    } else if (room.basePrice > 0) prices.push(room.basePrice);
+  }
+  return prices.length > 0 ? Math.min(...prices) : null;
+}
+
+function extractArea(address?: string): string {
+  if (!address) return "area";
+  const match = address.match(/(.{2,3}[\u90fd\u9053\u5e9c\u770c])/);
+  return match ? match[1] : address.slice(0, 6);
+}
+
+function ThemeToggleBtn() {
+  const { mode, toggleMode } = useTheme();
+  return (
+    <button onClick={toggleMode} className="w-8 h-8 rounded-full flex items-center justify-center transition-all"
+      style={{ background: mode === "dark" ? "#3a3a3c" : "#e8e8ed", color: mode === "dark" ? "#f5f5f7" : "#1d1d1f" }}>
+      {mode === "dark"
+        ? <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1zm0 16a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1zm8-8a1 1 0 1 1 0 2h-1a1 1 0 1 1 0-2h1zM5 12a1 1 0 1 1 0 2H4a1 1 0 1 1 0-2h1zm11.95-6.364a1 1 0 0 1 0 1.414l-.707.707a1 1 0 1 1-1.414-1.414l.707-.707a1 1 0 0 1 1.414 0zM8.172 15.778a1 1 0 0 1 0 1.414l-.707.707a1 1 0 1 1-1.414-1.414l.707-.707a1 1 0 0 1 1.414 0zm9.192 0a1 1 0 0 1 1.414 1.414l-.707.707a1 1 0 1 1-1.414-1.414l.707-.707zM7.05 5.636a1 1 0 0 1 1.414 1.414l-.707.707A1 1 0 0 1 6.343 6.343l.707-.707zM12 7a5 5 0 1 1 0 10A5 5 0 0 1 12 7z"/></svg>
+        : <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      }
+    </button>
+  );
+}
+
+function HeaderNav() {
+  const [userName, setUserName] = React.useState("");
+  React.useEffect(() => { const n = localStorage.getItem("userName"); if (n) setUserName(n); }, []);
+  return (
+    <div className="flex items-center gap-3">
+      <ThemeToggleBtn />
+      {userName ? (
+        <>
+          <a href="/mypage" className="text-xs font-medium px-3 py-1.5 rounded-full" style={{ color: "var(--sg-text-secondary)", background: "var(--sg-bg-secondary)" }}>{userName.split(" ")[0]} さん</a>
+          <a href="/mypage" className="text-xs font-semibold px-4 py-1.5 rounded-full text-white" style={{ background: "var(--sg-accent)" }}>マイページ</a>
+        </>
+      ) : (
+        <>
+          <a href="/login" className="text-xs font-medium px-3 py-1.5 rounded-full" style={{ color: "var(--sg-text-secondary)", background: "var(--sg-bg-secondary)" }}>ログイン</a>
+          <a href="/register" className="text-xs font-semibold px-4 py-1.5 rounded-full text-white" style={{ background: "var(--sg-accent)" }}>新規登録</a>
+        </>
+      )}
     </div>
-);
+  );
+}
 
-// ダミーデータ（画像URLを追加）
-const DUMMY_STORES = [
-    { id: "d1", name: "Studio Alpha", prefecture: "東京都", image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=800&q=80", address: "渋谷区道玄坂", description: "最新機材完備のフラッグシップ店。プロのレコーディングにも対応。", studios: [{ id: "s1", name: "Ast", pricePerHour: 3500 }] },
-    { id: "d2", name: "Sound Garden", prefecture: "大阪府", image: "https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?auto=format&fit=crop&w=800&q=80", address: "北区梅田", description: "アコースティック重視の落ち着いた空間。生楽器の響きが自慢です。", studios: [{ id: "s3", name: "L-Room", pricePerHour: 3000 }] },
-    { id: "d3", name: "Beat House", prefecture: "愛知県", image: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=800&q=80", address: "名古屋市中区", description: "大音量OK！バンド練習に最適な広いルームと抜群の遮音性。", studios: [{ id: "s4", name: "Main", pricePerHour: 4000 }] },
-    { id: "d4", name: "Echo Chamber", prefecture: "福岡県", image: "https://images.unsplash.com/photo-1514320298574-2559e266f21c?auto=format&fit=crop&w=800&q=80", address: "中央区天神", description: "ビンテージ機材が揃うレコーディング特化型スタジオ。", studios: [{ id: "s5", name: "Studio 1", pricePerHour: 5000 }] },
-    { id: "d5", name: "Melody Line", prefecture: "北海道", image: "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=800&q=80", address: "札幌市中央区", description: "初心者大歓迎。アットホームな雰囲気で個人練習にも最適。", studios: [{ id: "s6", name: "Room A", pricePerHour: 1500 }] },
-    { id: "d6", name: "Rhythm Station", prefecture: "神奈川県", image: "https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?auto=format&fit=crop&w=800&q=80", address: "横浜市西区", description: "24時間営業。仕事帰りや深夜のセッションに便利な駅近立地。", studios: [{ id: "s7", name: "Night-st", pricePerHour: 2500 }] },
-    { id: "d7", name: "Sonic Boom", prefecture: "京都府", image: "https://images.unsplash.com/photo-1520529688126-778736e67980?auto=format&fit=crop&w=800&q=80", address: "京都市下京区", description: "モダンな内装。クリエイティブな刺激を与えるデザイン空間。", studios: [{ id: "s8", name: "Green", pricePerHour: 3200 }] },
-    { id: "d8", name: "Harmony Hall", prefecture: "埼玉県", image: "https://images.unsplash.com/photo-1507838596054-9a3a14ca090a?auto=format&fit=crop&w=800&q=80", address: "さいたま市大宮区", description: "グランドピアノ完備。クラシックやジャズの練習に。", studios: [{ id: "s9", name: "Piano Room", pricePerHour: 4500 }] },
-    { id: "d9", name: "Vibe Room", prefecture: "広島県", image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=800&q=80", address: "広島市中区", description: "DJブース完備。クラブミュージックの制作・練習に特化。", studios: [{ id: "s10", name: "DJ Cabin", pricePerHour: 2000 }] },
-    { id: "d10", name: "Live Edge", prefecture: "宮城県", image: "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&w=800&q=80", address: "仙台市青葉区", description: "大型ステージ完備。ライブ直前のリハーサルに最適です。", studios: [{ id: "s11", name: "Hall", pricePerHour: 6000 }] },
-];
-
-const PREFECTURES = ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"];
+function SiteLogo({ size = "md" }: { size?: "sm" | "md" }) {
+  return <img src="/logo-new.png" alt="Studi-Go" className={size === "sm" ? "h-7 w-auto" : "h-9 w-auto"} />;
+}
 
 export default function TopPage() {
-    const router = useRouter();
-    const [stores, setStores] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [searchKeyword, setSearchKeyword] = useState("");
-    const [searchPref, setSearchPref] = useState("");
-    const scrollRef = useRef<HTMLDivElement>(null);
+  const [studios, setStudios] = useState<Studio[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [areaFilter, setAreaFilter] = useState("all");
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const { mode } = useTheme();
+  const isDark = mode === "dark";
 
-    useEffect(() => {
-        fetch('/api/stores').then(res => res.json()).then(data => {
-            let combined = data.error ? DUMMY_STORES : [...data, ...DUMMY_STORES];
-            setStores(combined.sort(() => Math.random() - 0.5));
-            setLoading(false);
-        });
-    }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    fetch("/api/studios", { signal: controller.signal })
+      .then(r => r.json())
+      .then(data => { if (!data.error) setStudios(data); setLoading(false); })
+      .catch(() => setLoading(false))
+      .finally(() => clearTimeout(timeout));
+  }, []);
 
-    // 🌟 自動スライド機能
-    useEffect(() => {
-        if (loading) return;
-        const interval = setInterval(() => {
-            if (scrollRef.current) {
-                const { scrollLeft, clientWidth, scrollWidth } = scrollRef.current;
-                // 最後まで行ったら最初に戻る
-                if (scrollLeft + clientWidth >= scrollWidth - 5) {
-                    scrollRef.current.scrollTo({ left: 0, behavior: "smooth" });
-                } else {
-                    scrollRef.current.scrollTo({ left: scrollLeft + clientWidth / 2, behavior: "smooth" });
-                }
-            }
-        }, 3000); // 3秒ごとにスライド
-        return () => clearInterval(interval);
-    }, [loading, stores]);
+  const areas = Array.from(new Set(studios.map(s => extractArea(s.address)))).filter(a => a !== "area");
+  const filtered = studios.filter(s => {
+    const ms = search === "" || s.storeName.toLowerCase().includes(search.toLowerCase()) || (s.address||"").includes(search) || (s.appealPoint||"").includes(search);
+    return ms && (areaFilter === "all" || extractArea(s.address) === areaFilter);
+  });
 
-    const filteredStores = stores.filter(store => {
-        const matchKeyword = searchKeyword === "" || store.name.includes(searchKeyword) || (store.address && store.address.includes(searchKeyword));
-        const matchPref = searchPref === "" || store.prefecture === searchPref;
-        return matchKeyword && matchPref;
-    });
-
-    if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center font-bold text-gray-400">Loading...</div>;
-
-    return (
-        <div className="min-h-screen bg-gray-50 text-gray-800 font-sans pb-20">
-            <header className="bg-white border-b border-gray-200 px-8 py-3 flex justify-between items-center sticky top-0 z-50 shadow-sm">
-                <div onClick={() => router.push('/')}><StudiGoLogo /></div>
-                <button onClick={() => router.push('/mypage')} className="px-6 py-2.5 text-sm font-bold text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition-all">👤 マイページ</button>
-            </header>
-
-            {/* ヒーロー */}
-            <div className="bg-gray-900 text-white py-20 px-4 text-center relative overflow-hidden">
-                <div className="relative z-10 max-w-3xl mx-auto">
-                    <h2 className="text-4xl md:text-6xl font-black mb-6 tracking-tight italic">Find Your Sound.</h2>
-                    <p className="text-gray-300 font-bold mb-10 opacity-80 uppercase tracking-widest">音楽スタジオ検索・予約プラットフォーム</p>
-                </div>
+  return (
+    <div className="min-h-screen" style={{ background: "var(--sg-bg)", color: "var(--sg-text-primary)", fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif" }}>
+      <header className="sticky top-0 z-40 backdrop-blur-2xl" style={{ background: isDark ? "rgba(22,22,23,0.85)" : "rgba(255,255,255,0.85)", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
+        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between"><SiteLogo /><HeaderNav /></div>
+      </header>
+      <section className="relative overflow-hidden">
+        <div className="relative max-w-6xl mx-auto px-6 pt-24 pb-16 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] mb-5" style={{ color: "var(--sg-accent)" }}>音楽スタジオ予約プラットフォーム</p>
+          <h1 className="font-bold leading-tight mb-4" style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", color: "var(--sg-text-primary)", letterSpacing: "-0.03em" }}>
+            新しいスタジオ体験、<br />ここから始まる
+          </h1>
+          <p className="text-lg font-normal mb-10 max-w-md mx-auto" style={{ color: "var(--sg-text-secondary)" }}>
+            空き状況を即確認。予約をもっとスムーズに
+          </p>
+          <div className="max-w-xl mx-auto flex gap-2">
+            <div className="flex-1 relative">
+              <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ color: "var(--sg-text-muted)" }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input type="text" placeholder="スタジオ名・エリアで検索"
+                className="w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm outline-none transition-all"
+                style={{ background: isDark ? "rgba(255,255,255,0.07)" : "#ffffff", border: `1.5px solid ${isDark ? "rgba(255,255,255,0.15)" : "#d2d2d7"}`, color: "var(--sg-text-primary)", boxShadow: isDark ? "none" : "0 1px 4px rgba(0,0,0,0.08)" }}
+                value={search} onChange={e => setSearch(e.target.value)}
+                onFocus={e => { e.target.style.borderColor = "var(--sg-accent)"; e.target.style.boxShadow = "0 0 0 3px rgba(124,58,237,0.15)"; }}
+                onBlur={e => { e.target.style.borderColor = isDark ? "rgba(255,255,255,0.15)" : "#d2d2d7"; e.target.style.boxShadow = isDark ? "none" : "0 1px 4px rgba(0,0,0,0.08)"; }}
+              />
             </div>
-
-            {/* 検索ボックス */}
-            <div className="max-w-4xl mx-auto -mt-10 relative z-20 px-4">
-                <div className="bg-white border border-gray-200 rounded-[2.5rem] p-6 shadow-2xl flex flex-col md:flex-row gap-4 items-end">
-                    <div className="flex-1 w-full text-left">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-2 mb-2">エリアから探す</label>
-                        <select value={searchPref} onChange={(e) => setSearchPref(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3.5 text-gray-900 font-bold focus:border-purple-800 focus:outline-none appearance-none">
-                            <option value="">全国</option>
-                            {PREFECTURES.map(pref => <option key={pref} value={pref}>{pref}</option>)}
-                        </select>
-                    </div>
-                    <div className="flex-1 w-full text-left">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-2 mb-2">キーワードで探す</label>
-                        <input type="text" placeholder="スタジオ名、機材名など..." value={searchKeyword} onChange={(e) => setSearchKeyword(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3.5 text-gray-900 font-bold focus:border-purple-800 focus:outline-none" />
-                    </div>
-                    <button className="w-full md:w-36 py-3.5 bg-purple-800 text-white rounded-2xl font-black shadow-lg shadow-purple-800/30">検索</button>
-                </div>
-            </div>
-
-            {/* Recommended Studios スライダー */}
-            <div className="max-w-[1400px] mx-auto pt-24 px-6 overflow-hidden">
-                <div className="flex justify-between items-end mb-8 border-l-8 border-purple-800 pl-5">
-                    <div>
-                        <h3 className="text-3xl font-black text-gray-900 italic">Recommended Studios</h3>
-                        <p className="text-xs text-gray-400 font-bold tracking-widest mt-1 uppercase">自動スライドでおすすめ店舗をチェック</p>
-                    </div>
-                </div>
-
-                <div ref={scrollRef} className="flex gap-6 overflow-x-auto no-scrollbar pb-10 scroll-smooth">
-                    {filteredStores.map(store => (
-                        <div
-                            key={store.id}
-                            onClick={() => router.push(`/booking?storeId=${store.id}`)}
-                            className="min-w-[280px] md:min-w-[380px] bg-white border border-gray-100 rounded-[2.5rem] shadow-sm flex flex-col group hover:shadow-2xl transition-all cursor-pointer overflow-hidden"
-                        >
-                            {/* 🌟 ダミー写真エリア */}
-                            <div className="h-48 w-full overflow-hidden relative">
-                                <img src={store.image} alt={store.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                <div className="absolute top-4 left-4">
-                                    <span className="bg-purple-800 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase shadow-lg">{store.prefecture}</span>
-                                </div>
-                            </div>
-
-                            <div className="p-6">
-                                <h4 className="text-xl font-black text-gray-900 leading-tight mb-2">{store.name}</h4>
-                                <p className="text-[11px] font-bold text-gray-400 mb-4 line-clamp-2 leading-relaxed">{store.description}</p>
-
-                                <div className="flex justify-between items-center pt-4 border-t border-gray-50">
-                                    <div className="flex flex-col">
-                                        <span className="text-[9px] font-black text-gray-400 uppercase">Min Price</span>
-                                        <span className="font-black text-purple-800 text-base">¥{store.studios?.[0]?.pricePerHour || 1000}～</span>
-                                    </div>
-                                    {/* 🌟 ボタンを詳細を見るに変更 */}
-                                    <span className="text-xs font-black text-purple-800 border-2 border-purple-800 px-4 py-2 rounded-xl group-hover:bg-purple-800 group-hover:text-white transition-all">
-                                        詳細を見る
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <footer className="mt-20 text-center text-[10px] font-bold text-gray-300 tracking-[0.5em] uppercase border-t border-gray-100 pt-10">
-                &copy; 2026 Studi-Go. Beyond the Sound.
-            </footer>
-
-            <style jsx global>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
+            <button className="px-6 py-3.5 rounded-2xl text-sm font-semibold text-white shrink-0" style={{ background: "var(--sg-accent)" }}>検索</button>
+          </div>
         </div>
-    );
+      </section>
+      <div style={{ background: "#1d1d1f" }}>
+        <div className="py-6 flex items-center justify-center gap-16">
+          {[{ num: studios.length, label: "掲載スタジオ" }, { num: studios.reduce((s,st) => s+(st.rooms?.length||0),0), label: "練習部屋" }, { num: "24h", label: "オンライン予約" }].map((stat, i) => (
+            <div key={i} className="text-center">
+              <p className="text-2xl font-bold text-white" style={{ letterSpacing: "-0.02em" }}>{typeof stat.num === "number" ? `${stat.num}+` : stat.num}</p>
+              <p className="text-xs font-medium mt-0.5" style={{ color: "#a1a1a6" }}>{stat.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      <section className="max-w-6xl mx-auto px-6 mt-10 mb-6">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {["all", ...areas].map(area => (
+            <button key={area} onClick={() => setAreaFilter(area)} className="px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all"
+              style={areaFilter === area ? { background: "var(--sg-accent)", color: "#fff" } : { background: isDark ? "rgba(255,255,255,0.08)" : "#f5f5f7", color: "var(--sg-text-secondary)" }}>
+              {area === "all" ? "すべて" : area}
+            </button>
+          ))}
+        </div>
+      </section>
+      <main className="max-w-6xl mx-auto px-6 pb-28">
+        <p className="text-xs font-medium mb-6" style={{ color: "var(--sg-text-muted)" }}>{loading ? "読み込み中..." : `${filtered.length}件のスタジオ`}</p>
+        {loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[...Array(6)].map((_, i) => <div key={i} className="rounded-3xl animate-pulse" style={{ background: isDark ? "rgba(255,255,255,0.04)" : "#f5f5f7", height: 320 }} />)}
+          </div>
+        )}
+        {!loading && filtered.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filtered.map(studio => <StudioCard key={studio.id} studio={studio} hovered={hoveredId===studio.id} onHover={() => setHoveredId(studio.id)} onLeave={() => setHoveredId(null)} isDark={isDark} />)}
+          </div>
+        )}
+        {!loading && filtered.length === 0 && (
+          <div className="text-center py-32">
+            <p className="text-4xl mb-4">🎸</p>
+            <p className="font-semibold text-lg mb-2" style={{ color: "var(--sg-text-primary)" }}>スタジオが見つかりません</p>
+            <p className="text-sm" style={{ color: "var(--sg-text-muted)" }}>検索条件を変えてお試しください</p>
+          </div>
+        )}
+      </main>
+      <footer style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#d2d2d7"}`, background: isDark ? "#111113" : "#f5f5f7" }}>
+        <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-4">
+          <SiteLogo size="sm" />
+          <p className="text-xs" style={{ color: "var(--sg-text-muted)" }}>© 2026 Studi-Go. All rights reserved.</p>
+          <div className="flex gap-6">
+            {[["利用規約", "/terms"], ["プライバシー", "/privacy"], ["お問い合わせ", "#"]].map(([l, href]) => (
+              <a key={l} href={href} className="text-xs hover:underline" style={{ color: "var(--sg-text-muted)" }}>{l}</a>
+            ))}
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function StudioCard({ studio, hovered, onHover, onLeave, isDark }: { studio: Studio; hovered: boolean; onHover: () => void; onLeave: () => void; isDark: boolean; }) {
+  const minPrice = getMinPrice(studio);
+  const roomCount = studio.rooms?.length || 0;
+  const area = extractArea(studio.address);
+  const thumbnail = studio.images?.[0] || studio.rooms?.find(r => r.images?.[0])?.images?.[0] || null;
+  return (
+    <a href={`/studio/${studio.id}`} className="group block rounded-3xl overflow-hidden transition-all duration-300"
+      style={{ background: isDark ? "rgba(255,255,255,0.04)" : "#ffffff", border: `1px solid ${hovered ? "var(--sg-accent)" : isDark ? "rgba(255,255,255,0.08)" : "#e8e8ed"}`, boxShadow: hovered ? "0 20px 60px rgba(124,58,237,0.2), 0 4px 20px rgba(0,0,0,0.1)" : isDark ? "0 2px 12px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.06)", transform: hovered ? "translateY(-5px) scale(1.01)" : "none" }}
+      onMouseEnter={onHover} onMouseLeave={onLeave}>
+      <div className="relative h-48 overflow-hidden" style={{ background: isDark ? "#2c2c2e" : "#f5f5f7" }}>
+        {thumbnail
+          ? <img src={thumbnail} alt={studio.storeName} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          : <div className="w-full h-full flex items-center justify-center" style={{ background: studio.bgColor ? `linear-gradient(135deg, ${studio.bgColor}cc, ${studio.bgColor}44)` : isDark ? "linear-gradient(135deg,#2c2c2e,#1c1c1e)" : "linear-gradient(135deg,#f0eeff,#e8e0ff)" }}>
+              {studio.logoUrl ? <img src={studio.logoUrl} alt={studio.storeName} className="max-h-16 max-w-32 object-contain opacity-80" /> : <span className="text-4xl opacity-20">🎸</span>}
+            </div>
+        }
+        <div className="absolute inset-x-0 bottom-0 h-14 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.3), transparent)" }} />
+        {thumbnail && studio.logoUrl && (
+          <div className="absolute bottom-3 left-3 w-9 h-9 rounded-xl overflow-hidden bg-white/90 backdrop-blur-sm shadow">
+            <img src={studio.logoUrl} alt="logo" className="w-full h-full object-contain p-1" />
+          </div>
+        )}
+        {roomCount > 0 && <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-md rounded-full px-2.5 py-1 text-[10px] font-semibold text-white">{roomCount}部屋</div>}
+      </div>
+      <div className="p-5">
+        <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--sg-accent)" }}>📍 {area}</p>
+        <h3 className="font-semibold text-base leading-snug mb-2" style={{ color: "var(--sg-text-primary)", letterSpacing: "-0.01em" }}>{studio.storeName}</h3>
+        {studio.appealPoint && <p className="text-xs leading-relaxed mb-4 line-clamp-2" style={{ color: "var(--sg-text-muted)" }}>{studio.appealPoint}</p>}
+        <div className="pt-4 flex items-center justify-between" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#f0f0f5"}` }}>
+          <div>
+            {minPrice ? (
+              <><span className="text-[10px]" style={{ color: "var(--sg-text-muted)" }}>¥</span><span className="text-lg font-bold" style={{ color: "var(--sg-text-primary)", letterSpacing: "-0.02em" }}>{minPrice.toLocaleString()}</span><span className="text-[10px]" style={{ color: "var(--sg-text-muted)" }}>〜/h</span></>
+            ) : <span className="text-xs" style={{ color: "var(--sg-text-muted)" }}>要問合せ</span>}
+          </div>
+          {studio.businessHours?.weekday && (
+            <div className="text-right">
+              <p className="text-[10px]" style={{ color: "var(--sg-text-muted)" }}>平日</p>
+              <p className="text-xs font-medium" style={{ color: "var(--sg-text-secondary)" }}>{studio.businessHours.weekday}</p>
+            </div>
+          )}
+        </div>
+        <div className="mt-4 w-full py-2.5 rounded-2xl text-xs font-semibold text-center transition-all duration-300"
+          style={hovered ? { background: "var(--sg-accent)", color: "#fff" } : { background: isDark ? "rgba(255,255,255,0.06)" : "#f5f5f7", color: "var(--sg-text-secondary)" }}>
+          {hovered ? "予約する →" : "詳細を見る"}
+        </div>
+      </div>
+    </a>
+  );
 }

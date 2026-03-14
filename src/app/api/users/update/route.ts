@@ -1,21 +1,32 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { getUserByIdFromFirestore, saveUserToFirestore } from "@/lib/db-firestore";
 
 export async function PUT(request: Request) {
+    return handleUpdate(request);
+}
+
+export async function POST(request: Request) {
+    return handleUpdate(request);
+}
+
+async function handleUpdate(request: Request) {
     try {
         const body = await request.json();
-        const updatedUser = await prisma.user.update({
-            where: { id: 1 }, // テスト用ユーザーID
-            data: {
-                name: body.name,
-                phone: body.phone,
-                email: body.email,   // 🌟 追加
-                address: body.address // 🌟 追加
-            }
-        });
-        return NextResponse.json(updatedUser);
+        const userId = body.userId || body.id;
+        const { name, phone, email, address } = body;
+
+        if (!userId) {
+            return NextResponse.json({ error: "userIdが必要です" }, { status: 400 });
+        }
+
+        const user = await getUserByIdFromFirestore(userId);
+        if (!user) return NextResponse.json({ error: "ユーザーが見つかりません" }, { status: 404 });
+
+        const updated = { ...user, name, phone, email, address };
+        await saveUserToFirestore(updated);
+
+        const { password, ...safeUser } = updated;
+        return NextResponse.json({ success: true, ...safeUser });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

@@ -1,32 +1,47 @@
-import * as admin from 'firebase-admin';
+// Firebase Admin SDK
+// Cloud Run と ローカル両対応: service-account.json を直接読み込む
+// eslint-disable-next-line no-eval
+const requireFn = eval('require') as NodeRequire;
+const admin = requireFn('firebase-admin') as typeof import('firebase-admin');
 
-const CREDENTIALS = {
-    "type": "service_account",
-    "project_id": "studi-go-488d1",
-    "private_key_id": "70048fd865ea4dd5ab0d58481d566c1998d4bdb1",
-    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCu8U5450nxerGA\nQn7un/7rW1XismghcFjwdIz/FPsQU4J+hRHJWdWqvIGawDxFRiKSTg/n6oiwR+1k\n/aUjfLCX84nAcwoej8l/hSKWRs3Pd9MGwOfilx9HxxNHrLQV1URF28d8Agvspek/\ngMWlRPwdUrZSvjpV5qT49RyhfelNoZd+GRX4nZwmovx/FUIGSo0h589CfiUudFlr\nMVq7lAHYge3QrtbkASQDVlQ0p/0SC30QkNpdDWr75ZraFKuUt0Pssm7cePMb+mBn\nFtpOMyzR5xppNbjNcWnCYNdosq16/NB3wNweyhen+PfvUZlOxuEHjWKFaas94C4h\njk2Djuh/AgMBAAECggEAGzJnhTNL0w9EfhCYZCeafWNvKDWdK6moIgW0j8lmuKSK\n8nlkiP1+0rLIoVLGa+yZ3k3leiQDiQg9l0g5fplZaN4TKciYp6Sp6jm75UnvoBPc\nSj3+LsNYuRNxY2CthIFpwkSHMDevO+SVLOqrj2R4n2Rm9Nke/5DCT/PnNhH5jbhS\nFMcbNfcShEAmkwXQqosbkjOQK+8+CU8rz6cvEe3zVFqPp9nzcrSNRMhLmrjXA9tG\nGyVHtAOe8R4dnGNzcBxl2/k2cPmd0vf+T9l0KwRa9ZJaz2BKJX6YowdVgS8dKHXy\nWZNNtgV27gD+f4xr05qTIZLYqsH1rUTx8FY6a+z4+QKBgQDc+Yn7d8katraQ2RWZ\n6Yt5mCNobcQoWNo0qFQGurCiyBc1j8x+IetyRk7nG0GsxDvJbSHAb7Hylc7RSRm1\nx0Vg8rN3g5yji3qj+nZEQz8yVTiyPj74utMsqA3JjBbTdsd3VzPOXEgUsfPKnn7J\nBuoPiTp+370zEJTBb2Ksr0zmaQKBgQDKq+1j+JAMndmuPdPYGDq1Lk3IhbgEFQDY\nN9cqpIK0JZ0cRWqzMlMA1yI57c6LYjggugAVj3Oxd6Np9dxy1GvrfCyCh6gw8iHO\nfn9+hnYLs0+IX8B6DQvpd3GIFqkIzMOxm+4fTWohU7fmm+ppD5trym6fafUsmodI\nbnnNbLCKpwKBgQCxL46KiyRAPV3qi4ccoP3rhChwJgPx7j0ZmBe4RZ45CIRDuIha\nY0xtlx7RhTOGGtttygoUSfu/7oulmR36ekyRTkrFfEzvfnnaXozSc7GK5HbPxcWs\nn/GQjzhu8dujuEx8zvmFcM2DeqVnROuYueiYiIrVDQaimZsN+AiBOxdIcQKBgQC7\nF3l+pw+7ReCUU+kC/GL9rHALoz1bL1RnRS0w5UrvKCXf2kkEgXlUNkUXOutHinUL\n6Qh43sNLWYkWIOvPaT7y1N914+sku/DvYaEqWNASPwY1e0cApJiRfjzlBx4lzHj+\ntVZduSY2+8Sxcs8zC0BLgkUajkLRWRl3iNySATr70wKBgQC/4A1YMNlBBZb3EtRE\n8yq2fb4Tb29ChndlGr/y4L2x0EW5awGrddvDmNcPtan0FXH6K43ZgtrFBXWTMNUg\n+W/a1BD1W5fuwP1Cfqk+sW6e1i5nZxXQ+g6dhdYS0ygHFaRpaEDNgl4FjUbFBN0i\nmIx46BOImG2CE4uQLGAbXl/QKA==\n-----END PRIVATE KEY-----\n",
-    "client_email": "backup-bot@studi-go-488d1.iam.gserviceaccount.com",
-};
+let adminDb: ReturnType<typeof admin.firestore>;
+let adminStorage: ReturnType<typeof admin.storage>;
 
-if (!admin.apps.length) {
-    try {
-        const privateKey = CREDENTIALS.private_key.includes('\\n')
-            ? CREDENTIALS.private_key.replace(/\\n/g, '\n')
-            : CREDENTIALS.private_key;
+try {
+    if (!admin.apps.length) {
+        // service-account.json を process.cwd() から探す
+        // Cloud Run では /workspace/service-account.json
+        // ローカルでは プロジェクトルート/service-account.json
+        const path = requireFn('path');
+        const fs = requireFn('fs');
+        const serviceAccountPath = path.join(process.cwd(), 'service-account.json');
+
+        let credential: admin.credential.Credential;
+
+        if (fs.existsSync(serviceAccountPath)) {
+            const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+            credential = admin.credential.cert(serviceAccount);
+            console.log("Firebase Admin: using service-account.json");
+        } else {
+            // フォールバック: Application Default Credentials (Cloud Run IAM)
+            credential = admin.credential.applicationDefault();
+            console.log("Firebase Admin: using ADC");
+        }
 
         admin.initializeApp({
-            credential: admin.credential.cert({
-                projectId: CREDENTIALS.project_id,
-                clientEmail: CREDENTIALS.client_email,
-                privateKey: privateKey,
-            }),
-            storageBucket: "studi-go-488d1.firebasestorage.app"
+            credential,
+            storageBucket: "studi-go-488d1.firebasestorage.app",
+            projectId: "studi-go-488d1",
         });
-        console.log("Firebase Admin initialized successfully");
-    } catch (error) {
-        console.error("Firebase Admin initialization error:", error);
     }
+
+    adminDb = admin.firestore();
+    adminStorage = admin.storage();
+    console.log("Firebase Admin initialized successfully");
+} catch (error) {
+    console.error("Firebase Admin initialization error:", error);
+    // エラーを再スローしてdynamic importのcatch側で詳細を表示できるようにする
+    throw error;
 }
 
-export const adminDb = admin.firestore();
-export const adminStorage = admin.storage();
+export { adminDb, adminStorage };

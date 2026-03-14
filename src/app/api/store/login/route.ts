@@ -1,28 +1,36 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { getAllStudiosFromFirestore } from "@/lib/db-firestore";
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
+        const { email, password } = body;
 
-        // 店舗メールアドレスで検索
-        const store = await prisma.store.findUnique({
-            where: { email: body.email }
-        });
+        const studios = await getAllStudiosFromFirestore();
+        const studio = studios.find(
+            (s) => s.email === email
+        );
 
-        // パスワード確認（簡易版）
-        if (store && store.password === body.password) {
-            return NextResponse.json({
-                success: true,
-                storeId: store.id,
-                name: store.name
-            });
+        if (!studio) {
+            return NextResponse.json({ error: "認証失敗" }, { status: 401 });
         }
 
-        return NextResponse.json({ error: "認証失敗" }, { status: 401 });
-    } catch (error) {
+        // TODO: Phase2でFirebase Authに移行。現在は簡易照合
+        const staff = studio.staff?.find(
+            (s) => s.email === email && s.password === password
+        );
+
+        if (!staff) {
+            return NextResponse.json({ error: "認証失敗" }, { status: 401 });
+        }
+
+        return NextResponse.json({
+            success: true,
+            storeId: studio.id,
+            name: studio.storeName,
+            role: staff.role,
+        });
+    } catch (error: any) {
         return NextResponse.json({ error: "Server Error" }, { status: 500 });
     }
 }

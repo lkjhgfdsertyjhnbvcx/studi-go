@@ -16,8 +16,12 @@ export interface Booking {
     durationHours: number;
     userCount: number;
     totalPrice: number;
-    status: 'active' | 'cancelled' | 'modified' | 'no_show';
+    status: 'active' | 'cancelled' | 'modified' | 'no_show' | 'pending' | 'confirmed';
     createdAt: string;
+    confirmedAt?: string;
+    userEmail?: string;
+    userName?: string;
+    selectedOptions?: string[];
     isPersonalPractice?: boolean;
 }
 
@@ -37,7 +41,6 @@ export const updateBooking = async (id: string, updates: Partial<Booking>): Prom
     return updateBookingInFirestore(id, updates);
 };
 
-// Check for overlaps
 export const checkAvailability = async (
     studioId: string,
     roomName: string | undefined,

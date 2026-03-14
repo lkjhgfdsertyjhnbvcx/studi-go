@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { getStudioByIdFromFirestore, getAllBookingsFromFirestore } from "@/lib/db-firestore";
 
 export async function GET(request: Request) {
     try {
@@ -10,12 +8,24 @@ export async function GET(request: Request) {
 
         if (!id) return NextResponse.json({ error: "IDが必要です" }, { status: 400 });
 
-        const store = await prisma.store.findUnique({
-            where: { id: parseInt(id) },
-            include: { studios: true }
-        });
+        const studio = await getStudioByIdFromFirestore(id);
+        if (!studio) return NextResponse.json({ error: "スタジオが見つかりません" }, { status: 404 });
 
-        return NextResponse.json(store);
+        const allBookings = await getAllBookingsFromFirestore();
+        const studioBookings = allBookings
+            .filter((b) => b.studioId === id && b.status !== "cancelled")
+            .map((b) => ({
+                id: b.id,
+                studioName: studio.rooms.find((r) => r.id === b.roomName)?.name ?? b.roomName ?? "",
+                date: b.date,
+                startTime: b.startTime,
+                totalPrice: b.totalPrice,
+            }));
+
+        return NextResponse.json({
+            ...studio,
+            bookings: studioBookings,
+        });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

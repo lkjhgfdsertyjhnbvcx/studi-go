@@ -38,10 +38,10 @@ export default function RootLayout({
               (function() {
                 try {
                   const savedMode = localStorage.getItem('theme-mode');
-                  if (savedMode === 'light') {
-                    document.documentElement.classList.add('light');
-                  } else {
+                  if (savedMode === 'dark') {
                     document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.add('light');
                   }
                 } catch (e) {}
               })();

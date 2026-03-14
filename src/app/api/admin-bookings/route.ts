@@ -1,48 +1,42 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { adminDb } from "@/lib/firebase-admin";
 
-const prisma = new PrismaClient();
-
-// 予約一覧を全件取得（GET）
 export async function GET() {
     try {
-        const bookings = await prisma.booking.findMany({
-            include: {
-                user: true,   // 誰の予約か
-                studio: true  // どの部屋か
-            },
-            orderBy: { startTime: 'desc' } // 新しい予約順
-        });
-        return NextResponse.json(bookings);
+        const snapshot = await adminDb.collection("bookings").get();
+        const bookings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return NextResponse.json(bookings.sort((a: any, b: any) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        ));
     } catch (error) {
         return NextResponse.json({ error: "取得失敗" }, { status: 500 });
     }
 }
 
-// 予約のステータス（キャンセル・入金済み等）を更新（PUT）
 export async function PUT(request: Request) {
     try {
         const body = await request.json();
-        const updatedBooking = await prisma.booking.update({
-            where: { id: parseInt(body.id) },
-            data: { status: body.status }
-        });
-        return NextResponse.json(updatedBooking);
+        if (!body.id || !body.status) {
+            return NextResponse.json({ error: "idとstatusが必要です" }, { status: 400 });
+        }
+        await adminDb.collection("bookings").doc(body.id).update({ status: body.status });
+        return NextResponse.json({ success: true });
     } catch (error: any) {
+        console.error("booking update error:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
 
-// 予約データ自体を完全に削除（DELETE）
 export async function DELETE(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
-        const id = searchParams.get('id');
-        if (!id) throw new Error("IDが指定されていません");
+        const id = searchParams.get("id");
+        if (!id) return NextResponse.json({ error: "IDが必要です" }, { status: 400 });
 
-        await prisma.booking.delete({ where: { id: parseInt(id) } });
+        await adminDb.collection("bookings").doc(id).delete();
         return NextResponse.json({ success: true });
     } catch (error: any) {
+        console.error("booking delete error:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

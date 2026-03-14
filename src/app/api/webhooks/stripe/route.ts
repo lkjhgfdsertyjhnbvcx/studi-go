@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { stripe } from '@/lib/stripe'
 import { Resend } from 'resend'
 import { updatePaymentStatusInFirestore, getAllPaymentsFromFirestore } from '@/lib/db-firestore'
+import { adminDb } from '@/lib/firebase-admin'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'support@studi-go.com'
@@ -13,21 +14,42 @@ export async function POST(req: Request) {
     const headersList = await headers()
     const sig = headersList.get('Stripe-Signature') as string
 
+    if (!sig) {
+        return NextResponse.json({ error: 'Stripe-Signature header missing' }, { status: 400 })
+    }
+
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+    if (!webhookSecret) {
+        console.error('STRIPE_WEBHOOK_SECRET is not set')
+        return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+    }
+
     let event
 
     try {
-        event = stripe.webhooks.constructEvent(
-            body,
-            sig,
-            process.env.STRIPE_WEBHOOK_SECRET!
-        )
+        event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
     } catch (err: any) {
         return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 })
     }
 
     if (event.type === 'checkout.session.completed') {
-        const session = event.data.object
+        const session = event.data.object as any
         const metadata = session.metadata
+
+        // ── Firestore通常予約の確定処理（bookingId がある場合）──
+        if (metadata?.bookingId) {
+            try {
+                await adminDb.collection("bookings").doc(metadata.bookingId).update({
+                    status: "confirmed",
+                    stripeSessionId: session.id,
+                    stripePaymentIntentId: session.payment_intent || null,
+                    confirmedAt: new Date().toISOString(),
+                })
+                console.log(`[Firestore] Booking ${metadata.bookingId} confirmed.`)
+            } catch (err) {
+                console.error('[Firestore] Failed to confirm booking:', err)
+            }
+        }
 
         if (metadata?.reservationId && metadata?.userId) {
             await prisma.$transaction(async (tx: any) => {

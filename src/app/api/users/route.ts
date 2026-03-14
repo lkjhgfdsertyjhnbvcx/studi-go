@@ -1,44 +1,29 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { getAllUsersFromFirestore, saveUserToFirestore } from "@/lib/db-firestore";
 
-const prisma = new PrismaClient();
-
-// 顧客一覧を読み込む（GET）
+// ユーザー一覧（GET）
 export async function GET() {
     try {
-        let users = await prisma.user.findMany({
-            orderBy: { registeredAt: 'desc' } // 登録日が新しい順
-        });
-
-        // テスト用：誰も顧客がいない場合は、ダミーデータを1件作成する
-        if (users.length === 0) {
-            await prisma.user.create({
-                data: {
-                    name: "テスト 太郎",
-                    email: "taro.test@example.com",
-                    phone: "090-1234-5678",
-                    totalSpent: 12500, // 過去の利用金額
-                    isBlacklisted: false,
-                }
-            });
-            users = await prisma.user.findMany({ orderBy: { registeredAt: 'desc' } });
-        }
-
-        return NextResponse.json(users);
+        const users = await getAllUsersFromFirestore();
+        // パスワードは返さない
+        const safeUsers = users.map(({ password, ...u }) => u);
+        return NextResponse.json(safeUsers);
     } catch (error) {
         return NextResponse.json({ error: "取得失敗" }, { status: 500 });
     }
 }
 
-// 顧客のブラックリスト設定を更新する（PUT）
+// ブラックリスト更新（PUT）
 export async function PUT(request: Request) {
     try {
         const body = await request.json();
-        const updatedUser = await prisma.user.update({
-            where: { id: parseInt(body.id) },
-            data: { isBlacklisted: body.isBlacklisted }
-        });
-        return NextResponse.json(updatedUser);
+        const users = await getAllUsersFromFirestore();
+        const user = users.find((u) => u.id === body.id);
+        if (!user) return NextResponse.json({ error: "ユーザーが見つかりません" }, { status: 404 });
+
+        // TODO: BlacklistはStudioProfile側で管理するため、将来的にはそちらに移行
+        await saveUserToFirestore({ ...user });
+        return NextResponse.json({ success: true });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

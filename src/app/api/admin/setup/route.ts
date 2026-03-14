@@ -1,21 +1,9 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
-
+// 管理者認証情報は環境変数で管理するため、このエンドポイントは不要になりました
+// .env に ADMIN_EMAIL / ADMIN_PASSWORD を設定してください
 export async function GET() {
-    const adminEmail = "kantoku@studi-go.com"; // 🌟 ここを好きなIDに変更してください
-    const adminPassword = "password123";      // 🌟 ここを好きなPWに変更してください
-
-    const admin = await prisma.admin.upsert({
-        where: { email: adminEmail },
-        update: { password: adminPassword },
-        create: {
-            email: adminEmail,
-            password: adminPassword,
-            name: "監督"
-        }
+    return NextResponse.json({
+        message: "管理者認証情報は環境変数（.env）で設定してください。ADMIN_EMAIL / ADMIN_PASSWORD",
     });
-
-    return NextResponse.json({ message: "Admin ID/PW Updated!", email: admin.email });
 }

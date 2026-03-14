@@ -90,12 +90,14 @@ export async function processPaymentForBooking(bookingId: string) {
             }
             const studio = await getStudioByIdFromFirestore(booking.studioId);
 
+            const { getUserByIdFromFirestore } = await import("@/lib/db-firestore");
+            const user = booking.userId ? await getUserByIdFromFirestore(booking.userId) : null;
             const newPaymentResult = await createPayment({
                 bookingId: booking.id,
                 studioId: booking.studioId,
                 studioName: studio?.storeName || "Unknown Studio",
-                userName: "User",
-                userEmail: "",
+                userName: user?.name || booking.userId || "ゲスト",
+                userEmail: user?.email || booking.userEmail || "",
                 amount: booking.totalPrice || 0,
                 paymentMethod: "stripe"
             });

@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -22,7 +22,7 @@ const formSchema = z.object({
     }),
 });
 
-export const RegisterForm = () => {
+function RegisterFormContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const redirect = searchParams.get('redirect');
@@ -171,5 +171,13 @@ export const RegisterForm = () => {
                 </div>
             </form>
         </Form>
+    );
+}
+
+export const RegisterForm = () => {
+    return (
+        <Suspense fallback={<div className="text-white text-center">読み込み中...</div>}>
+            <RegisterFormContent />
+        </Suspense>
     );
 };
