@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { 
     Users as UsersIcon, Mail, Phone, Calendar, MapPin, 
     History, Download, ChevronRight, X, Ticket, Clock,
-    CreditCard, ExternalLink
+    CreditCard, ExternalLink, Trash2
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { fetchUserDetail } from "@/actions/admin";
@@ -24,11 +24,13 @@ interface UserListClientProps {
     isAdmin: boolean;
 }
 
-export function UserListClient({ users, isAdmin }: UserListClientProps) {
+export function UserListClient({ users: initialUsers, isAdmin }: UserListClientProps) {
+    const [users, setUsers] = useState(initialUsers);
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [userDetail, setUserDetail] = useState<any>(null);
     const [isLoadingDetail, setIsLoadingDetail] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const handleNameClick = async (userId: string) => {
         setSelectedUserId(userId);
@@ -44,8 +46,23 @@ export function UserListClient({ users, isAdmin }: UserListClientProps) {
         }
     };
 
+    const handleDeleteUser = async (userId: string, userName: string) => {
+        if (!confirm(`「${userName}」を削除しますか？\n※この操作は元に戻せません`)) return;
+        setIsDeleting(true);
+        try {
+            const res = await fetch(`/api/users/${userId}`, { method: "DELETE" });
+            if (!res.ok) throw new Error("削除に失敗しました");
+            setUsers(prev => prev.filter(u => u.id !== userId));
+            setIsModalOpen(false);
+            setUserDetail(null);
+        } catch (e: any) {
+            alert("❌ " + e.message);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     const handleExportCSV = () => {
-        // Create CSV Content
         const headers = ["ID", "Name", "Email", "Phone", "Address", "Created At", "Auth Provider", "LINE UserID", "LINE DisplayName", "JOCOLLA User"];
         const rows = users.map(user => [
             user.id,
@@ -65,7 +82,6 @@ export function UserListClient({ users, isAdmin }: UserListClientProps) {
             ...rows.map(row => row.map(cell => `"${(cell || "").toString().replace(/"/g, '""')}"`).join(","))
         ].join("\n");
 
-        // Download Trigger
         const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -103,12 +119,13 @@ export function UserListClient({ users, isAdmin }: UserListClientProps) {
                             {!isAdmin && <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5">利用履歴</TableHead>}
                             <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5">登録日</TableHead>
                             <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5 px-8 text-right">認証</TableHead>
+                            {isAdmin && <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5 text-right px-6">操作</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {users.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={isAdmin ? 4 : 5} className="text-center py-24 text-muted-foreground italic font-mono uppercase tracking-[0.2em]">
+                                <TableCell colSpan={isAdmin ? 5 : 5} className="text-center py-24 text-muted-foreground italic font-mono uppercase tracking-[0.2em]">
                                     データなし // 登録メンバーがいません
                                 </TableCell>
                             </TableRow>
@@ -169,6 +186,17 @@ export function UserListClient({ users, isAdmin }: UserListClientProps) {
                                             </Badge>
                                         </div>
                                     </TableCell>
+                                    {isAdmin && (
+                                        <TableCell className="py-6 px-6 text-right">
+                                            <button
+                                                onClick={() => handleDeleteUser(user.id, user.name)}
+                                                className="p-2 text-red-500/60 hover:text-red-400 hover:bg-red-950/20 rounded-lg transition-all"
+                                                title="削除"
+                                            >
+                                                <Trash2 size={15} />
+                                            </button>
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                             ))
                         )}
@@ -200,7 +228,7 @@ export function UserListClient({ users, isAdmin }: UserListClientProps) {
                             </div>
 
                             <div className="p-8 space-y-8">
-                                {/* Info Cards - Stacked Vertically for Readability */}
+                                {/* Info Cards */}
                                 <div className="flex flex-col gap-4">
                                     <div className="bg-card/50 border border-border p-6 rounded-2xl">
                                         <div className="flex flex-col md:flex-row md:items-center gap-6">
@@ -238,7 +266,6 @@ export function UserListClient({ users, isAdmin }: UserListClientProps) {
                                         </div>
                                     </div>
 
-                                    {/* LINE連携情報 */}
                                     {(userDetail.lineUserId || userDetail.authProvider === "line") && (
                                         <div className="bg-[#06C755]/10 border border-[#06C755]/30 p-6 rounded-2xl">
                                             <div className="flex flex-col md:flex-row md:items-center gap-6">
@@ -288,7 +315,7 @@ export function UserListClient({ users, isAdmin }: UserListClientProps) {
                                     </div>
                                 </div>
 
-                                {/* Booking History Section */}
+                                {/* Booking History */}
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-3">
                                         <div className="h-6 w-1 bg-cyan-500 rounded-full"></div>
@@ -331,7 +358,7 @@ export function UserListClient({ users, isAdmin }: UserListClientProps) {
                                     </div>
                                 </div>
 
-                                {/* Coupon History Section */}
+                                {/* Coupon History */}
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-3">
                                         <div className="h-6 w-1 bg-purple-500 rounded-full"></div>
@@ -366,7 +393,6 @@ export function UserListClient({ users, isAdmin }: UserListClientProps) {
                                                             </div>
                                                         )}
                                                     </div>
-                                                    {/* Background Pattern */}
                                                     <div className="absolute top-[-20px] right-[-20px] opacity-[0.05] group-hover:opacity-[0.1] transition-opacity">
                                                         <Ticket size={80} />
                                                     </div>
@@ -377,8 +403,18 @@ export function UserListClient({ users, isAdmin }: UserListClientProps) {
                                 </div>
                             </div>
 
-                            <div className="p-8 border-t border-border bg-card/20 flex justify-end">
-                                <Button onClick={() => setIsModalOpen(false)} className="bg-slate-800 text-white hover:bg-slate-700 font-bold px-8">閉じる</Button>
+                            <div className="p-8 border-t border-border bg-card/20 flex justify-between items-center">
+                                {isAdmin && (
+                                    <button
+                                        onClick={() => handleDeleteUser(userDetail.id, userDetail.name)}
+                                        disabled={isDeleting}
+                                        className="flex items-center gap-2 px-4 py-2 bg-red-950/30 border border-red-900/50 text-red-400 hover:bg-red-950/50 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                                    >
+                                        <Trash2 size={14} />
+                                        {isDeleting ? "削除中..." : "このユーザーを削除"}
+                                    </button>
+                                )}
+                                <Button onClick={() => setIsModalOpen(false)} className="bg-slate-800 text-white hover:bg-slate-700 font-bold px-8 ml-auto">閉じる</Button>
                             </div>
                         </div>
                     )}

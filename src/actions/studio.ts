@@ -10,7 +10,7 @@ import { StudioProfile } from "@/lib/db-studio";
 import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from "uuid";
 
-// Get All
+// Get All（公開中のスタジオのみ返す ─ 一般ユーザー向け）
 export async function fetchStudios() {
     let studios = await getAllStudiosFromFirestore();
 
@@ -25,7 +25,9 @@ export async function fetchStudios() {
             }
         } catch (e) { }
     }
-    return studios;
+
+    // isPublished === true のスタジオのみ公開（未設定＝非公開扱い）
+    return studios.filter((s: any) => s.isPublished === true);
 }
 
 // Get One

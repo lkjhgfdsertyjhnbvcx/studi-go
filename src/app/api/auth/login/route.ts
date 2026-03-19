@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import { verifyPassword } from "@/lib/password";
 
 export async function POST(request: Request) {
@@ -9,17 +10,17 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "メールアドレスとパスワードを入力してください" }, { status: 400 });
         }
 
-        // メールでユーザー検索（Admin SDK使用）
-        const snap = await adminDb.collection("users").where("email", "==", email).limit(1).get();
+        const q = query(collection(db, "users"), where("email", "==", email), limit(1));
+        const snap = await getDocs(q);
+
         if (snap.empty) {
-            return NextResponse.json({ error: "認証失敗" }, { status: 401 });
+            return NextResponse.json({ error: "メールアドレスまたはパスワードが正しくありません" }, { status: 401 });
         }
 
         const user = snap.docs[0].data() as any;
 
-        // パスワード検証（ハッシュ・平文どちらも対応）
         if (!verifyPassword(password, user.password || "")) {
-            return NextResponse.json({ error: "認証失敗" }, { status: 401 });
+            return NextResponse.json({ error: "メールアドレスまたはパスワードが正しくありません" }, { status: 401 });
         }
 
         return NextResponse.json({

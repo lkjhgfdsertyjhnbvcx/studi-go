@@ -77,9 +77,9 @@ export default function TopPage() {
   useEffect(() => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
-    fetch("/api/studios", { signal: controller.signal })
+    fetch("/api/studios?published=true", { signal: controller.signal })
       .then(r => r.json())
-      .then(data => { if (!data.error) setStudios(data); setLoading(false); })
+      .then(data => { if (!data.error) setStudios(data.filter((s: any) => s.isPublished === true)); setLoading(false); })
       .catch(() => setLoading(false))
       .finally(() => clearTimeout(timeout));
   }, []);

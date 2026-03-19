@@ -1,137 +1,256 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { Store, Trash2, ExternalLink, Search, Globe, EyeOff, Clock } from "lucide-react";
 
-export default function StudiosManagerPage() {
+const PLANS: Record<string, { name: string; color: string }> = {
+    basic:    { name: "ベーシック",   color: "#6b7280" },
+    standard: { name: "スタンダード", color: "#7c3aed" },
+    premium:  { name: "プレミアム",   color: "#f59e0b" },
+};
+
+function formatRelativeTime(isoStr?: string): string {
+    if (!isoStr) return "─";
+    const diff = Date.now() - new Date(isoStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "たった今";
+    if (mins < 60) return `${mins}分前`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}時間前`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}日前`;
+    return new Date(isoStr).toLocaleDateString("ja-JP");
+}
+
+export default function StudiosAdminPage() {
     const [studios, setStudios] = useState<any[]>([]);
-    const [isProcessing, setIsProcessing] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState("");
+    const [filter, setFilter] = useState<"all" | "published" | "unpublished">("all");
+    const [deleting, setDeleting] = useState<string | null>(null);
 
-    // 画面を開いた時に部屋一覧を取得
-    const fetchStudios = () => {
-        fetch('/api/studios')
-            .then(res => res.json())
+    const loadStudios = () => {
+        setLoading(true);
+        fetch("/api/studios")
+            .then(r => r.json())
             .then(data => {
-                if (!data.error) setStudios(data);
-            });
+                const arr = Array.isArray(data) ? data : data.studios || [];
+                // 最終更新日時が新しい順にソート
+                arr.sort((a: any, b: any) => {
+                    const ta = a.updatedAt || a.createdAt || "";
+                    const tb = b.updatedAt || b.createdAt || "";
+                    return tb.localeCompare(ta);
+                });
+                setStudios(arr);
+                setLoading(false);
+            })
+            .catch(() => setLoading(false));
     };
 
-    useEffect(() => {
-        fetchStudios();
-    }, []);
+    useEffect(() => { loadStudios(); }, []);
 
-    // 新しい部屋を追加
-    const handleAddStudio = async () => {
-        setIsProcessing(true);
-        await fetch('/api/studios', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: "新規スタジオ", pricePerHour: 1500 })
-        });
-        fetchStudios();
-        setIsProcessing(false);
+    const handleDelete = async (id: string, name: string) => {
+        if (!confirm(`「${name}」を削除しますか？\n関連する予約・データは残ります。元に戻せません。`)) return;
+        setDeleting(id);
+        try {
+            const res = await fetch(`/api/studios?id=${id}`, { method: "DELETE" });
+            if (!res.ok) throw new Error("削除に失敗しました");
+            setStudios(prev => prev.filter(s => s.id !== id));
+        } catch (e: any) {
+            alert("❌ " + e.message);
+        } finally {
+            setDeleting(null);
+        }
     };
 
-    // 部屋の設定を保存
-    const handleSaveStudio = async (studio: any) => {
-        setIsProcessing(true);
-        const res = await fetch('/api/studios', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(studio)
-        });
-        if (res.ok) alert(`✅ ${studio.name} の設定を保存しました`);
-        else alert("保存に失敗しました");
-        setIsProcessing(false);
-    };
+    const publishedCount = studios.filter(s => s.isPublished === true).length;
+    const unpublishedCount = studios.length - publishedCount;
 
-    // 部屋を削除
-    const handleDeleteStudio = async (id: number, name: string) => {
-        if (!confirm(`本当に「${name}」を削除しますか？\n※この操作は元に戻せません`)) return;
-        setIsProcessing(true);
-        await fetch(`/api/studios?id=${id}`, { method: 'DELETE' });
-        fetchStudios();
-        setIsProcessing(false);
-    };
-
-    // 入力欄の変更を反映
-    const handleChange = (id: number, field: string, value: any) => {
-        setStudios(studios.map(s => s.id === id ? { ...s, [field]: value } : s));
-    };
+    const filtered = studios.filter(s => {
+        const matchSearch =
+            s.storeName?.toLowerCase().includes(search.toLowerCase()) ||
+            s.email?.toLowerCase().includes(search.toLowerCase());
+        const matchFilter =
+            filter === "all" ||
+            (filter === "published" && s.isPublished === true) ||
+            (filter === "unpublished" && s.isPublished !== true);
+        return matchSearch && matchFilter;
+    });
 
     return (
-        <div className="min-h-screen bg-[#0a0f16] text-gray-300 font-sans p-8">
-            <div className="max-w-6xl mx-auto">
+        <div className="space-y-6">
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-black text-foreground">スタジオ管理</h1>
+                    <p className="text-muted-foreground text-sm mt-1">登録店舗の一覧・公開状況・更新状況</p>
+                </div>
+                <div className="flex items-center gap-3 text-sm font-mono">
+                    <span className="text-muted-foreground">{studios.length} 店舗登録中</span>
+                </div>
+            </div>
 
-                <div className="flex justify-between items-center mb-10 border-b border-gray-800 pb-6">
-                    <div>
-                        <h1 className="text-3xl font-black text-white flex items-center gap-3 italic">
-                            <span className="p-3 bg-purple-600/20 text-purple-400 rounded-xl not-italic">🎸</span>
-                            Rooms & Pricing
-                        </h1>
-                        <p className="text-xs text-purple-500/80 font-bold mt-2 tracking-widest uppercase">スタジオ（部屋）ごとの料金と設定</p>
+            {/* 更新状況サマリーカード */}
+            <div className="grid grid-cols-3 gap-4">
+                <div
+                    onClick={() => setFilter("all")}
+                    className={`rounded-xl border p-4 cursor-pointer transition-all ${filter === "all" ? "border-purple-500 bg-purple-500/10" : "border-border bg-card hover:border-purple-500/50"}`}
+                >
+                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-1">全店舗</p>
+                    <p className="text-3xl font-black text-foreground">{studios.length}</p>
+                </div>
+                <div
+                    onClick={() => setFilter("published")}
+                    className={`rounded-xl border p-4 cursor-pointer transition-all ${filter === "published" ? "border-green-500 bg-green-500/10" : "border-border bg-card hover:border-green-500/50"}`}
+                >
+                    <div className="flex items-center gap-2 mb-1">
+                        <Globe className="w-3 h-3 text-green-400" />
+                        <p className="text-xs text-green-400 font-bold uppercase tracking-widest">公開中</p>
                     </div>
-                    <button
-                        onClick={handleAddStudio} disabled={isProcessing}
-                        className="px-6 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-500 shadow-lg shadow-purple-600/20 transition-all active:scale-95"
-                    >
-                        ＋ 新しい部屋を追加
-                    </button>
+                    <p className="text-3xl font-black text-green-400">{publishedCount}</p>
                 </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {studios.map(studio => (
-                        <div key={studio.id} className="bg-[#111823] border border-gray-800 rounded-[2rem] p-8 shadow-2xl relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-2 h-full bg-purple-600"></div>
-
-                            <div className="flex justify-between items-start mb-6">
-                                <input
-                                    type="text"
-                                    value={studio.name}
-                                    onChange={(e) => handleChange(studio.id, 'name', e.target.value)}
-                                    className="bg-transparent text-2xl font-black text-white border-b border-gray-700 focus:border-purple-500 focus:outline-none pb-1 w-1/2"
-                                />
-                                <button onClick={() => handleDeleteStudio(studio.id, studio.name)} className="text-red-500 text-sm font-bold hover:text-red-400 bg-red-500/10 px-3 py-1 rounded-lg">
-                                    削除
-                                </button>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-6 mb-8">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">1時間の料金 (¥)</label>
-                                    <input type="number" value={studio.pricePerHour} onChange={(e) => handleChange(studio.id, 'pricePerHour', e.target.value)} className="w-full bg-[#0a0f16] border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-purple-500 focus:outline-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">何ヶ月先まで受付</label>
-                                    <input type="number" value={studio.bookingLimitMonths} onChange={(e) => handleChange(studio.id, 'bookingLimitMonths', e.target.value)} className="w-full bg-[#0a0f16] border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-purple-500 focus:outline-none" />
-                                </div>
-                            </div>
-
-                            <div className="space-y-4 mb-8 p-4 bg-[#0a0f16] rounded-xl border border-gray-800">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm font-bold text-gray-300">店頭支払いを許可</span>
-                                    <input type="checkbox" checked={studio.allowCash} onChange={(e) => handleChange(studio.id, 'allowCash', e.target.checked)} className="w-5 h-5 accent-purple-600" />
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm font-bold text-gray-300">事前決済 (Apple Pay等) を許可</span>
-                                    <input type="checkbox" checked={studio.allowOnlineStripe} onChange={(e) => handleChange(studio.id, 'allowOnlineStripe', e.target.checked)} className="w-5 h-5 accent-purple-600" />
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={() => handleSaveStudio(studio)} disabled={isProcessing}
-                                className="w-full py-4 bg-gray-800 text-white rounded-xl font-bold hover:bg-gray-700 transition-colors"
-                            >
-                                💾 この部屋の設定を保存
-                            </button>
-                        </div>
-                    ))}
-
-                    {studios.length === 0 && (
-                        <div className="col-span-full text-center py-20 text-gray-500 font-bold">
-                            部屋が登録されていません。「＋ 新しい部屋を追加」ボタンから作成してください。
-                        </div>
-                    )}
+                <div
+                    onClick={() => setFilter("unpublished")}
+                    className={`rounded-xl border p-4 cursor-pointer transition-all ${filter === "unpublished" ? "border-yellow-500 bg-yellow-500/10" : "border-border bg-card hover:border-yellow-500/50"}`}
+                >
+                    <div className="flex items-center gap-2 mb-1">
+                        <EyeOff className="w-3 h-3 text-yellow-400" />
+                        <p className="text-xs text-yellow-400 font-bold uppercase tracking-widest">非公開</p>
+                    </div>
+                    <p className="text-3xl font-black text-yellow-400">{unpublishedCount}</p>
                 </div>
+            </div>
 
+            {/* Search */}
+            <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="店舗名・メールで検索..."
+                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-border bg-card text-foreground text-sm focus:outline-none focus:border-purple-500 transition-colors"
+                />
+            </div>
+
+            {/* Table */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                {loading ? (
+                    <div className="p-12 text-center text-muted-foreground">読み込み中...</div>
+                ) : filtered.length === 0 ? (
+                    <div className="p-12 text-center text-muted-foreground">
+                        {search ? "該当する店舗が見つかりません" : "登録済みの店舗がありません"}
+                    </div>
+                ) : (
+                    <table className="w-full">
+                        <thead className="bg-accent/5 border-b border-border">
+                            <tr>
+                                {["店舗名 / メール", "公開状況", "更新状況", "プラン", "住所", "登録日", "操作"].map(h => (
+                                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-widest">{h}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                            {filtered.map(s => {
+                                const plan = PLANS[s.planKey];
+                                const isPublished = s.isPublished === true;
+                                const lastUpdated = s.updatedAt || s.createdAt;
+                                return (
+                                    <tr key={s.id} className="hover:bg-accent/5 transition-colors">
+                                        {/* 店舗名 */}
+                                        <td className="px-4 py-4">
+                                            <div className="flex items-center gap-3">
+                                                {s.logoUrl ? (
+                                                    <img src={s.logoUrl} alt="" className="w-8 h-8 rounded-lg object-contain border border-border bg-background dark:invert" />
+                                                ) : (
+                                                    <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
+                                                        <Store className="w-4 h-4 text-muted-foreground" />
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <p className="font-bold text-foreground text-sm">{s.storeName || "（名称未設定）"}</p>
+                                                    <p className="text-xs text-muted-foreground">{s.email}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        {/* 公開状況 */}
+                                        <td className="px-4 py-4">
+                                            {isPublished ? (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                                                    <span className="text-xs font-bold text-green-400">公開中</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                                                    <span className="text-xs font-bold text-yellow-400">非公開</span>
+                                                </div>
+                                            )}
+                                            {s.publishedAt && (
+                                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                                    公開: {new Date(s.publishedAt).toLocaleDateString("ja-JP")}
+                                                </p>
+                                            )}
+                                        </td>
+                                        {/* 更新状況 */}
+                                        <td className="px-4 py-4">
+                                            <div className="flex items-center gap-1 text-muted-foreground">
+                                                <Clock className="w-3 h-3 shrink-0" />
+                                                <span className="text-xs">{formatRelativeTime(lastUpdated)}</span>
+                                            </div>
+                                            {s.rooms && (
+                                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                                    部屋: {s.rooms.length}室 / スタッフ: {s.staff?.length ?? 0}人
+                                                </p>
+                                            )}
+                                        </td>
+                                        {/* プラン */}
+                                        <td className="px-4 py-4">
+                                            {plan ? (
+                                                <span className="px-2 py-1 rounded-full text-xs font-bold text-white" style={{ backgroundColor: plan.color }}>
+                                                    {plan.name}
+                                                </span>
+                                            ) : (
+                                                <span className="px-2 py-1 rounded-full text-xs font-bold bg-gray-500/20 text-gray-500">未契約</span>
+                                            )}
+                                        </td>
+                                        {/* 住所 */}
+                                        <td className="px-4 py-4 text-xs text-muted-foreground max-w-[160px] truncate">
+                                            {s.address || "—"}
+                                        </td>
+                                        {/* 登録日 */}
+                                        <td className="px-4 py-4 text-xs text-muted-foreground whitespace-nowrap">
+                                            {s.createdAt ? new Date(s.createdAt).toLocaleDateString("ja-JP") : "—"}
+                                        </td>
+                                        {/* 操作 */}
+                                        <td className="px-4 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <Link
+                                                    href={`/admin/studios/${s.id}`}
+                                                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1"
+                                                >
+                                                    <ExternalLink className="w-3 h-3" />
+                                                    編集
+                                                </Link>
+                                                <button
+                                                    onClick={() => handleDelete(s.id, s.storeName || s.email)}
+                                                    disabled={deleting === s.id}
+                                                    className="p-1.5 text-red-500/60 hover:text-red-400 hover:bg-red-950/20 rounded-lg transition-all disabled:opacity-40"
+                                                    title="削除"
+                                                >
+                                                    {deleting === s.id ? (
+                                                        <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                                                    ) : (
+                                                        <Trash2 className="w-4 h-4" />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                )}
             </div>
         </div>
     );

@@ -124,7 +124,7 @@ export default function MyPage() {
         {/* ヘッダー */}
         <header className="sg-header">
           <div className="sg-header-inner">
-            <Link href="/studios">
+            <Link href="https://studi-go.com">
               <Image src="/logo-new.png" alt="Studi-Go" width={100} height={28} style={{ height: 28, width: "auto" }} priority />
             </Link>
             <span className="sg-header-label">マイページ</span>
@@ -358,7 +358,6 @@ export default function MyPage() {
         {/* 下部固定ボタン */}
         <div className="sg-bottom-bar">
           <div className="sg-bottom-inner">
-            <Link href="/" className="sg-bottom-btn secondary">🏠 トップへ</Link>
             <button className="sg-bottom-btn danger" onClick={() => { localStorage.clear(); window.location.href = "/"; }}>
               ログアウト
             </button>

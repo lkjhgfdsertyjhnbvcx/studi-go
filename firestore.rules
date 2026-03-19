@@ -3,88 +3,76 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ========================================
-    // ヘルパー関数
-    // ========================================
-
-    // ログイン済みかどうか
     function isSignedIn() {
       return request.auth != null;
-    }
-
-    // 自分自身のドキュメントか
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
     }
 
     // ========================================
     // users コレクション
     // ========================================
     match /users/{userId} {
-      // 自分のデータのみ読み取り・更新可能
-      allow read: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if false;
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if false;  // 削除はAdmin SDKのみ（セキュリティルール不要）
     }
 
     // ========================================
-    // studios コレクション（店舗情報）
+    // studios コレクション
     // ========================================
     match /studios/{studioId} {
-      // 誰でも読み取り可能（公開情報）
       allow read: if true;
-      // 書き込みはサーバーサイド（Firebase Admin）経由のみ
-      allow write: if false;
+      allow create: if true;  // 店舗新規登録
+      allow update: if true;  // 店舗情報更新
+      allow delete: if true;  // 運営管理画面から削除可能
     }
 
     // ========================================
-    // bookings コレクション（予約）
+    // settings コレクション（プラン設定など）
+    // ========================================
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if true;   // 運営管理画面から書き込み可
+    }
+
+    // ========================================
+    // bookings コレクション
     // ========================================
     match /bookings/{bookingId} {
-      // 自分の予約のみ読み取り可能
       allow read: if isSignedIn() &&
         resource.data.userId == request.auth.uid;
-      // 予約作成はログイン済みユーザーのみ
       allow create: if isSignedIn() &&
         request.resource.data.userId == request.auth.uid;
-      // 更新・削除はサーバーサイドのみ
       allow update, delete: if false;
     }
 
     // ========================================
-    // payments コレクション（決済情報）
+    // payments コレクション
     // ========================================
     match /payments/{paymentId} {
-      // 自分の支払いのみ読み取り可能
       allow read: if isSignedIn() &&
         resource.data.userId == request.auth.uid;
-      // 書き込みはサーバーサイドのみ（Stripe Webhook）
       allow write: if false;
     }
 
     // ========================================
-    // campaigns コレクション（キャンペーン）
+    // campaigns コレクション
     // ========================================
     match /campaigns/{campaignId} {
-      // 誰でも読み取り可能（公開情報）
       allow read: if true;
-      // 書き込みはサーバーサイドのみ
       allow write: if false;
     }
 
     // ========================================
-    // coupons コレクション（クーポン）
+    // coupons コレクション
     // ========================================
     match /coupons/{couponId} {
-      // ログイン済みユーザーのみ読み取り可能
       allow read: if isSignedIn();
-      // 書き込みはサーバーサイドのみ
       allow write: if false;
     }
 
     // ========================================
-    // その他すべて：デフォルト拒否
+    // その他：デフォルト拒否
     // ========================================
     match /{document=**} {
       allow read, write: if false;

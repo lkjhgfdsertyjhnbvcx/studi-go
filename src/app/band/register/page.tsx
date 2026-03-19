@@ -52,7 +52,7 @@ export default function BandRegisterPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-950 text-white p-6" style={{fontFamily:"'DM Sans', sans-serif"}}>
+        <div className="min-h-screen bg-white text-gray-800 p-6" style={{fontFamily:"'DM Sans', sans-serif"}}>
             <div className="max-w-md mx-auto">
                 <div className="text-center mb-8">
                     <p className="text-purple-400 text-xs font-black uppercase tracking-[0.3em] mb-2">MY PAGE</p>

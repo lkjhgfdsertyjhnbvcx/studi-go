@@ -58,6 +58,7 @@ export function AdminSidebar() {
         { name: 'プラン管理', href: '/admin/plans', icon: Package },
         { name: '会計帳簿', href: '/admin/ledger', icon: BookOpen },
         { name: '広告管理', href: '/admin/ads', icon: Megaphone },
+        { name: 'メール送信', href: '/admin/email', icon: Mail },
     ] : [
         { name: '店舗情報', href: auth.studioId ? `/admin/studios/${auth.studioId}` : '/admin', icon: Store },
         { name: '顧客管理', href: '/admin/users', icon: Users },

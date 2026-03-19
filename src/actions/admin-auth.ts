@@ -5,8 +5,8 @@ import { redirect } from 'next/navigation';
 import { getAllStudios } from '@/lib/db-studio';
 
 const ADMIN_CREDENTIALS = {
-    email: "admin@studio-go.com",
-    password: "password123"
+    email: process.env.ADMIN_EMAIL ?? "admin@studio-go.com",
+    password: process.env.ADMIN_PASSWORD ?? "password123"
 };
 
 export async function adminLogin(formData: FormData, isPlatformLogin: boolean = false) {

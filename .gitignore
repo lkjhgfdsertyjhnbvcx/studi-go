@@ -44,3 +44,4 @@ service-account.json
 *.tsbuildinfo
 next-env.d.ts
 .firebase/
+.env*.local

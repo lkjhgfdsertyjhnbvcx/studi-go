@@ -25,6 +25,9 @@ interface Store {
     studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number };
     otherDiscounts?: Discount[]; rooms?: Room[]; equipmentOptions?: EquipmentOption[];
     staff?: StaffMember[]; blacklist?: BlacklistEntry[]; monthlyRevenueTarget?: number;
+    isPublished?: boolean;
+    updatedAt?: string;
+    publishedAt?: string;
 }
 interface Booking {
     id: string; userId: string; studioId: string; roomName: string; date: string;
@@ -159,7 +162,7 @@ export default function StoreDashboard() {
                     <div className="w-96 bg-card/50 border-r border-border overflow-y-auto shrink-0 relative">
                         <button onClick={() => setSidebarOpen(false)} className="absolute top-3 right-3 z-10 text-muted-foreground hover:text-foreground text-xs p-1 rounded-lg hover:bg-accent/10 transition-all">✕</button>
                         <div className="p-6">
-                            {activeMenu === "profile" && <ProfileTab store={store} setStore={setStore} />}
+                            {activeMenu === "profile" && <ProfileTab store={store} setStore={setStore} notify={notify} />}
                             {activeMenu === "branding" && <BrandingTab store={store} setStore={setStore} />}
                             {activeMenu === "settings" && <SettingsTab store={store} setStore={setStore} />}
                             {activeMenu === "studios" && <StudiosTab store={store} setStore={setStore} />}
@@ -199,10 +202,72 @@ export default function StoreDashboard() {
 
 // ===== 左パネルタブ =====
 
-function ProfileTab({ store, setStore }: any) {
+function ProfileTab({ store, setStore, notify }: any) {
     const u = (k: string, v: any) => setStore({ ...store, [k]: v });
+    const [publishing, setPublishing] = React.useState(false);
+
+    const handlePublishToggle = async () => {
+        const next = !store.isPublished;
+        if (next && !confirm("店舗をユーザー向け一覧に公開しますか？\n基本情報・スタジオ設定が完了していることを確認してください。")) return;
+        if (!next && !confirm("店舗を非公開にしますか？\nユーザーの検索結果から外れます。")) return;
+        setPublishing(true);
+        try {
+            const now = new Date().toISOString();
+            const updated = {
+                ...store,
+                isPublished: next,
+                updatedAt: now,
+                ...(next ? { publishedAt: now } : {}),
+            };
+            const res = await fetch("/api/store/update-full", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updated),
+            });
+            if (!res.ok) throw new Error("保存に失敗しました");
+            setStore(updated);
+            notify(next ? "✅ 公開しました！ユーザー一覧に表示されます" : "🔒 非公開にしました");
+        } catch (e: any) {
+            notify("❌ " + e.message);
+        } finally {
+            setPublishing(false);
+        }
+    };
+
     return (
         <Section title="プロフィール">
+            {/* 公開設定ブロック */}
+            <div className={`rounded-xl p-4 border-2 ${store.isPublished ? "border-green-500/40 bg-green-500/5" : "border-yellow-500/40 bg-yellow-500/5"}`}>
+                <div className="flex items-center justify-between mb-2">
+                    <div>
+                        <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-0.5">公開設定</p>
+                        <div className="flex items-center gap-2">
+                            <span className={`inline-block w-2 h-2 rounded-full ${store.isPublished ? "bg-green-400 animate-pulse" : "bg-yellow-400"}`} />
+                            <span className={`text-sm font-black ${store.isPublished ? "text-green-400" : "text-yellow-400"}`}>
+                                {store.isPublished ? "公開中" : "非公開"}
+                            </span>
+                        </div>
+                        {store.isPublished && store.publishedAt && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">公開日: {new Date(store.publishedAt).toLocaleDateString("ja-JP")}</p>
+                        )}
+                    </div>
+                    <button
+                        onClick={handlePublishToggle}
+                        disabled={publishing}
+                        className={`px-4 py-2 rounded-lg text-xs font-black transition-all disabled:opacity-50 ${
+                            store.isPublished
+                                ? "bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 border border-yellow-500/40"
+                                : "bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/40"
+                        }`}
+                    >
+                        {publishing ? "処理中..." : store.isPublished ? "🔒 非公開にする" : "🚀 公開する"}
+                    </button>
+                </div>
+                {!store.isPublished && (
+                    <p className="text-[10px] text-yellow-400/80 mt-1">※ 公開するとユーザー検索に表示されます。スタジオ設定・料金設定を完了してから公開してください。</p>
+                )}
+            </div>
+
             <Field label="店舗名" value={store.storeName} onChange={v => u("storeName", v)} />
             <Field label="会社名" value={store.companyName} onChange={v => u("companyName", v)} />
             <Field label="郵便番号" value={store.postalCode} onChange={v => u("postalCode", v)} placeholder="000-0000" />
@@ -1446,6 +1511,18 @@ function PlanTab({ store, setStore, notify }: any) {
     const [selectedOptions, setSelectedOptions] = React.useState<string[]>(currentOptions);
     const [payMethod, setPayMethod] = React.useState("stripe");
     const [saving, setSaving] = React.useState(false);
+    const [plans, setPlans] = React.useState<any[]>(PLANS);
+    const [planOptions, setPlanOptions] = React.useState<any[]>(PLAN_OPTIONS);
+
+    React.useEffect(() => {
+        fetch("/api/admin/plan-settings")
+            .then(r => r.json())
+            .then(d => {
+                if (d && Array.isArray(d.plans) && d.plans.length > 0) setPlans(d.plans);
+                if (d && Array.isArray(d.options) && d.options.length > 0) setPlanOptions(d.options);
+            })
+            .catch(() => {});
+    }, []);
 
     const toggleOption = (key: string) => {
         setSelectedOptions(prev =>
@@ -1454,10 +1531,10 @@ function PlanTab({ store, setStore, notify }: any) {
     };
 
     const totalMonthly = () => {
-        const plan = PLANS.find(p => p.key === selectedPlan);
+        const plan = plans.find((p: any) => p.id === selectedPlan || p.key === selectedPlan);
         const planPrice = plan ? plan.price : 0;
         const optPrice = selectedOptions.reduce((sum, k) => {
-            const o = PLAN_OPTIONS.find(o => o.key === k);
+            const o = planOptions.find((o: any) => o.id === k || o.key === k);
             return sum + (o ? o.price : 0);
         }, 0);
         return planPrice + optPrice;
@@ -1497,21 +1574,24 @@ function PlanTab({ store, setStore, notify }: any) {
                 <h2 className="text-foreground font-black text-lg mb-1">プラン選択</h2>
                 <p className="text-muted-foreground text-xs mb-4">月額料金はStudi-Goへの掲載・利用料です</p>
                 <div className="grid gap-3">
-                    {PLANS.map(plan => (
-                        <button key={plan.key} onClick={() => setSelectedPlan(plan.key)}
-                            className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${selectedPlan === plan.key ? "border-purple-500 bg-purple-600/10" : "border-border bg-card hover:border-gray-500"}`}>
+                    {plans.map((plan: any) => {
+                        const planKey = plan.id || plan.key;
+                        return (
+                        <button key={planKey} onClick={() => setSelectedPlan(planKey)}
+                            className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${selectedPlan === planKey ? "border-purple-500 bg-purple-600/10" : "border-border bg-card hover:border-gray-500"}`}>
                             <div className="flex justify-between items-center mb-1">
                                 <span className="font-black text-foreground">{plan.name}</span>
                                 <span className="text-purple-400 font-black">¥{plan.price.toLocaleString()}<span className="text-muted-foreground text-xs font-normal">/月</span></span>
                             </div>
-                            <p className="text-muted-foreground text-xs mb-2">{plan.desc}</p>
+                            <p className="text-muted-foreground text-xs mb-2">{plan.description || plan.desc}</p>
                             <div className="flex flex-wrap gap-1">
-                                {plan.features.map(f => (
+                                {(plan.features || []).map((f: string) => (
                                     <span key={f} className="text-xs bg-accent/10 text-muted-foreground px-2 py-0.5 rounded-full">{f}</span>
                                 ))}
                             </div>
                         </button>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 
@@ -1519,18 +1599,21 @@ function PlanTab({ store, setStore, notify }: any) {
                 <h2 className="text-foreground font-black text-lg mb-1">オプション</h2>
                 <p className="text-muted-foreground text-xs mb-4">必要なオプションを追加できます（月額）</p>
                 <div className="grid gap-3">
-                    {PLAN_OPTIONS.map(opt => (
-                        <button key={opt.key} onClick={() => toggleOption(opt.key)}
-                            className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${selectedOptions.includes(opt.key) ? "border-purple-500 bg-purple-600/10" : "border-border bg-card hover:border-gray-500"}`}>
+                    {planOptions.map((opt: any) => {
+                        const optKey = opt.id || opt.key;
+                        return (
+                        <button key={optKey} onClick={() => toggleOption(optKey)}
+                            className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${selectedOptions.includes(optKey) ? "border-purple-500 bg-purple-600/10" : "border-border bg-card hover:border-gray-500"}`}>
                             <div className="flex justify-between items-center">
                                 <div>
                                     <span className="font-black text-foreground text-sm">{opt.name}</span>
-                                    <p className="text-muted-foreground text-xs mt-0.5">{opt.desc}</p>
+                                    <p className="text-muted-foreground text-xs mt-0.5">{opt.description || opt.desc}</p>
                                 </div>
                                 <span className="text-purple-400 font-black text-sm">+¥{opt.price.toLocaleString()}<span className="text-muted-foreground text-xs font-normal">/月</span></span>
                             </div>
                         </button>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 
@@ -1552,7 +1635,7 @@ function PlanTab({ store, setStore, notify }: any) {
                     <span className="text-3xl font-black text-purple-400">¥{totalMonthly().toLocaleString()}<span className="text-muted-foreground text-sm font-normal">/月</span></span>
                 </div>
                 {currentPlan && (
-                    <p className="text-muted-foreground text-xs mt-1">現在: {PLANS.find(p=>p.key===currentPlan)?.name} プラン</p>
+                    <p className="text-muted-foreground text-xs mt-1">現在: {plans.find((p:any)=>p.id===currentPlan||p.key===currentPlan)?.name} プラン</p>
                 )}
             </div>
 
