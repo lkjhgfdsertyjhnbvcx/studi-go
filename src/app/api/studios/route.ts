@@ -1,7 +1,6 @@
 // app/api/studios/route.ts
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 
 export const dynamic = 'force-dynamic';
 
@@ -10,8 +9,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const publishedOnly = searchParams.get("published") === "true";
 
-    const studiosRef = collection(db, "studios");
-    const snapshot = await getDocs(studiosRef);
+    const snapshot = await adminDb.collection("studios").get();
     let studios = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
@@ -36,7 +34,7 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "studio id required" }, { status: 400 });
-    await deleteDoc(doc(db, "studios", id));
+    await adminDb.collection("studios").doc(id).delete();
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("【studios DELETE エラー】", error?.message || error);

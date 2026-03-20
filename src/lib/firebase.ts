@@ -1,7 +1,7 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
-import { getAuth } from "firebase/auth";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getFirestore, Firestore } from "firebase/firestore";
+import { getStorage, FirebaseStorage } from "firebase/storage";
+import { getAuth, Auth } from "firebase/auth";
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,7 +13,17 @@ const firebaseConfig = {
     measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-export const auth = getAuth(app);
+function getFirebaseApp(): FirebaseApp {
+    if (getApps().length > 0) return getApp();
+    return initializeApp(firebaseConfig);
+}
+
+export const db: Firestore = new Proxy({} as Firestore, {
+    get(_t, prop) { return (getFirestore(getFirebaseApp()) as any)[prop]; }
+});
+export const storage: FirebaseStorage = new Proxy({} as FirebaseStorage, {
+    get(_t, prop) { return (getStorage(getFirebaseApp()) as any)[prop]; }
+});
+export const auth: Auth = new Proxy({} as Auth, {
+    get(_t, prop) { return (getAuth(getFirebaseApp()) as any)[prop]; }
+});
