@@ -10,8 +10,9 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, BarChart3, Users, HardDrive } from "lucide-react";
+import { DollarSign, BarChart3, Users, Store, Globe, TrendingUp, CreditCard } from "lucide-react";
 import { BackupButton } from '@/components/admin/BackupButton';
+import { adminDb } from '@/lib/firebase-admin';
 
 export default async function AdminPage() {
     const auth = await getAuthInfo();
@@ -21,16 +22,57 @@ export default async function AdminPage() {
         redirect(`/admin/studios/${auth.studioId}`);
     }
 
-    const bookings = await fetchBookings();
+    // Fetch all data in parallel (Promise.allSettled で安全に取得)
+    const safeGet = async (fn: () => Promise<any>, fallback: any) => {
+        try { return await fn(); } catch { return fallback; }
+    };
 
-    // High-level Stats
+    const [bookings, studiosSnap, usersSnap, planConfigSnap] = await Promise.all([
+        safeGet(() => fetchBookings(), []),
+        safeGet(() => adminDb.collection("studios").get(), { docs: [], size: 0 }),
+        safeGet(() => adminDb.collection("users").get(), { docs: [], size: 0 }),
+        safeGet(() => adminDb.collection("settings").doc("planConfig").get(), null),
+    ]);
+
+    // Booking stats
+    const now = new Date();
     const totalRevenue = bookings.reduce((sum, b) => sum + b.totalPrice, 0);
     const bookingsThisMonth = bookings.filter(b => {
         const d = new Date(b.date);
-        const now = new Date();
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     }).length;
+    const revenueThisMonth = bookings.filter(b => {
+        const d = new Date(b.date);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).reduce((sum, b) => sum + b.totalPrice, 0);
     const avgPrice = bookings.length > 0 ? totalRevenue / bookings.length : 0;
+
+    // Studio stats
+    const allStudios = (studiosSnap.docs || []).map((d: any) => ({ id: d.id, ...d.data() })) as any[];
+    const totalStudios = allStudios.length;
+    const publishedStudios = allStudios.filter((s: any) => s.isPublished === true).length;
+    const contractedStudios = allStudios.filter((s: any) => s.planKey).length;
+    const totalUsers = usersSnap.size || 0;
+
+    // MRR calculation from studio plan assignments
+    const planConfig = planConfigSnap?.exists ? planConfigSnap.data() : null;
+    const planPrices: Record<string, number> = {};
+    const optPrices: Record<string, { price: number; billingType: string }> = {};
+    if (planConfig?.plans) {
+        for (const p of planConfig.plans) planPrices[p.id] = p.price;
+    }
+    if (planConfig?.options) {
+        for (const o of planConfig.options) optPrices[o.id] = { price: o.price, billingType: o.billingType || "monthly" };
+    }
+    const mrr = allStudios.reduce((sum, s) => {
+        if (!s.planKey) return sum;
+        const base = planPrices[s.planKey] || 0;
+        const opts = (s.planOptions || []).reduce((o: number, k: string) => {
+            const opt = optPrices[k];
+            return o + (opt && opt.billingType !== "once" ? opt.price : 0);
+        }, 0);
+        return sum + base + opts;
+    }, 0);
 
     return (
         <div className="min-h-screen bg-background text-foreground p-6 md:p-12 font-sans">
@@ -41,19 +83,64 @@ export default async function AdminPage() {
                             プラットフォーム管理コンソール
                         </h1>
                         <p className="text-muted-foreground font-mono text-xs uppercase tracking-widest leading-relaxed">
-                            予約状況・売上集計
+                            予約状況・売上集計・プラットフォーム概況
                         </p>
                     </div>
                     <BackupButton />
                 </div>
             </header>
 
-            {/* KPI GRID */}
+            {/* KPI GRID - Row 1: Platform metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div className="bg-card border border-border p-5 rounded-2xl relative overflow-hidden group hover:border-green-500/50 transition-all">
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-2 mb-2">
+                            <CreditCard className="w-3.5 h-3.5 text-green-400" />
+                            <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest">月次収益 (MRR)</div>
+                        </div>
+                        <div className="text-3xl font-black text-green-400 tracking-tight">¥{mrr.toLocaleString()}</div>
+                        <div className="text-[10px] text-muted-foreground mt-1">契約店舗からの月額収益</div>
+                    </div>
+                </div>
+                <div className="bg-card border border-border p-5 rounded-2xl relative overflow-hidden group hover:border-purple-500/50 transition-all">
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Store className="w-3.5 h-3.5 text-purple-400" />
+                            <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest">登録店舗数</div>
+                        </div>
+                        <div className="text-3xl font-black text-purple-400 tracking-tight">{totalStudios}</div>
+                        <div className="text-[10px] text-muted-foreground mt-1">契約中: {contractedStudios} / 公開中: {publishedStudios}</div>
+                    </div>
+                </div>
+                <div className="bg-card border border-border p-5 rounded-2xl relative overflow-hidden group hover:border-blue-500/50 transition-all">
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Users className="w-3.5 h-3.5 text-blue-400" />
+                            <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest">ユーザー数</div>
+                        </div>
+                        <div className="text-3xl font-black text-blue-400 tracking-tight">{totalUsers}</div>
+                        <div className="text-[10px] text-muted-foreground mt-1">登録ユーザー総数</div>
+                    </div>
+                </div>
+                <div className="bg-card border border-border p-5 rounded-2xl relative overflow-hidden group hover:border-cyan-500/50 transition-all">
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-2 mb-2">
+                            <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
+                            <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest">今月予約売上</div>
+                        </div>
+                        <div className="text-3xl font-black text-cyan-400 tracking-tight">¥{revenueThisMonth.toLocaleString()}</div>
+                        <div className="text-[10px] text-muted-foreground mt-1">{bookingsThisMonth}件の予約</div>
+                    </div>
+                </div>
+            </div>
+
+            {/* KPI GRID - Row 2: Booking metrics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
                 <div className="bg-card border border-border p-6 rounded-2xl relative overflow-hidden group hover:border-cyan-500/50 transition-all shadow-2xl">
                     <div className="relative z-10">
-                        <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest mb-1">総売上</div>
+                        <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest mb-1">累計予約売上</div>
                         <div className="text-4xl font-black text-foreground tracking-tight">¥{totalRevenue.toLocaleString()}</div>
+                        <div className="text-[10px] text-muted-foreground mt-1">全期間の予約売上合計</div>
                     </div>
                     <div className="absolute -right-4 -bottom-4 text-cyan-500/10 rotate-12 group-hover:scale-110 transition-transform">
                         <DollarSign size={120} />
@@ -62,8 +149,9 @@ export default async function AdminPage() {
 
                 <div className="bg-card border border-border p-6 rounded-2xl relative overflow-hidden group hover:border-blue-500/50 transition-all shadow-2xl">
                     <div className="relative z-10">
-                        <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest mb-1">月間予約数</div>
-                        <div className="text-4xl font-black text-foreground tracking-tight">{bookingsThisMonth} <span className="text-sm font-normal text-blue-400">件</span></div>
+                        <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest mb-1">累計予約件数</div>
+                        <div className="text-4xl font-black text-foreground tracking-tight">{bookings.length} <span className="text-sm font-normal text-blue-400">件</span></div>
+                        <div className="text-[10px] text-muted-foreground mt-1">今月: {bookingsThisMonth}件</div>
                     </div>
                     <div className="absolute -right-4 -bottom-4 text-blue-500/10 rotate-12 group-hover:scale-110 transition-transform">
                         <BarChart3 size={120} />
@@ -74,9 +162,10 @@ export default async function AdminPage() {
                     <div className="relative z-10">
                         <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest mb-1">平均客単価</div>
                         <div className="text-4xl font-black text-foreground tracking-tight">¥{Math.round(avgPrice).toLocaleString()}</div>
+                        <div className="text-[10px] text-muted-foreground mt-1">1予約あたりの平均金額</div>
                     </div>
                     <div className="absolute -right-4 -bottom-4 text-purple-500/10 rotate-12 group-hover:scale-110 transition-transform">
-                        <Users size={120} />
+                        <Globe size={120} />
                     </div>
                 </div>
             </div>

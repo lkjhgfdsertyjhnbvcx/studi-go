@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 import { v4 as uuidv4 } from "uuid";
 
 export async function POST(request: Request) {
@@ -26,6 +25,7 @@ export async function POST(request: Request) {
             personalPracticeSettings: { enabled: true, reservationWindowType: "days", reservationWindowValue: 1, maxPeople: 2 },
             designSettings: { logoSize: 100, backgroundColor: "#000000", backgroundType: "color" },
             equipmentOptions: [],
+            isPublished: false,
             createdAt: new Date().toISOString(),
             staff: [
                 {
@@ -33,17 +33,17 @@ export async function POST(request: Request) {
                     name: body.name,
                     email: body.email,
                     password: body.password,
-                    role: "admin" as const,
+                    role: "admin",
                     createdAt: new Date().toISOString(),
                 },
             ],
         };
 
-        await setDoc(doc(db, "studios", studioId), newStudio);
+        await adminDb.collection("studios").doc(studioId).set(newStudio);
 
         return NextResponse.json({ success: true, store: { id: studioId, name: newStudio.storeName } });
     } catch (error: any) {
-        console.error("【APIエラー詳細】:", error.message);
+        console.error("【店舗登録APIエラー】:", error.message);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
