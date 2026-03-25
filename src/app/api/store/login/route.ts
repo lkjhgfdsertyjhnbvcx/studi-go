@@ -17,6 +17,7 @@ export async function POST(request: Request) {
                 return NextResponse.json({
                     success: true,
                     storeId: s.id,
+                    staffId: staffMember.id,
                     name: s.storeName,
                     role: staffMember.role,
                 });
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
                 return NextResponse.json({
                     success: true,
                     storeId: studio.id,
+                    staffId: staff.id,
                     name: studio.storeName,
                     role: staff.role,
                 });

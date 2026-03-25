@@ -21,6 +21,8 @@ export default function StoreLogin() {
             const data = await res.json();
             if (res.ok && data.success) {
                 localStorage.setItem("storeId", data.storeId);
+                localStorage.setItem("staffId", data.staffId || "");
+                localStorage.setItem("staffRole", data.role || "staff");
                 router.push('/store/dashboard');
             } else {
                 setError("店舗IDまたはパスワードが正しくありません");

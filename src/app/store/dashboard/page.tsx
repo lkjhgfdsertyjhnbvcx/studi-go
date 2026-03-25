@@ -650,41 +650,153 @@ function OptionsTab({ store, setStore }: any) {
 
 function StaffTab({ store, setStore, notify }: any) {
     const [newStaff, setNewStaff] = useState({ name: "", email: "", password: "", role: "staff" });
-    const addStaff = () => {
-        if (!newStaff.name || !newStaff.email) return;
-        const member: StaffMember = { id: crypto.randomUUID(), name: newStaff.name, email: newStaff.email, password: newStaff.password, role: newStaff.role as "admin" | "staff", createdAt: new Date().toISOString() };
+    const [editTarget, setEditTarget] = useState<StaffMember | null>(null);
+    const [editForm, setEditForm] = useState({ name: "", email: "", newPassword: "", currentPassword: "", role: "staff" });
+    const [saving, setSaving] = useState(false);
+
+    const currentStaffId = typeof window !== "undefined" ? localStorage.getItem("staffId") : "";
+    const currentRole = typeof window !== "undefined" ? localStorage.getItem("staffRole") : "staff";
+    const isAdmin = currentRole === "admin";
+
+    const openEdit = (s: StaffMember) => {
+        setEditTarget(s);
+        setEditForm({ name: s.name, email: s.email, newPassword: "", currentPassword: "", role: s.role });
+    };
+
+    const saveEdit = async () => {
+        if (!editTarget || !store) return;
+        setSaving(true);
+        try {
+            const isSelf = editTarget.id === currentStaffId;
+            const body: any = {
+                studioId: store.id,
+                id: editTarget.id,
+                requesterId: currentStaffId,
+                name: editForm.name,
+                email: editForm.email,
+                role: editForm.role,
+            };
+            if (editForm.newPassword) {
+                body.newPassword = editForm.newPassword;
+                if (isSelf) body.password = editForm.currentPassword;
+            }
+            const res = await fetch("/api/staff", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+            const data = await res.json();
+            if (!res.ok) { notify("エラー: " + (data.error || "保存失敗")); return; }
+            // ローカル更新
+            const updated = (store.staff || []).map((s: StaffMember) =>
+                s.id === editTarget.id ? { ...s, name: editForm.name, email: editForm.email, role: editForm.role as "admin" | "staff" } : s
+            );
+            setStore({ ...store, staff: updated });
+            setEditTarget(null);
+            notify("更新しました");
+        } finally { setSaving(false); }
+    };
+
+    const deleteStaff = async (id: string) => {
+        if (!store || !window.confirm("削除しますか？")) return;
+        const res = await fetch(`/api/staff?id=${id}&studioId=${store.id}&requesterId=${currentStaffId}`, { method: "DELETE" });
+        const data = await res.json();
+        if (!res.ok) { notify("エラー: " + (data.error || "削除失敗")); return; }
+        setStore({ ...store, staff: (store.staff || []).filter((s: StaffMember) => s.id !== id) });
+        notify("削除しました");
+    };
+
+    const addStaff = async () => {
+        if (!newStaff.name || !newStaff.email || !store) return;
+        const res = await fetch("/api/staff", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ studioId: store.id, requesterId: currentStaffId, ...newStaff })
+        });
+        const data = await res.json();
+        if (!res.ok) { notify("エラー: " + (data.error || "追加失敗")); return; }
+        const member: StaffMember = { id: data.id, name: newStaff.name, email: newStaff.email, password: "", role: newStaff.role as "admin" | "staff", createdAt: new Date().toISOString() };
         setStore({ ...store, staff: [...(store.staff || []), member] });
         setNewStaff({ name: "", email: "", password: "", role: "staff" });
         notify("スタッフを追加しました");
     };
+
     return (
-        <Section title="スタッフ登録">
+        <Section title="スタッフ管理">
+            {/* 編集モーダル */}
+            {editTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+                    <div className="bg-card border border-border rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
+                        <h3 className="text-base font-black">スタッフ情報編集</h3>
+                        <Field label="名前" value={editForm.name} onChange={v => setEditForm({ ...editForm, name: v })} />
+                        <Field label="メールアドレス" value={editForm.email} onChange={v => setEditForm({ ...editForm, email: v })} />
+                        {isAdmin && editTarget.id !== currentStaffId && (
+                            <div>
+                                <Label>権限</Label>
+                                <select className="w-full mt-1 p-2.5 bg-accent/10 border border-border rounded-xl text-sm font-bold text-foreground outline-none" value={editForm.role} onChange={e => setEditForm({ ...editForm, role: e.target.value })}>
+                                    <option value="staff">スタッフ</option>
+                                    <option value="admin">管理者</option>
+                                </select>
+                            </div>
+                        )}
+                        <div className="border-t border-border pt-3">
+                            <p className="text-[10px] font-black text-muted-foreground uppercase mb-2">パスワード変更（変更する場合のみ）</p>
+                            {editTarget.id === currentStaffId && (
+                                <Field label="現在のパスワード" value={editForm.currentPassword} onChange={v => setEditForm({ ...editForm, currentPassword: v })} type="password" />
+                            )}
+                            <Field label="新しいパスワード" value={editForm.newPassword} onChange={v => setEditForm({ ...editForm, newPassword: v })} type="password" />
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                            <button onClick={() => setEditTarget(null)} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold hover:bg-accent/20 transition-all">キャンセル</button>
+                            <button onClick={saveEdit} disabled={saving} className="flex-1 py-2.5 bg-purple-600 hover:bg-purple-500 rounded-xl text-sm font-black transition-all disabled:opacity-50">
+                                {saving ? "保存中..." : "保存する"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* スタッフ一覧 */}
             <div className="space-y-2 mb-4">
                 {(store.staff || []).map((s: StaffMember) => (
                     <div key={s.id} className="bg-accent/10/40 rounded-xl p-3 flex justify-between items-center">
                         <div>
-                            <p className="text-sm font-black text-foreground">{s.name}</p>
+                            <p className="text-sm font-black text-foreground">{s.name}
+                                {s.id === currentStaffId && <span className="ml-2 text-[10px] text-purple-400 font-black">(自分)</span>}
+                            </p>
                             <p className="text-xs text-muted-foreground">{s.email}</p>
-                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${s.role === "admin" ? "bg-purple-600/30 text-purple-400" : "bg-accent/20 text-muted-foreground"}`}>{s.role}</span>
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${s.role === "admin" ? "bg-purple-600/30 text-purple-400" : "bg-accent/20 text-muted-foreground"}`}>
+                                {s.role === "admin" ? "管理者" : "スタッフ"}
+                            </span>
                         </div>
-                        <button onClick={() => setStore({ ...store, staff: (store.staff || []).filter((x: StaffMember) => x.id !== s.id) })} className="text-red-400 text-xs">削除</button>
+                        {isAdmin && (
+                            <div className="flex gap-2">
+                                <button onClick={() => openEdit(s)} className="text-xs font-black text-purple-400 hover:text-purple-300 px-2 py-1 border border-purple-600/40 rounded-lg transition-all">編集</button>
+                                {s.id !== currentStaffId && (
+                                    <button onClick={() => deleteStaff(s.id)} className="text-xs font-black text-red-400 hover:text-red-300 px-2 py-1 border border-red-600/40 rounded-lg transition-all">削除</button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>
-            <div className="bg-accent/10/40 rounded-2xl p-4 space-y-3">
-                <p className="text-xs font-black text-muted-foreground uppercase">新しいスタッフを追加</p>
-                <Field label="名前" value={newStaff.name} onChange={v => setNewStaff({ ...newStaff, name: v })} />
-                <Field label="メールアドレス" value={newStaff.email} onChange={v => setNewStaff({ ...newStaff, email: v })} />
-                <Field label="パスワード" value={newStaff.password} onChange={v => setNewStaff({ ...newStaff, password: v })} type="password" />
-                <div>
-                    <Label>権限</Label>
-                    <select className="w-full mt-1 p-2.5 bg-accent/10 border border-border rounded-xl text-sm font-bold text-foreground outline-none" value={newStaff.role} onChange={e => setNewStaff({ ...newStaff, role: e.target.value })}>
-                        <option value="staff">スタッフ</option>
-                        <option value="admin">管理者</option>
-                    </select>
+
+            {/* 新規追加（管理者のみ） */}
+            {isAdmin && (
+                <div className="bg-accent/10/40 rounded-2xl p-4 space-y-3">
+                    <p className="text-xs font-black text-muted-foreground uppercase">新しいスタッフを追加</p>
+                    <Field label="名前" value={newStaff.name} onChange={v => setNewStaff({ ...newStaff, name: v })} />
+                    <Field label="メールアドレス" value={newStaff.email} onChange={v => setNewStaff({ ...newStaff, email: v })} />
+                    <Field label="パスワード" value={newStaff.password} onChange={v => setNewStaff({ ...newStaff, password: v })} type="password" />
+                    <div>
+                        <Label>権限</Label>
+                        <select className="w-full mt-1 p-2.5 bg-accent/10 border border-border rounded-xl text-sm font-bold text-foreground outline-none" value={newStaff.role} onChange={e => setNewStaff({ ...newStaff, role: e.target.value })}>
+                            <option value="staff">スタッフ</option>
+                            <option value="admin">管理者</option>
+                        </select>
+                    </div>
+                    <button onClick={addStaff} className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 rounded-xl text-sm font-black transition-all">追加する</button>
                 </div>
-                <button onClick={addStaff} className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 rounded-xl text-sm font-black transition-all">追加する</button>
-            </div>
+            )}
+            {!isAdmin && (
+                <p className="text-xs text-muted-foreground text-center py-4">スタッフの管理は管理者権限が必要です</p>
+            )}
         </Section>
     );
 }
