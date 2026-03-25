@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+import { initializeAdmin } from "@/lib/firebase-admin";
 import { v4 as uuidv4 } from "uuid";
 
 export async function POST(request: Request) {
@@ -39,7 +39,8 @@ export async function POST(request: Request) {
             ],
         };
 
-        await adminDb.collection("studios").doc(studioId).set(newStudio);
+        const db = initializeAdmin();
+        await db.collection("studios").doc(studioId).set(newStudio);
 
         return NextResponse.json({ success: true, store: { id: studioId, name: newStudio.storeName } });
     } catch (error: any) {
