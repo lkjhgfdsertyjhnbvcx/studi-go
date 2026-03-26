@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { initializeAdmin } from "@/lib/firebase-admin";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { verifyPassword } from "@/lib/password";
 
 export async function POST(request: Request) {
@@ -11,9 +12,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "メールアドレスとパスワードを入力してください" }, { status: 400 });
         }
 
-        // Admin SDKのFirestoreインスタンスを直接取得
-        const db = initializeAdmin();
-        const snapshot = await db.collection("studios").get();
+        // Client SDKでFirestoreからスタジオ一覧を取得
+        const snapshot = await getDocs(collection(db, "studios"));
         const studios = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as any[];
 
         // 1. スタッフメールアドレス + パスワードで検索
