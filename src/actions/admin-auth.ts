@@ -5,8 +5,8 @@ import { redirect } from 'next/navigation';
 import { getAllStudios } from '@/lib/db-studio';
 
 const ADMIN_CREDENTIALS = {
-    email: process.env.ADMIN_EMAIL ?? "support@studi-go.com",
-    password: process.env.ADMIN_PASSWORD ?? "spt001@stg"
+    email: (process.env.ADMIN_EMAIL ?? "support@studi-go.com").trim(),
+    password: (process.env.ADMIN_PASSWORD ?? "spt001@stg").trim()
 };
 
 // 本番環境で環境変数が未設定の場合、警告を出す
