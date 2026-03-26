@@ -42,49 +42,18 @@ export default function PlansPage() {
     const [saving, setSaving] = useState(false);
     const [saveMsg, setSaveMsg] = useState("");
 
-    // 古い3プラン構成を検出する関数
-    const isOldConfig = (d: PlanConfig): boolean => {
-        if (!Array.isArray(d.plans) || d.plans.length === 0) return false;
-        const ids = d.plans.map(p => p.id);
-        const hasNewPlans = ["free", "light", "standard", "pro"].every(id => ids.includes(id));
-        if (!hasNewPlans) return true;
-        if (Array.isArray(d.options) && d.options.some(o => o.name === "SMS通知")) return true;
-        return false;
-    };
-
     // Load plan config
     const loadConfig = () => {
         setConfigLoading(true);
         fetch("/api/admin/plan-settings")
             .then(r => r.json())
-            .then(async (d) => {
-                // Defensive: ensure plans and options are arrays to prevent crashes
+            .then(d => {
                 if (d && Array.isArray(d.plans) && Array.isArray(d.options)) {
-                    // 古い3プラン構成が返された場合、自動でリセットAPIを呼ぶ
-                    if (isOldConfig(d)) {
-                        console.log("[plans] 古いプラン構成を検出。自動リセットします。");
-                        try {
-                            const res = await fetch("/api/admin/plan-settings", {
-                                method: "PUT",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ reset: true }),
-                            });
-                            const resetData = await res.json();
-                            if (resetData.data) {
-                                setConfig(resetData.data);
-                                setConfigLoading(false);
-                                return;
-                            }
-                        } catch (e) {
-                            console.error("[plans] リセット失敗:", e);
-                        }
-                    }
                     setConfig(d);
                 }
                 setConfigLoading(false);
             })
             .catch(() => {
-                // On network error, keep default empty state
                 setConfigLoading(false);
             });
     };
