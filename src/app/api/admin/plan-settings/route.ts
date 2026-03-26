@@ -1,9 +1,9 @@
-// /api/admin/plan-settings - プラン定義の読み書き（Client SDK使用）
+// /api/admin/plan-settings - プラン定義の読み書き（Admin SDK使用）
 import { NextResponse } from "next/server";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 
-const SETTINGS_DOC_PATH = "settings/planConfig";
+const COLLECTION = "settings";
+const DOC_ID = "planConfig";
 
 const DEFAULT_CONFIG = {
     plans: [
@@ -24,10 +24,8 @@ export const dynamic = "force-dynamic";
 function isOldPlanConfig(data: any): boolean {
     if (!Array.isArray(data.plans)) return true;
     const planIds = data.plans.map((p: any) => p.id);
-    // 新しい4プラン（free, light, standard, pro）が揃っていなければ古いデータ
     const hasNewPlans = ["free", "light", "standard", "pro"].every(id => planIds.includes(id));
     if (!hasNewPlans) return true;
-    // SMS通知オプションが残っていれば古いデータ
     if (Array.isArray(data.options)) {
         const hasSms = data.options.some((o: any) => o.name === "SMS通知" || o.id === "sms");
         if (hasSms) return true;
@@ -37,30 +35,29 @@ function isOldPlanConfig(data: any): boolean {
 
 export async function GET() {
     try {
-        const ref = doc(db, "settings", "planConfig");
-        const snap = await getDoc(ref);
-        if (!snap.exists()) {
-            // ドキュメントがない場合、デフォルトを保存して返す
-            await setDoc(ref, DEFAULT_CONFIG);
+        const ref = adminDb.collection(COLLECTION).doc(DOC_ID);
+        const snap = await ref.get();
+
+        if (!snap.exists) {
+            await ref.set(DEFAULT_CONFIG);
             return NextResponse.json(DEFAULT_CONFIG);
         }
-        const data = snap.data();
+        const data = snap.data()!;
 
         // 古い3プラン構成の場合、自動的にデフォルト4プランに上書きする
         if (isOldPlanConfig(data)) {
             console.log("[plan-settings GET] 古いプラン構成を検出。デフォルト4プランに自動修正します。");
-            await setDoc(ref, DEFAULT_CONFIG);
+            await ref.set(DEFAULT_CONFIG);
             return NextResponse.json(DEFAULT_CONFIG);
         }
 
-        // Defensive: ensure plans and options arrays exist
         return NextResponse.json({
             plans: Array.isArray(data.plans) ? data.plans : DEFAULT_CONFIG.plans,
             options: Array.isArray(data.options) ? data.options : DEFAULT_CONFIG.options,
         });
     } catch (error: any) {
-        console.error("[plan-settings GET]", error);
-        // Return defaults on any error so the page doesn't crash
+        console.error("[plan-settings GET] Error:", error);
+        // エラー時でもデフォルトを返す（ページがクラッシュしないように）
         return NextResponse.json(DEFAULT_CONFIG);
     }
 }
@@ -68,21 +65,21 @@ export async function GET() {
 export async function PUT(request: Request) {
     try {
         const body = await request.json();
-        const ref = doc(db, "settings", "planConfig");
+        const ref = adminDb.collection(COLLECTION).doc(DOC_ID);
 
         // reset=true の場合、デフォルト設定に戻す
         if (body.reset === true) {
-            await setDoc(ref, DEFAULT_CONFIG);
+            await ref.set(DEFAULT_CONFIG);
             return NextResponse.json({ success: true, data: DEFAULT_CONFIG });
         }
 
-        await setDoc(ref, {
+        await ref.set({
             plans: Array.isArray(body.plans) ? body.plans : [],
             options: Array.isArray(body.options) ? body.options : [],
         });
         return NextResponse.json({ success: true });
     } catch (error: any) {
-        console.error("[plan-settings PUT]", error);
+        console.error("[plan-settings PUT] Error:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
