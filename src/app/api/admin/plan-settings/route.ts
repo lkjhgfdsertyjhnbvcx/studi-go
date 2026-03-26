@@ -44,6 +44,13 @@ export async function PUT(request: Request) {
     try {
         const body = await request.json();
         const ref = doc(db, "settings", "planConfig");
+
+        // reset=true の場合、デフォルト設定に戻す
+        if (body.reset === true) {
+            await setDoc(ref, DEFAULT_CONFIG);
+            return NextResponse.json({ success: true, data: DEFAULT_CONFIG });
+        }
+
         await setDoc(ref, {
             plans: Array.isArray(body.plans) ? body.plans : [],
             options: Array.isArray(body.options) ? body.options : [],

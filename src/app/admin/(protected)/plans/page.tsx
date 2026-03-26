@@ -165,6 +165,29 @@ export default function PlansPage() {
         }
     };
 
+    const resetConfig = async () => {
+        if (!confirm("プラン設定をデフォルト（フリー/ライト/スタンダード/プロの4プラン）にリセットしますか？")) return;
+        setConfigSaving(true);
+        setConfigMsg("");
+        try {
+            const res = await fetch("/api/admin/plan-settings", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ reset: true }),
+            });
+            if (!res.ok) throw new Error("リセットに失敗しました");
+            const data = await res.json();
+            if (data.data) setConfig(data.data);
+            else loadConfig();
+            setConfigMsg("✅ デフォルトにリセットしました");
+            setTimeout(() => setConfigMsg(""), 3000);
+        } catch (e: any) {
+            setConfigMsg("❌ " + e.message);
+        } finally {
+            setConfigSaving(false);
+        }
+    };
+
     // ---- Store Assignment handlers ----
     const planMap = Object.fromEntries(config.plans.map(p => [p.id, p]));
     const optMap = Object.fromEntries(config.options.map(o => [o.id, o]));
@@ -457,6 +480,13 @@ export default function PlansPage() {
                                 >
                                     <Save className="w-4 h-4" />
                                     {configSaving ? "保存中..." : "設定を保存する"}
+                                </button>
+                                <button
+                                    onClick={resetConfig}
+                                    disabled={configSaving}
+                                    className="flex items-center gap-2 px-4 py-3 bg-gray-600 hover:bg-gray-700 disabled:opacity-60 text-white font-bold rounded-xl transition-all text-sm"
+                                >
+                                    デフォルトにリセット
                                 </button>
                                 {configMsg && (
                                     <span className={`text-sm font-bold ${configMsg.startsWith("✅") ? "text-green-500" : "text-red-500"}`}>
