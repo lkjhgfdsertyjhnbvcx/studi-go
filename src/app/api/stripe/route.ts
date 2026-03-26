@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
+import { stripe } from "@/lib/stripe";
 import { saveBookingToFirestore, getAllBookingsFromFirestore, getStudioByIdFromFirestore } from "@/lib/db-firestore";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2026-02-25.clover" });
 
 export async function POST(request: Request) {
     try {
