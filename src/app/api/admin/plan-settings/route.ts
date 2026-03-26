@@ -20,14 +20,39 @@ const DEFAULT_CONFIG = {
 
 export const dynamic = "force-dynamic";
 
+// 古い3プラン構成かどうかを判定する関数
+function isOldPlanConfig(data: any): boolean {
+    if (!Array.isArray(data.plans)) return true;
+    const planIds = data.plans.map((p: any) => p.id);
+    // 新しい4プラン（free, light, standard, pro）が揃っていなければ古いデータ
+    const hasNewPlans = ["free", "light", "standard", "pro"].every(id => planIds.includes(id));
+    if (!hasNewPlans) return true;
+    // SMS通知オプションが残っていれば古いデータ
+    if (Array.isArray(data.options)) {
+        const hasSms = data.options.some((o: any) => o.name === "SMS通知" || o.id === "sms");
+        if (hasSms) return true;
+    }
+    return false;
+}
+
 export async function GET() {
     try {
         const ref = doc(db, "settings", "planConfig");
         const snap = await getDoc(ref);
         if (!snap.exists()) {
+            // ドキュメントがない場合、デフォルトを保存して返す
+            await setDoc(ref, DEFAULT_CONFIG);
             return NextResponse.json(DEFAULT_CONFIG);
         }
         const data = snap.data();
+
+        // 古い3プラン構成の場合、自動的にデフォルト4プランに上書きする
+        if (isOldPlanConfig(data)) {
+            console.log("[plan-settings GET] 古いプラン構成を検出。デフォルト4プランに自動修正します。");
+            await setDoc(ref, DEFAULT_CONFIG);
+            return NextResponse.json(DEFAULT_CONFIG);
+        }
+
         // Defensive: ensure plans and options arrays exist
         return NextResponse.json({
             plans: Array.isArray(data.plans) ? data.plans : DEFAULT_CONFIG.plans,
