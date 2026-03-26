@@ -7,7 +7,7 @@ export default function BandRegisterPage() {
     const [leaderName, setLeaderName] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState("");
-    const [bands, setBands] = useState([]);
+    const [bands, setBands] = useState<{ bandName: string; leaderName: string }[]>([]);
     const [userId, setUserId] = useState("");
 
     useEffect(() => {
@@ -56,7 +56,7 @@ export default function BandRegisterPage() {
             <div className="max-w-md mx-auto">
                 <div className="text-center mb-8">
                     <p className="text-purple-400 text-xs font-black uppercase tracking-[0.3em] mb-2">MY PAGE</p>
-                    <h1 className="text-2xl font-black text-white">バンド登録</h1>
+                    <h1 className="text-2xl font-black text-gray-900">バンド登録</h1>
                     <p className="text-gray-500 text-xs mt-2">バンド名の被りを防ぐため代表者名も登録します</p>
                 </div>
 

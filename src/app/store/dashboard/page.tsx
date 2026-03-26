@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { uploadImageToStorage } from "@/lib/uploadImage";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { PlanGate } from "@/components/PlanGate";
+import { canUseFeature, getPlanLimits, normalizePlanKey, type FeatureKey } from "@/lib/plan-features";
 
 // ===== 型定義 =====
 interface TimeSlot { start: string; end: string; price: number; }
@@ -28,6 +30,9 @@ interface Store {
     isPublished?: boolean;
     updatedAt?: string;
     publishedAt?: string;
+    planKey?: string;
+    planOptions?: string[];
+    trialEndDate?: string;
 }
 interface Booking {
     id: string; userId: string; studioId: string; roomName: string; date: string;
@@ -163,14 +168,26 @@ export default function StoreDashboard() {
                         <button onClick={() => setSidebarOpen(false)} className="absolute top-3 right-3 z-10 text-muted-foreground hover:text-foreground text-xs p-1 rounded-lg hover:bg-accent/10 transition-all">✕</button>
                         <div className="p-6">
                             {activeMenu === "profile" && <ProfileTab store={store} setStore={setStore} notify={notify} />}
-                            {activeMenu === "branding" && <BrandingTab store={store} setStore={setStore} />}
+                            {activeMenu === "branding" && (
+                                <PlanGate planKey={store.planKey} feature="page_design">
+                                    <BrandingTab store={store} setStore={setStore} />
+                                </PlanGate>
+                            )}
                             {activeMenu === "settings" && <SettingsTab store={store} setStore={setStore} />}
                             {activeMenu === "studios" && <StudiosTab store={store} setStore={setStore} />}
                             {activeMenu === "options" && <OptionsTab store={store} setStore={setStore} />}
-                            {activeMenu === "staff" && <StaffTab store={store} setStore={setStore} notify={notify} />}
+                            {activeMenu === "staff" && (
+                                <PlanGate planKey={store.planKey} feature="staff_management">
+                                    <StaffTab store={store} setStore={setStore} notify={notify} />
+                                </PlanGate>
+                            )}
                             {activeMenu === "blacklist" && <BlacklistTab store={store} setStore={setStore} />}
                             {activeMenu === "contact" && <ContactTab store={store} notify={notify} />}
-                            {activeMenu === "promotions" && <PromotionsTab store={store} setStore={setStore} />}
+                            {activeMenu === "promotions" && (
+                                <PlanGate planKey={store.planKey} feature="coupon">
+                                    <PromotionsTab store={store} setStore={setStore} />
+                                </PlanGate>
+                            )}
                             {activeMenu === "plan" && <PlanTab store={store} setStore={setStore} notify={notify} />}
                         </div>
                     </div>
@@ -190,8 +207,8 @@ export default function StoreDashboard() {
                     </div>
                     <div className="flex-1 overflow-y-auto p-6">
                         {centerTab === "calendar" && <CalendarTab bookings={storeBookings} rooms={store.rooms || []} setBookings={setBookings} allBookings={bookings} />}
-                        {centerTab === "analytics" && <AnalyticsTab bookings={storeBookings} store={store} setStore={setStore} />}
-                        {centerTab === "customers" && <CustomersTab customers={customers} bookings={storeBookings} />}
+                        {centerTab === "analytics" && <AnalyticsTab bookings={storeBookings} store={store} setStore={setStore} planKey={store.planKey} />}
+                        {centerTab === "customers" && <CustomersTab customers={customers} bookings={storeBookings} planKey={store.planKey} />}
                         {centerTab === "cancellations" && <CancellationsTab bookings={storeBookings} setBookings={setBookings} allBookings={bookings} />}
                     </div>
                 </div>
@@ -509,8 +526,8 @@ function SettingsTab({ store, setStore }: any) {
 function PricingEditor({ pricing, onChange }: { pricing: RoomPricing; onChange: (p: RoomPricing) => void }) {
     const [activeDay, setActiveDay] = useState<"weekday" | "saturday" | "sundayHoliday">("weekday");
     const dayLabels = { weekday: "平日", saturday: "土曜", sundayHoliday: "日祝" } as const;
-    const rawSlots = pricing[activeDay];
-    const slots = Array.isArray(rawSlots) ? rawSlots : Array.isArray(rawSlots?.slots) ? rawSlots.slots : [];
+    const rawSlots = pricing[activeDay] as TimeSlot[] | { slots: TimeSlot[] } | undefined;
+    const slots: TimeSlot[] = Array.isArray(rawSlots) ? rawSlots : Array.isArray((rawSlots as any)?.slots) ? (rawSlots as any).slots : [];
 
     const addSlot = () => onChange({ ...pricing, [activeDay]: [...slots, { start: "10:00", end: "22:00", price: 2000 }] });
     const updateSlot = (idx: number, key: string, val: any) => {
@@ -550,12 +567,16 @@ function PricingEditor({ pricing, onChange }: { pricing: RoomPricing; onChange: 
 
 function StudiosTab({ store, setStore }: any) {
     const [expandedIdx, setExpandedIdx] = useState<number | null>(0);
+    const limits = getPlanLimits(store.planKey);
+    const roomCount = (store.rooms || []).length;
+    const atLimit = roomCount >= limits.roomLimit;
     const defaultPricing = (): RoomPricing => ({
         weekday: [{ start: "10:00", end: "22:00", price: 2000 }],
         saturday: [{ start: "10:00", end: "22:00", price: 2500 }],
         sundayHoliday: [{ start: "10:00", end: "22:00", price: 2500 }],
     });
     const addRoom = () => {
+        if (atLimit) return;
         const newRoom: Room = { id: crypto.randomUUID(), name: "新しいスタジオ", basePrice: 2000, startType: "0min", images: [], pricing: defaultPricing() };
         setStore({ ...store, rooms: [...(store.rooms || []), newRoom] });
         setExpandedIdx((store.rooms || []).length);
@@ -605,8 +626,14 @@ function StudiosTab({ store, setStore }: any) {
                     )}
                 </div>
             ))}
-            <button onClick={addRoom} className="w-full py-3 border-2 border-dashed border-border rounded-2xl text-sm font-black text-muted-foreground hover:text-foreground hover:border-purple-600 transition-all">
-                + スタジオを追加
+            <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground font-bold">
+                    {roomCount} / {limits.roomLimit === Infinity ? "無制限" : limits.roomLimit} ルーム
+                </p>
+            </div>
+            <button onClick={addRoom} disabled={atLimit}
+                className={`w-full py-3 border-2 border-dashed rounded-2xl text-sm font-black transition-all ${atLimit ? "border-red-500/30 text-red-400/60 cursor-not-allowed" : "border-border text-muted-foreground hover:text-foreground hover:border-purple-600"}`}>
+                {atLimit ? `ルーム上限に達しています（プランをアップグレードしてください）` : "+ スタジオを追加"}
             </button>
         </Section>
     );
@@ -1183,7 +1210,7 @@ function MonthView({ date, bookings, onDayClick }: { date: Date; bookings: Booki
     );
 }
 
-function AnalyticsTab({ bookings, store, setStore }: any) {
+function AnalyticsTab({ bookings, store, setStore, planKey }: any) {
     const activeBookings = bookings.filter((b: Booking) => b.status !== "cancelled");
     const totalRevenue = activeBookings.reduce((s: number, b: Booking) => s + (b.totalPrice || 0), 0);
     const [targetInput, setTargetInput] = useState(String(store.monthlyRevenueTarget || 300000));
@@ -1202,39 +1229,57 @@ function AnalyticsTab({ bookings, store, setStore }: any) {
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-3 gap-4">
-                <StatCard label="総売上" value={`¥${totalRevenue.toLocaleString()}`} sub={`目標: ¥${target.toLocaleString()}`} />
-                <StatCard label="達成率" value={`${rate}%`} sub={`予約件数: ${activeBookings.length}件`} />
-                <StatCard label="利用者数" value={`${uniqueUsers}人`} sub="ユニークユーザー" />
-            </div>
-            <div className="bg-card border border-border rounded-2xl p-5">
-                <p className="text-xs font-black text-muted-foreground uppercase mb-3">月間売上目標</p>
-                <div className="flex gap-3 items-center">
-                    <input
-                        type="number"
-                        className="w-40 p-3 bg-accent/10 border border-border rounded-xl text-sm font-black text-foreground outline-none focus:border-purple-500"
-                        value={targetInput}
-                        onChange={e => setTargetInput(e.target.value)}
-                        onBlur={() => setStore({ ...store, monthlyRevenueTarget: parseInt(targetInput) || 0 })}
-                        placeholder="300000"
-                    />
-                    <span className="text-muted-foreground font-bold">円</span>
+            <PlanGate planKey={planKey} feature="sales_report_basic">
+                <div className="grid grid-cols-3 gap-4">
+                    <StatCard label="総売上" value={`¥${totalRevenue.toLocaleString()}`} sub={`目標: ¥${target.toLocaleString()}`} />
+                    <StatCard label="達成率" value={`${rate}%`} sub={`予約件数: ${activeBookings.length}件`} />
+                    <StatCard label="利用者数" value={`${uniqueUsers}人`} sub="ユニークユーザー" />
                 </div>
-                <div className="mt-3 bg-accent/10 rounded-full h-3 overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-purple-600 to-purple-400 transition-all" style={{ width: `${rate}%` }} />
+                <div className="bg-card border border-border rounded-2xl p-5 mt-4">
+                    <p className="text-xs font-black text-muted-foreground uppercase mb-3">月間売上目標</p>
+                    <div className="flex gap-3 items-center">
+                        <input
+                            type="number"
+                            className="w-40 p-3 bg-accent/10 border border-border rounded-xl text-sm font-black text-foreground outline-none focus:border-purple-500"
+                            value={targetInput}
+                            onChange={e => setTargetInput(e.target.value)}
+                            onBlur={() => setStore({ ...store, monthlyRevenueTarget: parseInt(targetInput) || 0 })}
+                            placeholder="300000"
+                        />
+                        <span className="text-muted-foreground font-bold">円</span>
+                    </div>
+                    <div className="mt-3 bg-accent/10 rounded-full h-3 overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-purple-600 to-purple-400 transition-all" style={{ width: `${rate}%` }} />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">{rate}% 達成</p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">{rate}% 達成</p>
-            </div>
-            <button onClick={downloadCSV} className="flex items-center gap-2 px-6 py-3 bg-accent/10 hover:bg-accent/20 border border-border rounded-xl text-sm font-black text-foreground transition-all">
-                📥 売上データをCSVダウンロード
-            </button>
+            </PlanGate>
+            <PlanGate planKey={planKey} feature="csv_export">
+                <button onClick={downloadCSV} className="flex items-center gap-2 px-6 py-3 bg-accent/10 hover:bg-accent/20 border border-border rounded-xl text-sm font-black text-foreground transition-all">
+                    📥 売上データをCSVダウンロード
+                </button>
+            </PlanGate>
         </div>
     );
 }
 
-function CustomersTab({ customers, bookings }: { customers: any[]; bookings: Booking[] }) {
+function CustomersTab({ customers, bookings, planKey }: { customers: any[]; bookings: Booking[]; planKey?: string }) {
     return (
         <div>
+            <PlanGate planKey={planKey} feature="customer_rank">
+                <div className="bg-card border border-border rounded-2xl p-5 mb-6">
+                    <h3 className="font-black text-foreground text-sm mb-3">顧客ランク管理</h3>
+                    <p className="text-xs text-muted-foreground mb-3">利用回数・LTVに基づいて顧客をランク分けし、特別オファーを送信できます</p>
+                    <div className="flex gap-3">
+                        {["ゴールド", "シルバー", "ブロンズ"].map(rank => (
+                            <div key={rank} className="flex-1 bg-accent/10 rounded-xl p-3 text-center">
+                                <p className="text-xs font-black text-muted-foreground">{rank}</p>
+                                <p className="text-lg font-black text-foreground">0人</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </PlanGate>
             <h2 className="font-black text-lg text-foreground mb-4">顧客一覧</h2>
             {customers.length === 0
                 ? <div className="text-center py-20 text-muted-foreground"><p className="text-4xl mb-3">👥</p><p className="font-bold">顧客データがありません</p></div>
@@ -1328,7 +1373,7 @@ function Subsection({ title, children }: { title: string; children: React.ReactN
 function Label({ children }: { children: React.ReactNode }) {
     return <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{children}</p>;
 }
-function Field({ label, value, onChange, placeholder = "", type = "text" }: any) {
+function Field({ label, value, onChange, placeholder = "", type = "text" }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
     return (
         <div>
             <Label>{label}</Label>
@@ -1422,32 +1467,46 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub: st
 // ==================== PlanTab ====================
 const PLANS = [
     {
-        key: "basic",
-        name: "ベーシック",
-        price: 3000,
-        desc: "小規模スタジオ向け",
-        features: ["スタジオ掲載1件", "予約管理", "メール通知"],
+        key: "free",
+        name: "フリー",
+        price: 0,
+        color: "#9ca3af",
+        desc: "お試し利用向け（1ルームまで）",
+        features: ["予約管理", "顧客管理", "メール通知", "クーポン発行"],
+        limits: "1ルーム / 1拠点 / 手数料5%",
+    },
+    {
+        key: "light",
+        name: "ライト",
+        price: 2980,
+        color: "#22c55e",
+        desc: "小規模スタジオ向け（5ルームまで）",
+        features: ["予約管理", "顧客管理", "メール通知", "売上レポート", "スタッフ管理", "ページデザイン変更"],
+        limits: "5ルーム / 1拠点 / 手数料なし",
     },
     {
         key: "standard",
         name: "スタンダード",
-        price: 8000,
-        desc: "成長中のスタジオ向け",
-        features: ["スタジオ掲載3件", "予約管理", "メール通知", "クーポン発行", "分析レポート"],
+        price: 5980,
+        color: "#f97316",
+        desc: "中規模スタジオ向け（15ルーム / 2拠点）",
+        features: ["ライトの全機能", "クーポン発行", "CSV出力", "自動リマインダー", "稼働率ヒートマップ", "優先掲載"],
+        limits: "15ルーム / 2拠点 / 手数料なし",
     },
     {
-        key: "premium",
-        name: "プレミアム",
-        price: 15000,
-        desc: "大規模・複数店舗向け",
-        features: ["スタジオ掲載無制限", "予約管理", "メール通知", "クーポン発行", "分析レポート", "優先サポート", "カスタムブランディング"],
+        key: "pro",
+        name: "プロ",
+        price: 12800,
+        color: "#eab308",
+        desc: "大規模・複数拠点向け（無制限）",
+        features: ["スタンダードの全機能", "LINEログイン", "直前割引", "顧客ランク", "キャンセル待ち", "定期予約", "API連携", "優先サポート"],
+        limits: "ルーム・拠点無制限 / 手数料なし",
     },
 ];
 
 const PLAN_OPTIONS = [
-    { key: "sms", name: "SMS通知", price: 1000, desc: "予約時にSMSで通知" },
-    { key: "custom_domain", name: "カスタムドメイン", price: 2000, desc: "独自ドメインでページ公開" },
-    { key: "api_access", name: "API連携", price: 3000, desc: "外部システムとの連携" },
+    { key: "custom_domain", name: "カスタムドメイン", price: 1000, desc: "独自ドメインでページ公開" },
+    { key: "setup_support", name: "店舗設定サポート", price: 12000, desc: "初期設定・登録代行（1回のみ）" },
 ];
 
 function PromotionsTab({ store, setStore }: any) {
@@ -1625,6 +1684,13 @@ function PlanTab({ store, setStore, notify }: any) {
     const [saving, setSaving] = React.useState(false);
     const [plans, setPlans] = React.useState<any[]>(PLANS);
     const [planOptions, setPlanOptions] = React.useState<any[]>(PLAN_OPTIONS);
+    const [showFeatureTable, setShowFeatureTable] = React.useState(false);
+
+    // plan-features.tsからインポートしたデータを使う
+    const { PLAN_DEFINITIONS, FEATURE_CATEGORIES, FEATURE_LABELS, canUseFeature: checkFeature } = React.useMemo(() => {
+        const pf = require("@/lib/plan-features");
+        return { PLAN_DEFINITIONS: pf.PLAN_DEFINITIONS, FEATURE_CATEGORIES: pf.FEATURE_CATEGORIES, FEATURE_LABELS: pf.FEATURE_LABELS, canUseFeature: pf.canUseFeature };
+    }, []);
 
     React.useEffect(() => {
         fetch("/api/admin/plan-settings")
@@ -1682,16 +1748,39 @@ function PlanTab({ store, setStore, notify }: any) {
 
     return (
         <div className="p-6 space-y-8 max-w-2xl">
+            {/* 現在のプラン表示 */}
+            {currentPlan && (
+                <div className="bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border border-purple-500/30 rounded-2xl p-4">
+                    <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">現在のプラン</p>
+                    <div className="flex items-center justify-between">
+                        <span className="text-lg font-black text-foreground">
+                            {PLAN_DEFINITIONS.find((p: any) => p.id === currentPlan)?.emoji}{" "}
+                            {PLAN_DEFINITIONS.find((p: any) => p.id === currentPlan)?.name || currentPlan}
+                        </span>
+                        <span className="text-purple-400 font-black">
+                            ¥{(PLAN_DEFINITIONS.find((p: any) => p.id === currentPlan)?.price || 0).toLocaleString()}/月
+                        </span>
+                    </div>
+                    {store.trialEndDate && new Date(store.trialEndDate) > new Date() && (
+                        <p className="text-xs text-green-400 mt-1 font-bold">
+                            無料トライアル中（{new Date(store.trialEndDate).toLocaleDateString("ja-JP")}まで）
+                        </p>
+                    )}
+                </div>
+            )}
+
             <div>
                 <h2 className="text-foreground font-black text-lg mb-1">プラン選択</h2>
                 <p className="text-muted-foreground text-xs mb-4">月額料金はStudi-Goへの掲載・利用料です</p>
                 <div className="grid gap-3">
                     {plans.map((plan: any) => {
-                        const planKey = plan.id || plan.key;
+                        const pk = plan.id || plan.key;
+                        const isCurrent = pk === currentPlan;
                         return (
-                        <button key={planKey} onClick={() => setSelectedPlan(planKey)}
-                            className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${selectedPlan === planKey ? "border-purple-500 bg-purple-600/10" : "border-border bg-card hover:border-gray-500"}`}>
-                            <div className="flex justify-between items-center mb-1">
+                        <button key={pk} onClick={() => setSelectedPlan(pk)}
+                            className={`w-full text-left p-4 rounded-2xl border-2 transition-all relative ${selectedPlan === pk ? "border-purple-500 bg-purple-600/10" : "border-border bg-card hover:border-gray-500"}`}>
+                            {isCurrent && <span className="absolute top-2 right-3 text-[10px] font-black text-purple-400 bg-purple-500/20 px-2 py-0.5 rounded-full">現在</span>}
+                            <div className="flex justify-between items-center mb-1 pr-12">
                                 <span className="font-black text-foreground">{plan.name}</span>
                                 <span className="text-purple-400 font-black">¥{plan.price.toLocaleString()}<span className="text-muted-foreground text-xs font-normal">/月</span></span>
                             </div>
@@ -1707,9 +1796,51 @@ function PlanTab({ store, setStore, notify }: any) {
                 </div>
             </div>
 
+            {/* 機能比較表トグル */}
+            <div>
+                <button onClick={() => setShowFeatureTable(!showFeatureTable)}
+                    className="w-full text-left px-4 py-3 bg-accent/10 border border-border rounded-xl text-sm font-bold text-muted-foreground hover:text-foreground transition-all flex justify-between items-center">
+                    <span>機能比較表を{showFeatureTable ? "閉じる" : "見る"}</span>
+                    <span>{showFeatureTable ? "▲" : "▼"}</span>
+                </button>
+                {showFeatureTable && (
+                    <div className="mt-3 border border-border rounded-2xl overflow-hidden">
+                        <table className="w-full text-xs">
+                            <thead>
+                                <tr className="bg-accent/10">
+                                    <th className="text-left px-3 py-2 font-black text-muted-foreground">機能</th>
+                                    {PLAN_DEFINITIONS.map((p: any) => (
+                                        <th key={p.id} className="text-center px-2 py-2 font-black" style={{ color: p.color }}>
+                                            {p.emoji} {p.name}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {FEATURE_CATEGORIES.map((cat: any) => (
+                                    <React.Fragment key={cat.title}>
+                                        <tr><td colSpan={5} className="px-3 py-2 bg-accent/5 font-black text-muted-foreground text-[10px] uppercase tracking-widest">{cat.title}</td></tr>
+                                        {cat.keys.map((fk: string) => (
+                                            <tr key={fk} className="border-t border-border/50">
+                                                <td className="px-3 py-1.5 text-foreground font-bold">{FEATURE_LABELS[fk]}</td>
+                                                {PLAN_DEFINITIONS.map((p: any) => (
+                                                    <td key={p.id} className="text-center px-2 py-1.5">
+                                                        {checkFeature(p.id, fk) ? <span className="text-green-400">○</span> : <span className="text-muted-foreground/30">-</span>}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </React.Fragment>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
             <div>
                 <h2 className="text-foreground font-black text-lg mb-1">オプション</h2>
-                <p className="text-muted-foreground text-xs mb-4">必要なオプションを追加できます（月額）</p>
+                <p className="text-muted-foreground text-xs mb-4">必要なオプションを追加できます</p>
                 <div className="grid gap-3">
                     {planOptions.map((opt: any) => {
                         const optKey = opt.id || opt.key;
@@ -1719,9 +1850,9 @@ function PlanTab({ store, setStore, notify }: any) {
                             <div className="flex justify-between items-center">
                                 <div>
                                     <span className="font-black text-foreground text-sm">{opt.name}</span>
-                                    <p className="text-muted-foreground text-xs mt-0.5">{opt.description || opt.desc}</p>
+                                    <p className="text-muted-foreground text-xs mt-0.5">{opt.description || opt.content || opt.desc}</p>
                                 </div>
-                                <span className="text-purple-400 font-black text-sm">+¥{opt.price.toLocaleString()}<span className="text-muted-foreground text-xs font-normal">/月</span></span>
+                                <span className="text-purple-400 font-black text-sm">+¥{opt.price.toLocaleString()}<span className="text-muted-foreground text-xs font-normal">{opt.billingType === "once" ? "" : "/月"}</span></span>
                             </div>
                         </button>
                         );

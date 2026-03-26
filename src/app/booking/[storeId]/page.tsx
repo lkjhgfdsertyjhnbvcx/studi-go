@@ -12,16 +12,19 @@ export default function UserBookingPage() {
 
     useEffect(() => {
         fetch(`/api/store/detail?id=${params.storeId}`).then(res => res.json()).then(data => {
-            const studiosWithPricing = data.studios.map((s: any) => ({
+            if (!data || data.error) return;
+            const studios = data.studios || data.rooms || [];
+            const studiosWithPricing = studios.map((s: any) => ({
                 ...s,
                 pricing: s.pricingJson ? JSON.parse(s.pricingJson) : { weekday: Array(24).fill(2000), weekend: Array(24).fill(3000) }
             }));
             setStore({ ...data, studios: studiosWithPricing });
-            setSelectedStudio(studiosWithPricing[0]);
-        });
+            if (studiosWithPricing.length > 0) setSelectedStudio(studiosWithPricing[0]);
+        }).catch(() => {});
     }, [params.storeId]);
 
     const handleBooking = async () => {
+        if (!selectedStudio) return alert("スタジオを選択してください");
         if (selectedHour === null) return alert("時間を選択してください");
         const isWeekend = [0, 6].includes(new Date(selectedDate).getDay());
         const price = isWeekend ? selectedStudio.pricing.weekend[selectedHour] : selectedStudio.pricing.weekday[selectedHour];

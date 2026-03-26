@@ -26,6 +26,9 @@ export interface User {
     jocollaId?: string;
     myStudios?: string[];
     bands?: Array<{ id: string; bandName: string; leaderName: string; createdAt: string; }>;
+    // パスワードリセット用
+    resetToken?: string;
+    resetTokenExpiry?: number;
     coupons?: Array<{
         id: string;
         code: string;

@@ -75,13 +75,13 @@ export default function TopPage() {
   const isDark = mode === "dark";
 
   useEffect(() => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    fetch("/api/studios?published=true", { signal: controller.signal })
+    fetch('/api/studios')
       .then(r => r.json())
-      .then(data => { if (!data.error) setStudios(data.filter((s: any) => s.isPublished === true)); setLoading(false); })
-      .catch(() => setLoading(false))
-      .finally(() => clearTimeout(timeout));
+      .then((data: any[]) => {
+        setStudios((data || []).filter((s: any) => s.isPublished === true));
+      })
+      .catch(() => setStudios([]))
+      .finally(() => setLoading(false));
   }, []);
 
   const areas = Array.from(new Set(studios.map(s => extractArea(s.address)))).filter(a => a !== "area");

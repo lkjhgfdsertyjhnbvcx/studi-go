@@ -32,9 +32,9 @@ interface Booking {
     date: string;
     startTime: string;
     durationHours: number;
-    userCount: number;
+    userCount?: number;
     totalPrice: number;
-    status: 'active' | 'cancelled' | 'modified' | 'no_show';
+    status: 'active' | 'cancelled' | 'modified' | 'no_show' | 'pending' | 'confirmed';
     createdAt: string;
 }
 

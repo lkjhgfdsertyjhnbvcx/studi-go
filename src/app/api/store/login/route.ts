@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import { initializeAdmin } from "@/lib/firebase-admin";
+import { verifyPassword } from "@/lib/password";
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
         const { email, password } = body;
 
-        // Admin SDKのFirestoreインスタンスを直接取得（Proxyを経由しない）
+        if (!email || !password) {
+            return NextResponse.json({ error: "メールアドレスとパスワードを入力してください" }, { status: 400 });
+        }
+
+        // Admin SDKのFirestoreインスタンスを直接取得
         const db = initializeAdmin();
         const snapshot = await db.collection("studios").get();
         const studios = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as any[];
@@ -14,9 +19,9 @@ export async function POST(request: Request) {
         // 1. スタッフメールアドレス + パスワードで検索
         for (const s of studios) {
             const staffMember = (s.staff ?? []).find(
-                (sm: any) => sm.email === email && sm.password === password
+                (sm: any) => sm.email === email
             );
-            if (staffMember) {
+            if (staffMember && verifyPassword(password, staffMember.password || "")) {
                 return NextResponse.json({
                     success: true,
                     storeId: s.id,
@@ -31,9 +36,9 @@ export async function POST(request: Request) {
         const studio = studios.find((s: any) => s.email === email);
         if (studio) {
             const staff = (studio.staff ?? []).find(
-                (s: any) => s.email === email && s.password === password
+                (s: any) => s.email === email
             );
-            if (staff) {
+            if (staff && verifyPassword(password, staff.password || "")) {
                 return NextResponse.json({
                     success: true,
                     storeId: studio.id,

@@ -18,12 +18,7 @@ function getFirebaseApp(): FirebaseApp {
     return initializeApp(firebaseConfig);
 }
 
-export const db: Firestore = new Proxy({} as Firestore, {
-    get(_t, prop) { return (getFirestore(getFirebaseApp()) as any)[prop]; }
-});
-export const storage: FirebaseStorage = new Proxy({} as FirebaseStorage, {
-    get(_t, prop) { return (getStorage(getFirebaseApp()) as any)[prop]; }
-});
-export const auth: Auth = new Proxy({} as Auth, {
-    get(_t, prop) { return (getAuth(getFirebaseApp()) as any)[prop]; }
-});
+const app = getFirebaseApp();
+export const db: Firestore = getFirestore(app);
+export const storage: FirebaseStorage = getStorage(app);
+export const auth: Auth = getAuth(app);

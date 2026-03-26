@@ -121,6 +121,8 @@ export interface StudioProfile {
     planOptions?: string[];
     planPayMethod?: string;
     planUpdatedAt?: string;
+    planTrialDays?: number;
+    trialEndDate?: string;  // ISO日付 例: "2026-06-01"
     createdAt: string;
 }
 

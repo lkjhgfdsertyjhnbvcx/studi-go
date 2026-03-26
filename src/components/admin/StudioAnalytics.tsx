@@ -35,7 +35,7 @@ interface Booking {
     date: string;
     startTime: string;
     durationHours: number;
-    userCount: number;
+    userCount?: number;
     totalPrice: number;
     createdAt: string;
 }

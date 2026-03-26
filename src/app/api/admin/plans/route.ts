@@ -5,7 +5,7 @@ import { db } from "@/lib/firebase";
 
 export async function PUT(request: Request) {
     try {
-        const { studioId, planKey, planOptions, planPayMethod, planTrialDays } = await request.json();
+        const { studioId, planKey, planOptions, planPayMethod, planTrialDays, planSetupFeePaid, trialEndDate } = await request.json();
 
         if (!studioId) {
             return NextResponse.json({ error: "studioId is required" }, { status: 400 });
@@ -24,6 +24,11 @@ export async function PUT(request: Request) {
         updateData.planOptions = planOptions || [];
         updateData.planPayMethod = planPayMethod || null;
         updateData.planTrialDays = planTrialDays ? Number(planTrialDays) : 0;
+        // 無料期間終了日（運営者が店舗別に設定）
+        updateData.trialEndDate = trialEndDate || null;
+        if (planSetupFeePaid && typeof planSetupFeePaid === "object") {
+            updateData.planSetupFeePaid = planSetupFeePaid;
+        }
 
         await updateDoc(doc(db, "studios", studioId), updateData);
 

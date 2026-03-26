@@ -15,6 +15,7 @@ interface OptionDef {
     id: string;
     name: string;
     price: number;
+    billingType?: "monthly" | "once"; // monthly: 月額, once: 1回のみ
 }
 interface PlanConfig {
     plans: PlanDef[];
@@ -129,7 +130,7 @@ export default function PlansPage() {
     const addOption = () => {
         setConfig(c => ({
             ...c,
-            options: [...c.options, { id: `opt_${Date.now()}`, name: "新しいオプション", price: 1000 }]
+            options: [...c.options, { id: `opt_${Date.now()}`, name: "新しいオプション", price: 1000, billingType: "monthly" }]
         }));
     };
 
@@ -172,7 +173,11 @@ export default function PlansPage() {
     const withoutPlan = studios.filter(s => !s.planKey || !planMap[s.planKey]);
     const totalMRR = withPlan.reduce((sum, s) => {
         const base = planMap[s.planKey]?.price || 0;
-        const opts = (s.planOptions || []).reduce((o: number, k: string) => o + (optMap[k]?.price || 0), 0);
+        // 月額オプションのみMRRに計上
+        const opts = (s.planOptions || []).reduce((o: number, k: string) => {
+            const opt = optMap[k];
+            return o + (opt && opt.billingType !== "once" ? opt.price : 0);
+        }, 0);
         return sum + base + opts;
     }, 0);
 
@@ -186,6 +191,8 @@ export default function PlansPage() {
             planOptions: s.planOptions || [],
             planPayMethod: s.planPayMethod || "invoice",
             planTrialDays: s.planTrialDays || 0,
+            planSetupFeePaid: s.planSetupFeePaid || {},
+            trialEndDate: s.trialEndDate || "",
         });
         setSaveMsg("");
     };
@@ -213,7 +220,7 @@ export default function PlansPage() {
             setSaveMsg("✅ 保存しました");
             setStudios(prev => prev.map(s =>
                 s.id === editForm.studioId
-                    ? { ...s, planKey: editForm.planKey || null, planOptions: editForm.planOptions, planPayMethod: editForm.planPayMethod, planTrialDays: editForm.planTrialDays, planUpdatedAt: new Date().toISOString() }
+                    ? { ...s, planKey: editForm.planKey || null, planOptions: editForm.planOptions, planPayMethod: editForm.planPayMethod, planTrialDays: editForm.planTrialDays, planSetupFeePaid: editForm.planSetupFeePaid, trialEndDate: editForm.trialEndDate || null, planUpdatedAt: new Date().toISOString() }
                     : s
             ));
             setTimeout(() => setEditForm(null), 800);
@@ -226,7 +233,11 @@ export default function PlansPage() {
 
     const calcMonthly = (planKey: string, opts: string[]) => {
         const base = planMap[planKey]?.price || 0;
-        const optTotal = opts.reduce((s, k) => s + (optMap[k]?.price || 0), 0);
+        // 月額オプションのみ合計に含める
+        const optTotal = opts.reduce((s, k) => {
+            const opt = optMap[k];
+            return s + (opt && opt.billingType !== "once" ? opt.price : 0);
+        }, 0);
         return base + optTotal;
     };
 
@@ -385,7 +396,7 @@ export default function PlansPage() {
                                         <table className="w-full">
                                             <thead className="bg-accent/5 border-b border-border">
                                                 <tr>
-                                                    {["オプション名", "追加料金 /月", ""].map(h => (
+                                                    {["オプション名", "課金タイプ", "追加料金", ""].map(h => (
                                                         <th key={h} className="px-5 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-widest">{h}</th>
                                                     ))}
                                                 </tr>
@@ -401,6 +412,16 @@ export default function PlansPage() {
                                                             />
                                                         </td>
                                                         <td className="px-5 py-3">
+                                                            <select
+                                                                value={opt.billingType || "monthly"}
+                                                                onChange={e => updateOption(i, "billingType", e.target.value)}
+                                                                className="bg-background border border-border rounded-lg px-3 py-1 text-foreground text-sm focus:outline-none focus:border-purple-500"
+                                                            >
+                                                                <option value="monthly">月額</option>
+                                                                <option value="once">1回のみ</option>
+                                                            </select>
+                                                        </td>
+                                                        <td className="px-5 py-3">
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-muted-foreground text-sm">¥</span>
                                                                 <input
@@ -409,6 +430,9 @@ export default function PlansPage() {
                                                                     onChange={e => updateOption(i, "price", Number(e.target.value))}
                                                                     className="w-28 bg-background border border-border rounded-lg px-3 py-1 text-foreground font-bold text-sm focus:outline-none focus:border-purple-500"
                                                                 />
+                                                                <span className="text-muted-foreground text-xs">
+                                                                    {(opt.billingType || "monthly") === "monthly" ? "/月" : "/回"}
+                                                                </span>
                                                             </div>
                                                         </td>
                                                         <td className="px-5 py-3 text-right">
@@ -527,9 +551,21 @@ export default function PlansPage() {
                                                 </td>
                                                 <td className="px-5 py-4">
                                                     <div className="flex flex-wrap gap-1">
-                                                        {(s.planOptions || []).map((k: string) => (
-                                                            <span key={k} className="px-2 py-0.5 bg-purple-500/10 text-purple-400 rounded text-xs">{optMap[k]?.name || k}</span>
-                                                        ))}
+                                                        {(s.planOptions || []).map((k: string) => {
+                                                            const o = optMap[k];
+                                                            const isOnce = o?.billingType === "once";
+                                                            const isPaid = !!(s.planSetupFeePaid?.[k]);
+                                                            return (
+                                                                <div key={k} className="flex flex-col gap-0.5">
+                                                                    <span className="px-2 py-0.5 bg-purple-500/10 text-purple-400 rounded text-xs">{o?.name || k}</span>
+                                                                    {isOnce && (
+                                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${isPaid ? "bg-green-500/10 text-green-400" : "bg-orange-500/10 text-orange-400"}`}>
+                                                                            {isPaid ? "請求済" : "未請求"}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
                                                         {(!s.planOptions || s.planOptions.length === 0) && <span className="text-xs text-muted-foreground">—</span>}
                                                     </div>
                                                 </td>
@@ -593,19 +629,50 @@ export default function PlansPage() {
                         {config.options.length > 0 && (
                             <div className="mb-5">
                                 <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">オプション</label>
-                                <div className="space-y-2">
-                                    {config.options.map(opt => (
-                                        <label key={opt.id} className="flex items-center gap-3 cursor-pointer p-2.5 rounded-xl hover:bg-accent/10 transition-all">
-                                            <input
-                                                type="checkbox"
-                                                checked={editForm.planOptions.includes(opt.id)}
-                                                onChange={() => toggleOption(opt.id)}
-                                                className="w-4 h-4 accent-purple-600"
-                                            />
-                                            <span className="text-sm text-foreground flex-1">{opt.name}</span>
-                                            <span className="text-xs text-muted-foreground">+¥{opt.price.toLocaleString()}/月</span>
-                                        </label>
-                                    ))}
+                                <div className="space-y-1">
+                                    {config.options.map(opt => {
+                                        const isOnce = opt.billingType === "once";
+                                        const isChecked = editForm.planOptions.includes(opt.id);
+                                        const isFeePaid = !!(editForm.planSetupFeePaid?.[opt.id]);
+                                        return (
+                                            <div key={opt.id}>
+                                                <label className="flex items-center gap-3 cursor-pointer p-2.5 rounded-xl hover:bg-accent/10 transition-all">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isChecked}
+                                                        onChange={() => toggleOption(opt.id)}
+                                                        className="w-4 h-4 accent-purple-600"
+                                                    />
+                                                    <span className="text-sm text-foreground flex-1">{opt.name}</span>
+                                                    {isOnce ? (
+                                                        <span className="text-xs px-1.5 py-0.5 bg-orange-500/10 text-orange-400 rounded font-bold">1回 ¥{opt.price.toLocaleString()}</span>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">+¥{opt.price.toLocaleString()}/月</span>
+                                                    )}
+                                                </label>
+                                                {/* 1回のみオプション：選択中の場合に請求済みフラグを表示 */}
+                                                {isOnce && isChecked && (
+                                                    <label className="flex items-center gap-2 ml-9 mb-1 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isFeePaid}
+                                                            onChange={() => setEditForm({
+                                                                ...editForm,
+                                                                planSetupFeePaid: {
+                                                                    ...editForm.planSetupFeePaid,
+                                                                    [opt.id]: !isFeePaid,
+                                                                }
+                                                            })}
+                                                            className="w-3.5 h-3.5 accent-green-500"
+                                                        />
+                                                        <span className={`text-xs font-bold ${isFeePaid ? "text-green-400" : "text-muted-foreground"}`}>
+                                                            {isFeePaid ? "✓ 請求済み" : "未請求"}
+                                                        </span>
+                                                    </label>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
@@ -623,24 +690,38 @@ export default function PlansPage() {
                         </div>
 
                         <div className="mb-5">
-                            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">初回無料期間</label>
+                            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">無料期間の終了日</label>
                             <div className="flex items-center gap-3">
                                 <input
-                                    type="number" min={0} max={365}
-                                    value={editForm.planTrialDays}
-                                    onChange={e => setEditForm({ ...editForm, planTrialDays: Math.max(0, parseInt(e.target.value) || 0) })}
-                                    className="w-24 px-3 py-2 rounded-xl border border-border bg-background text-foreground text-center font-black text-lg focus:outline-none focus:border-purple-500"
+                                    type="date"
+                                    value={editForm.trialEndDate || ""}
+                                    onChange={e => setEditForm({ ...editForm, trialEndDate: e.target.value })}
+                                    className="flex-1 px-3 py-2 rounded-xl border border-border bg-background text-foreground font-bold text-sm focus:outline-none focus:border-purple-500"
                                 />
-                                <span className="text-sm text-muted-foreground">日間無料</span>
-                                <div className="flex gap-1 ml-auto">
-                                    {[0,30,60,90].map(d => (
-                                        <button key={d} onClick={() => setEditForm({ ...editForm, planTrialDays: d })}
-                                            className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${editForm.planTrialDays === d ? "bg-purple-600 text-white" : "bg-accent/10 text-muted-foreground hover:text-foreground"}`}>
-                                            {d === 0 ? "なし" : `${d}日`}
-                                        </button>
-                                    ))}
+                                <div className="flex gap-1">
+                                    {[
+                                        { label: "なし", days: 0 },
+                                        { label: "30日", days: 30 },
+                                        { label: "60日", days: 60 },
+                                        { label: "90日", days: 90 },
+                                    ].map(opt => {
+                                        const targetDate = opt.days === 0 ? "" : new Date(Date.now() + opt.days * 86400000).toISOString().split("T")[0];
+                                        return (
+                                            <button key={opt.days} onClick={() => setEditForm({ ...editForm, trialEndDate: targetDate, planTrialDays: opt.days })}
+                                                className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${editForm.trialEndDate === targetDate ? "bg-purple-600 text-white" : "bg-accent/10 text-muted-foreground hover:text-foreground"}`}>
+                                                {opt.label}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
+                            {editForm.trialEndDate && (
+                                <p className={`text-xs mt-2 font-bold ${new Date(editForm.trialEndDate) > new Date() ? "text-green-500" : "text-red-500"}`}>
+                                    {new Date(editForm.trialEndDate) > new Date()
+                                        ? `✅ 無料期間中（${editForm.trialEndDate}まで）`
+                                        : `⏰ 無料期間終了済み（${editForm.trialEndDate}）`}
+                                </p>
+                            )}
                         </div>
 
                         {editForm.planKey && (

@@ -4,9 +4,10 @@ import Link from "next/link";
 import { Store, Trash2, ExternalLink, Search, Globe, EyeOff, Clock } from "lucide-react";
 
 const PLANS: Record<string, { name: string; color: string }> = {
-    basic:    { name: "ベーシック",   color: "#6b7280" },
-    standard: { name: "スタンダード", color: "#7c3aed" },
-    premium:  { name: "プレミアム",   color: "#f59e0b" },
+    free:     { name: "フリー",       color: "#9ca3af" },
+    light:    { name: "ライト",       color: "#22c55e" },
+    standard: { name: "スタンダード", color: "#f97316" },
+    pro:      { name: "プロ",         color: "#eab308" },
 };
 
 function formatRelativeTime(isoStr?: string): string {
@@ -28,6 +29,7 @@ export default function StudiosAdminPage() {
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<"all" | "published" | "unpublished">("all");
     const [deleting, setDeleting] = useState<string | null>(null);
+    const [toggling, setToggling] = useState<string | null>(null);
 
     const loadStudios = () => {
         setLoading(true);
@@ -48,6 +50,26 @@ export default function StudiosAdminPage() {
     };
 
     useEffect(() => { loadStudios(); }, []);
+
+    const handleTogglePublish = async (id: string, current: boolean) => {
+        const next = !current;
+        const label = next ? "公開" : "非公開";
+        if (!confirm(`このスタジオを「${label}」に変更しますか？`)) return;
+        setToggling(id);
+        try {
+            const res = await fetch("/api/studios", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id, isPublished: next }),
+            });
+            if (!res.ok) throw new Error("更新に失敗しました");
+            setStudios(prev => prev.map(s => s.id === id ? { ...s, isPublished: next } : s));
+        } catch (e: any) {
+            alert("❌ " + e.message);
+        } finally {
+            setToggling(null);
+        }
+    };
 
     const handleDelete = async (id: string, name: string) => {
         if (!confirm(`「${name}」を削除しますか？\n関連する予約・データは残ります。元に戻せません。`)) return;
@@ -174,20 +196,25 @@ export default function StudiosAdminPage() {
                                         </td>
                                         {/* 公開状況 */}
                                         <td className="px-4 py-4">
-                                            {isPublished ? (
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                                                    <span className="text-xs font-bold text-green-400">公開中</span>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
-                                                    <span className="text-xs font-bold text-yellow-400">非公開</span>
-                                                </div>
-                                            )}
+                                            <button
+                                                onClick={() => handleTogglePublish(s.id, isPublished)}
+                                                disabled={toggling === s.id}
+                                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50 ${
+                                                    isPublished
+                                                        ? "bg-green-500/10 text-green-400 hover:bg-green-500/20"
+                                                        : "bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20"
+                                                }`}
+                                            >
+                                                {toggling === s.id ? (
+                                                    <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                                ) : (
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${isPublished ? "bg-green-400 animate-pulse" : "bg-yellow-400"}`} />
+                                                )}
+                                                {isPublished ? "公開中" : "非公開"}
+                                            </button>
                                             {s.publishedAt && (
-                                                <p className="text-[10px] text-muted-foreground mt-0.5">
-                                                    公開: {new Date(s.publishedAt).toLocaleDateString("ja-JP")}
+                                                <p className="text-[10px] text-muted-foreground mt-0.5 pl-1">
+                                                    {new Date(s.publishedAt).toLocaleDateString("ja-JP")}
                                                 </p>
                                             )}
                                         </td>

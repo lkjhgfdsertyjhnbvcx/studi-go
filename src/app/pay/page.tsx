@@ -6,9 +6,9 @@ function PayContent() {
     const searchParams = useSearchParams();
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState("");
-    const [splitMode, setSplitMode] = useState(null);
+    const [splitMode, setSplitMode] = useState<string | null>(null);
     const [memberCount, setMemberCount] = useState(2);
-    const [optionSplit, setOptionSplit] = useState(null);
+    const [optionSplit, setOptionSplit] = useState<string | null>(null);
     const [optionPayer, setOptionPayer] = useState(1);
     const [splitBookingId, setSplitBookingId] = useState<string | null>(null);
     const [splitShareUrl, setSplitShareUrl] = useState<string | null>(null);
@@ -20,8 +20,8 @@ function PayContent() {
     const roomName = searchParams.get("roomName") || "部屋";
     const date = searchParams.get("date") || "";
     const startTime = searchParams.get("startTime") || "";
-    const durationHours = parseInt(searchParams.get("durationHours") || "1");
-    const totalPrice = parseInt(searchParams.get("total") || "0");
+    const durationHours = parseInt(searchParams.get("durationHours") || "1") || 1;
+    const totalPrice = parseInt(searchParams.get("total") || "0") || 0;
     const optionNames = (searchParams.get("options") || "").split(",").filter(Boolean);
     const optionPrices = (searchParams.get("optionPrices") || "").split(",").map(Number).filter(n => n > 0);
     const totalOptionPrice = optionPrices.reduce((a, b) => a + b, 0);
@@ -34,7 +34,7 @@ function PayContent() {
     })();
 
     // 分割払い金額計算（最後の人が端数を負担して合計が必ず一致するように）
-    const getMemberAmount = (idx) => {
+    const getMemberAmount = (idx: number) => {
         const baseRoom = Math.floor(roomPrice / memberCount);
         const roomRemainder = roomPrice - baseRoom * memberCount;
         // 端数は最初の人(idx===1)が負担
@@ -52,7 +52,7 @@ function PayContent() {
     const needsOptionSplit = optionNames.length > 0 && optionSplit === null;
 
     // 通常決済 or 割り勘1人目
-    const handlePay = async (amount?, isSplitFirst = false) => {
+    const handlePay = async (amount?: number, isSplitFirst = false) => {
         setIsProcessing(true);
         setError("");
         try {

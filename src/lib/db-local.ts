@@ -14,7 +14,7 @@ export interface Booking {
     date: string;       // YYYY-MM-DD
     startTime: string;  // HH:mm
     durationHours: number;
-    userCount: number;
+    userCount?: number;
     totalPrice: number;
     status: 'active' | 'cancelled' | 'modified' | 'no_show' | 'pending' | 'confirmed';
     createdAt: string;
@@ -23,6 +23,13 @@ export interface Booking {
     userName?: string;
     selectedOptions?: string[];
     isPersonalPractice?: boolean;
+    // Firestore 予約確定・メール送信用フィールド
+    storeName?: string;
+    studioName?: string;
+    studioAddress?: string;
+    notes?: string;
+    splitMemberCount?: number;
+    splitPaidCount?: number;
 }
 
 export const getBookings = async (): Promise<Booking[]> => {

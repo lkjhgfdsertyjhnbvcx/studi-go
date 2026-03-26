@@ -15,13 +15,21 @@ function initializeAdmin(): AdminDb {
 
     try {
         if (!admin.apps.length) {
-            let credential: admin.credential.Credential;
+            let credential: ReturnType<typeof admin.credential.cert>;
 
             // 1. GCP_SERVICE_ACCOUNT 環境変数をチェック (Cloud Run Gen 2推奨)
             if (process.env.GCP_SERVICE_ACCOUNT) {
                 const serviceAccount = JSON.parse(process.env.GCP_SERVICE_ACCOUNT);
                 credential = admin.credential.cert(serviceAccount);
                 console.log("Firebase Admin: using GCP_SERVICE_ACCOUNT env var");
+            } else if (process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+                // 1.5. Vercel 環境変数から個別に読み込む
+                credential = admin.credential.cert({
+                    projectId: process.env.FIREBASE_PROJECT_ID || "studi-go-488d1",
+                    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+                });
+                console.log("Firebase Admin: using FIREBASE_CLIENT_EMAIL/PRIVATE_KEY env vars");
             } else {
                 // 2. service-account.json をチェック
                 const path = requireFn('path');

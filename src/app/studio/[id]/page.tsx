@@ -3,7 +3,8 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 interface TimeSlot { start: string; end: string; price: number; }
-interface RoomPricing { weekday: TimeSlot[]; saturday: TimeSlot[]; sundayHoliday: TimeSlot[]; }
+interface RoomPricingDay { slots?: TimeSlot[] }
+interface RoomPricing { weekday: TimeSlot[] | RoomPricingDay; saturday: TimeSlot[] | RoomPricingDay; sundayHoliday: TimeSlot[] | RoomPricingDay; }
 interface Room {
   id: string; name: string; description?: string; images?: string[];
   basePrice: number; startType?: "0min" | "30min"; pricing?: RoomPricing;
@@ -15,6 +16,7 @@ interface Studio {
   businessHours?: { weekday: string; saturday: string; sundayHoliday: string };
   rooms?: Room[]; closedDays?: string; parkingInfo?: string; reservationLeadDays?: number;
   equipmentOptions?: EquipmentOption[];
+  designSettings?: { backgroundColor?: string; backgroundType?: string; backgroundImageUrl?: string; logoSize?: number; showMap?: boolean };
 }
 
 function getDayType(date: Date): "weekday" | "saturday" | "sundayHoliday" {
@@ -523,7 +525,7 @@ export default function StudioDetailPage() {
                   <h3 className="font-black text-lg text-foreground">{selectedRoom.name}</h3>
                   {selectedRoom.description && <p className="text-muted-foreground text-xs leading-relaxed">{selectedRoom.description}</p>}
                   <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-foreground">¥{(selectedRoom.basePrice ?? selectedRoom.pricing?.weekday?.slots?.[0]?.price ?? 0).toLocaleString()}</span>
+                    <span className="text-2xl font-black text-foreground">¥{(selectedRoom.basePrice ?? (selectedRoom.pricing?.weekday as any)?.slots?.[0]?.price ?? 0).toLocaleString()}</span>
                     <span className="text-muted-foreground text-xs font-bold">〜/h</span>
                   </div>
                   {selectedRoom.pricing && Array.isArray((selectedRoom.pricing as any).weekday) && (

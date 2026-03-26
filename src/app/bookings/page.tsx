@@ -7,7 +7,7 @@ export default function AdminBookingList() {
     useEffect(() => {
         fetch('/api/bookings')
             .then(res => res.json())
-            .then(data => setBookedSlots(data));
+            .then(data => setBookings(data));
     }, []);
 
     return (

@@ -1,4 +1,5 @@
 import { fetchBookings } from '@/actions/admin';
+import { Booking } from '@/lib/db-local';
 import { getAuthInfo } from '@/actions/admin-auth';
 import { redirect } from 'next/navigation';
 import {
@@ -35,17 +36,18 @@ export default async function AdminPage() {
     ]);
 
     // Booking stats
+    const typedBookings = (bookings || []) as Booking[];
     const now = new Date();
-    const totalRevenue = bookings.reduce((sum, b) => sum + b.totalPrice, 0);
-    const bookingsThisMonth = bookings.filter(b => {
+    const totalRevenue = typedBookings.reduce((sum: number, b: Booking) => sum + b.totalPrice, 0);
+    const bookingsThisMonth = typedBookings.filter((b: Booking) => {
         const d = new Date(b.date);
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     }).length;
-    const revenueThisMonth = bookings.filter(b => {
+    const revenueThisMonth = typedBookings.filter((b: Booking) => {
         const d = new Date(b.date);
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }).reduce((sum, b) => sum + b.totalPrice, 0);
-    const avgPrice = bookings.length > 0 ? totalRevenue / bookings.length : 0;
+    }).reduce((sum: number, b: Booking) => sum + b.totalPrice, 0);
+    const avgPrice = typedBookings.length > 0 ? totalRevenue / typedBookings.length : 0;
 
     // Studio stats
     const allStudios = (studiosSnap.docs || []).map((d: any) => ({ id: d.id, ...d.data() })) as any[];
@@ -195,7 +197,7 @@ export default async function AdminPage() {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                bookings.map((booking) => (
+                                typedBookings.map((booking: Booking) => (
                                     <TableRow key={booking.id} className={`border-border hover:bg-accent/5 transition-colors group ${booking.status === 'cancelled' ? 'opacity-50 grayscale' : ''}`}>
                                         <TableCell className="font-mono text-xs text-muted-foreground py-4 px-8 group-hover:text-cyan-400 transition-colors">#{booking.id.toUpperCase()}</TableCell>
                                         <TableCell className="text-sm font-medium">{booking.date}</TableCell>

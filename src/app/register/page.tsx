@@ -24,11 +24,6 @@ export default function RegisterPage() {
         setIsSubmitting(true);
         setError("");
         try {
-            const formData = new FormData();
-            formData.append("name", name);
-            formData.append("email", email);
-            formData.append("password", password);
-            formData.append("phone", phone);
             const res = await fetch("/api/users/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

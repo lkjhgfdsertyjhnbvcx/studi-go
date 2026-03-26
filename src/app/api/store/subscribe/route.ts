@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2026-02-25.clover" });
 
 const PLAN_PRICES: Record<string, number> = {
-    basic: 3000,
-    standard: 8000,
-    premium: 15000,
+    free: 0,
+    light: 2980,
+    standard: 5980,
+    pro: 12800,
 };
 
 const OPTION_PRICES: Record<string, number> = {
-    sms: 1000,
-    custom_domain: 2000,
-    api_access: 3000,
+    custom_domain: 1000,
+    setup_support: 12000,
 };
 
 export async function POST(request: Request) {

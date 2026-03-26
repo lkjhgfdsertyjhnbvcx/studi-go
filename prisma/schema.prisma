@@ -8,18 +8,19 @@ datasource db {
 }
 
 model User {
-  id               String       @id @default(cuid())
+  id               String         @id @default(cuid())
   name             String?
-  email            String?      @unique
+  email            String?        @unique
   password         String?
   image            String?
-  role             String       @default("USER")
-  resetToken       String?      
-  resetTokenExpiry Float?       
-  bandMembers      BandMember[] 
-  ledBands         Band[]       
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  role             String         @default("USER")
+  resetToken       String?
+  resetTokenExpiry Float?
+  bandMembers      BandMember[]
+  ledBands         Band[]
+  splitPayments    SplitPayment[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 }
 
 model Band {
@@ -48,18 +49,32 @@ model BandMember {
 }
 
 model Reservation {
-  id                String   @id @default(cuid())
-  bandId            String?  
-  band              Band?    @relation(fields: [bandId], references: [id])
+  id                String         @id @default(cuid())
+  bandId            String?
+  band              Band?          @relation(fields: [bandId], references: [id])
   status            String?
-  isSplitPayment    Boolean? @default(false)
+  isSplitPayment    Boolean?       @default(false)
   optionPaymentMode String?
   guaranteeMode     String?
-  optionsAmount     Int?     @default(0)
+  optionsAmount     Int?           @default(0)
   totalAmount       Int?
   studioId          String?
   startTime         DateTime?
   endTime           DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  splitPayments     SplitPayment[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+}
+
+model SplitPayment {
+  id               String      @id @default(cuid())
+  reservationId    String
+  reservation      Reservation @relation(fields: [reservationId], references: [id])
+  userId           String
+  user             User        @relation(fields: [userId], references: [id])
+  amount           Int
+  stripeSessionId  String?
+  paymentStatus    String      @default("Pending")
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 }
