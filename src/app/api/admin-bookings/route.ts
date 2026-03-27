@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+import { collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
     try {
-        const snapshot = await adminDb.collection("bookings").get();
-        const bookings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const snapshot = await getDocs(collection(db, "bookings"));
+        const bookings = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         return NextResponse.json(bookings.sort((a: any, b: any) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         ));
-    } catch (error) {
+    } catch (error: any) {
+        console.error("bookings GET error:", error.message);
         return NextResponse.json({ error: "取得失敗" }, { status: 500 });
     }
 }
@@ -19,10 +23,10 @@ export async function PUT(request: Request) {
         if (!body.id || !body.status) {
             return NextResponse.json({ error: "idとstatusが必要です" }, { status: 400 });
         }
-        await adminDb.collection("bookings").doc(body.id).update({ status: body.status });
+        await updateDoc(doc(db, "bookings", body.id), { status: body.status });
         return NextResponse.json({ success: true });
     } catch (error: any) {
-        console.error("booking update error:", error);
+        console.error("booking update error:", error.message);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
@@ -33,10 +37,10 @@ export async function DELETE(request: Request) {
         const id = searchParams.get("id");
         if (!id) return NextResponse.json({ error: "IDが必要です" }, { status: 400 });
 
-        await adminDb.collection("bookings").doc(id).delete();
+        await deleteDoc(doc(db, "bookings", id));
         return NextResponse.json({ success: true });
     } catch (error: any) {
-        console.error("booking delete error:", error);
+        console.error("booking delete error:", error.message);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
