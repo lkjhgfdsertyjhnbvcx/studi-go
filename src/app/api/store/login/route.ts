@@ -3,10 +3,14 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { verifyPassword } from "@/lib/password";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
     try {
         const body = await request.json();
         const { email, password } = body;
+
+        console.log("【店舗ログイン】リクエスト受信:", { email, hasPassword: !!password });
 
         if (!email || !password) {
             return NextResponse.json({ error: "メールアドレスとパスワードを入力してください" }, { status: 400 });
@@ -15,43 +19,33 @@ export async function POST(request: Request) {
         // Client SDKでFirestoreからスタジオ一覧を取得
         const snapshot = await getDocs(collection(db, "studios"));
         const studios = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as any[];
+        console.log("【店舗ログイン】スタジオ数:", studios.length);
 
-        // 1. スタッフメールアドレス + パスワードで検索
+        // 全スタジオのスタッフを検索
         for (const s of studios) {
-            const staffMember = (s.staff ?? []).find(
-                (sm: any) => sm.email === email
-            );
-            if (staffMember && verifyPassword(password, staffMember.password || "")) {
-                return NextResponse.json({
-                    success: true,
-                    storeId: s.id,
-                    staffId: staffMember.id,
-                    name: s.storeName,
-                    role: staffMember.role,
-                });
+            const staffList = s.staff ?? [];
+            for (const sm of staffList) {
+                if (sm.email === email) {
+                    console.log("【店舗ログイン】スタッフ発見:", { studioName: s.storeName, staffEmail: sm.email, hasStoredPassword: !!sm.password, storedPasswordPrefix: sm.password ? sm.password.substring(0, 10) + "..." : "none" });
+                    const passwordMatch = verifyPassword(password, sm.password || "");
+                    console.log("【店舗ログイン】パスワード照合結果:", passwordMatch);
+                    if (passwordMatch) {
+                        return NextResponse.json({
+                            success: true,
+                            storeId: s.id,
+                            staffId: sm.id,
+                            name: s.storeName,
+                            role: sm.role,
+                        });
+                    }
+                }
             }
         }
 
-        // 2. 店舗メインメール + パスワードで検索（後方互換）
-        const studio = studios.find((s: any) => s.email === email);
-        if (studio) {
-            const staff = (studio.staff ?? []).find(
-                (s: any) => s.email === email
-            );
-            if (staff && verifyPassword(password, staff.password || "")) {
-                return NextResponse.json({
-                    success: true,
-                    storeId: studio.id,
-                    staffId: staff.id,
-                    name: studio.storeName,
-                    role: staff.role,
-                });
-            }
-        }
-
-        return NextResponse.json({ error: "認証失敗" }, { status: 401 });
+        console.log("【店舗ログイン】認証失敗: 該当するスタッフが見つかりません");
+        return NextResponse.json({ error: "メールアドレスまたはパスワードが正しくありません" }, { status: 401 });
     } catch (error: any) {
-        console.error("【店舗ログインAPIエラー】:", error.message);
-        return NextResponse.json({ error: "Server Error" }, { status: 500 });
+        console.error("【店舗ログインAPIエラー】:", error.message, error.stack);
+        return NextResponse.json({ error: `サーバーエラー: ${error.message}` }, { status: 500 });
     }
 }

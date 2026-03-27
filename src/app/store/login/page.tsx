@@ -16,19 +16,21 @@ export default function StoreLogin() {
             const res = await fetch('/api/store/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email: email.trim(), password })
             });
             const data = await res.json();
+            console.log("Login response:", res.status, data);
             if (res.ok && data.success) {
                 localStorage.setItem("storeId", data.storeId);
                 localStorage.setItem("staffId", data.staffId || "");
                 localStorage.setItem("staffRole", data.role || "staff");
                 router.push('/store/dashboard');
             } else {
-                setError("店舗IDまたはパスワードが正しくありません");
+                setError(data.error || "店舗IDまたはパスワードが正しくありません");
             }
-        } catch (err) {
-            setError("サーバーとの通信に失敗しました");
+        } catch (err: any) {
+            console.error("Login fetch error:", err);
+            setError("サーバーとの通信に失敗しました: " + (err.message || ""));
         }
     };
 
