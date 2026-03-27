@@ -8,12 +8,14 @@ export async function GET() {
     try {
         const snapshot = await getDocs(collection(db, "bookings"));
         const bookings = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        return NextResponse.json(bookings.sort((a: any, b: any) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        ));
+        return NextResponse.json(bookings.sort((a: any, b: any) => {
+            const ta = a.createdAt?.toDate?.() ?? new Date(a.createdAt ?? 0);
+            const tb = b.createdAt?.toDate?.() ?? new Date(b.createdAt ?? 0);
+            return tb.getTime() - ta.getTime();
+        }));
     } catch (error: any) {
-        console.error("bookings GET error:", error.message);
-        return NextResponse.json({ error: "取得失敗" }, { status: 500 });
+        console.error("bookings GET error:", error.message, error.stack);
+        return NextResponse.json({ error: `取得失敗: ${error.message}` }, { status: 500 });
     }
 }
 
