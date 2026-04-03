@@ -1,7 +1,10 @@
 // /api/admin/email - 運営側からユーザー・店舗へのメール送信
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import { adminDb } from "@/lib/firebase-admin";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
+export const dynamic = "force-dynamic";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.EMAIL_FROM ?? "Studi-Go <noreply@studi-go.com>";
@@ -14,22 +17,25 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "件名・本文は必須です" }, { status: 400 });
         }
 
+        if (!process.env.RESEND_API_KEY) {
+            return NextResponse.json({ error: "RESEND_API_KEYが設定されていません。Vercelの環境変数に追加してください。" }, { status: 500 });
+        }
+
         let emails: { to: string; name: string }[] = [];
 
         if (recipientType === "all_users") {
-            const snap = await adminDb.collection("users").get();
-            snap.docs.forEach(doc => {
-                const d = doc.data();
-                if (d.email) emails.push({ to: d.email, name: d.name || d.email });
+            const snap = await getDocs(collection(db, "users"));
+            snap.docs.forEach(d => {
+                const data = d.data();
+                if (data.email) emails.push({ to: data.email, name: data.name || data.email });
             });
         } else if (recipientType === "all_studios") {
-            const snap = await adminDb.collection("studios").get();
-            snap.docs.forEach(doc => {
-                const d = doc.data();
-                if (d.email) emails.push({ to: d.email, name: d.storeName || d.email });
+            const snap = await getDocs(collection(db, "studios"));
+            snap.docs.forEach(d => {
+                const data = d.data();
+                if (data.email) emails.push({ to: data.email, name: data.storeName || data.email });
             });
         } else if (recipientType === "specific" && Array.isArray(recipientIds)) {
-            // recipientIds is array of emails
             recipientIds.forEach((email: string) => emails.push({ to: email, name: email }));
         }
 
