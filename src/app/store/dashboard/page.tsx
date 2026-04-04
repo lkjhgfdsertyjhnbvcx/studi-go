@@ -39,6 +39,11 @@ interface Booking {
     startTime: string; durationHours: number; totalPrice: number; status: string;
     createdAt: string; userName?: string; userEmail?: string;
 }
+interface BlockedSlot {
+    id: string; studioId: string; roomName: string; date: string;
+    startTime: string; endTime: string; reason: string;
+    teacher?: string; memo?: string; createdBy: string; createdAt: string;
+}
 
 const MENU = [
     { key: "profile", label: "プロフィール" },
@@ -54,6 +59,7 @@ const MENU = [
 ];
 const CENTER_TABS = [
     { key: "calendar", label: "予約カレンダー" },
+    { key: "blocked", label: "ブロック設定" },
     { key: "analytics", label: "予実管理" },
     { key: "customers", label: "顧客管理" },
     { key: "cancellations", label: "キャンセル・変更" },
@@ -64,6 +70,7 @@ export default function StoreDashboard() {
     const [activeMenu, setActiveMenu] = useState("profile");
     const [centerTab, setCenterTab] = useState("calendar");
     const [bookings, setBookings] = useState<Booking[]>([]);
+    const [blockedSlots, setBlockedSlots] = useState<BlockedSlot[]>([]);
     const [customers, setCustomers] = useState<any[]>([]);
     const [showNotify, setShowNotify] = useState(false);
     const [notifyMsg, setNotifyMsg] = useState("");
@@ -85,6 +92,8 @@ export default function StoreDashboard() {
                     otherDiscounts: data.otherDiscounts || [],
                     images: data.images || [],
                 });
+                // ブロック枠を取得
+                fetch(`/api/blocked-slots?studioId=${data.id}`).then(r => r.json()).then(bs => { if (Array.isArray(bs)) setBlockedSlots(bs); });
                 return fetch(`/api/admin-bookings`);
             })
             .then(r => r?.json())
@@ -206,7 +215,8 @@ export default function StoreDashboard() {
                         ))}
                     </div>
                     <div className="flex-1 overflow-y-auto p-6">
-                        {centerTab === "calendar" && <CalendarTab bookings={storeBookings} rooms={store.rooms || []} setBookings={setBookings} allBookings={bookings} />}
+                        {centerTab === "calendar" && <CalendarTab bookings={storeBookings} rooms={store.rooms || []} setBookings={setBookings} allBookings={bookings} blockedSlots={blockedSlots} />}
+                        {centerTab === "blocked" && <BlockedSlotsTab storeId={store.id} rooms={store.rooms || []} blockedSlots={blockedSlots} setBlockedSlots={setBlockedSlots} />}
                         {centerTab === "analytics" && <AnalyticsTab bookings={storeBookings} store={store} setStore={setStore} planKey={store.planKey} />}
                         {centerTab === "customers" && <CustomersTab customers={customers} bookings={storeBookings} planKey={store.planKey} />}
                         {centerTab === "cancellations" && <CancellationsTab bookings={storeBookings} setBookings={setBookings} allBookings={bookings} />}
@@ -898,7 +908,7 @@ function ContactTab({ store, notify }: any) {
 // ===== カレンダー =====
 type CalendarView = "month" | "week" | "day";
 
-function CalendarTab({ bookings, rooms, setBookings, allBookings }: { bookings: Booking[]; rooms: Room[]; setBookings: any; allBookings: Booking[] }) {
+function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots = [] }: { bookings: Booking[]; rooms: Room[]; setBookings: any; allBookings: Booking[]; blockedSlots?: BlockedSlot[] }) {
     const [view, setView] = useState<CalendarView>("day");
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedRoom, setSelectedRoom] = useState("all");
@@ -972,9 +982,9 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings }: { bookings: 
                 </div>
             </div>
 
-            {view === "day" && <DayView date={currentDate} bookings={filtered} onBookingClick={setSelectedBooking} />}
-            {view === "week" && <WeekView date={currentDate} bookings={filtered} onBookingClick={setSelectedBooking} />}
-            {view === "month" && <MonthView date={currentDate} bookings={filtered} onDayClick={d => { setCurrentDate(d); setView("day"); }} />}
+            {view === "day" && <DayView date={currentDate} bookings={filtered} onBookingClick={setSelectedBooking} blockedSlots={blockedSlots} selectedRoom={selectedRoom} />}
+            {view === "week" && <WeekView date={currentDate} bookings={filtered} onBookingClick={setSelectedBooking} blockedSlots={blockedSlots} />}
+            {view === "month" && <MonthView date={currentDate} bookings={filtered} onDayClick={d => { setCurrentDate(d); setView("day"); }} blockedSlots={blockedSlots} />}
 
             {/* 予約詳細・操作モーダル */}
             {selectedBooking && (
@@ -1057,15 +1067,18 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings }: { bookings: 
     );
 }
 
-function DayView({ date, bookings, onBookingClick }: { date: Date; bookings: Booking[]; onBookingClick?: (b: Booking) => void }) {
+function DayView({ date, bookings, onBookingClick, blockedSlots = [], selectedRoom = "all" }: { date: Date; bookings: Booking[]; onBookingClick?: (b: Booking) => void; blockedSlots?: BlockedSlot[]; selectedRoom?: string }) {
     const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
     const dayBookings = bookings.filter(b => b.date === dateStr);
+    const dayBlocked = blockedSlots.filter(bs => bs.date === dateStr && (selectedRoom === "all" || bs.roomName === "all" || bs.roomName === selectedRoom));
     const ROW_H = 48;
     const START_H = 8;
     const HOURS = 15;
     const COL_W = 160;
-    // 部屋ごとにグループ化
-    const rooms = Array.from(new Set(dayBookings.map(b => b.roomName)));
+    // 部屋ごとにグループ化（予約 + ブロック枠の部屋を合算）
+    const bookingRooms = dayBookings.map(b => b.roomName);
+    const blockedRooms = dayBlocked.filter(bs => bs.roomName !== "all").map(bs => bs.roomName);
+    const rooms = Array.from(new Set([...bookingRooms, ...blockedRooms]));
     return (
         <div className="bg-card rounded-2xl overflow-hidden border border-border">
             <div className="overflow-x-auto">
@@ -1087,6 +1100,42 @@ function DayView({ date, bookings, onBookingClick }: { date: Date; bookings: Boo
                                 ))}
                             </div>
                         ))}
+                        {/* ブロック枠表示 */}
+                        {dayBlocked.map(bs => {
+                            const [bsH, bsM] = (bs.startTime || "00:00").split(":").map(Number);
+                            const [beH, beM] = (bs.endTime || "00:00").split(":").map(Number);
+                            const top = (bsH - START_H + bsM / 60) * ROW_H + 2;
+                            const durationH = (beH * 60 + beM - bsH * 60 - bsM) / 60;
+                            const height = Math.max(durationH * ROW_H - 4, ROW_H - 4);
+                            if (bs.roomName === "all") {
+                                // 全部屋にまたがるブロック
+                                return rooms.map((r, ri) => (
+                                    <div key={`${bs.id}-${ri}`} className="absolute rounded-lg px-2 py-1.5 text-xs font-bold text-white overflow-hidden" style={{
+                                        top, height, left: 64 + ri * COL_W + 4, width: COL_W - 8,
+                                        background: "repeating-linear-gradient(135deg, rgba(220,38,38,0.7), rgba(220,38,38,0.7) 4px, rgba(220,38,38,0.5) 4px, rgba(220,38,38,0.5) 8px)",
+                                        boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+                                    }}>
+                                        <p className="truncate font-black">{bs.reason}</p>
+                                        <p className="opacity-90 text-[10px]">{bs.startTime}〜{bs.endTime}</p>
+                                        {bs.teacher && <p className="opacity-80 text-[10px]">{bs.teacher}</p>}
+                                    </div>
+                                ));
+                            }
+                            const colIdx = rooms.indexOf(bs.roomName);
+                            if (colIdx === -1) return null;
+                            return (
+                                <div key={bs.id} className="absolute rounded-lg px-2 py-1.5 text-xs font-bold text-white overflow-hidden" style={{
+                                    top, height, left: 64 + colIdx * COL_W + 4, width: COL_W - 8,
+                                    background: "repeating-linear-gradient(135deg, rgba(220,38,38,0.7), rgba(220,38,38,0.7) 4px, rgba(220,38,38,0.5) 4px, rgba(220,38,38,0.5) 8px)",
+                                    boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+                                }}>
+                                    <p className="truncate font-black">{bs.reason}</p>
+                                    <p className="opacity-90 text-[10px]">{bs.startTime}〜{bs.endTime}</p>
+                                    {bs.teacher && <p className="opacity-80 text-[10px]">{bs.teacher}</p>}
+                                </div>
+                            );
+                        })}
+                        {/* 予約表示 */}
                         {dayBookings.map(b => {
                             const startH = parseInt((b.startTime || "00:00").split(":")[0]);
                             const startM = parseInt((b.startTime || "00:00").split(":")[1] || "0");
@@ -1138,7 +1187,7 @@ function DayView({ date, bookings, onBookingClick }: { date: Date; bookings: Boo
         </div>
     );
 }
-function WeekView({ date, bookings, onBookingClick }: { date: Date; bookings: Booking[]; onBookingClick?: (b: Booking) => void }) {
+function WeekView({ date, bookings, onBookingClick, blockedSlots = [] }: { date: Date; bookings: Booking[]; onBookingClick?: (b: Booking) => void; blockedSlots?: BlockedSlot[] }) {
     const start = new Date(date);
     start.setDate(start.getDate() - start.getDay());
     const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(start); d.setDate(d.getDate() + i); return d; });
@@ -1150,11 +1199,18 @@ function WeekView({ date, bookings, onBookingClick }: { date: Date; bookings: Bo
             {days.map((d, i) => {
                 const dateStr = d.toISOString().split("T")[0];
                 const dayBkgs = bookings.filter(b => b.date === dateStr);
+                const dayBlk = blockedSlots.filter(bs => bs.date === dateStr);
                 const isToday = dateStr === todayStr;
                 return (
                     <div key={i} className={`bg-card rounded-xl p-2 min-h-32 border ${isToday ? "border-purple-500" : "border-border"}`}>
                         <p className={`text-xs font-black mb-2 ${i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-muted-foreground"}`}>{dayNames[i]} {d.getDate()}</p>
                         <div className="space-y-1">
+                            {dayBlk.map(bs => (
+                                <div key={bs.id} className="rounded px-1.5 py-1 text-[10px] font-bold text-white leading-tight" style={{ background: "rgba(220,38,38,0.7)" }}>
+                                    <p className="truncate">{bs.reason}</p>
+                                    <p className="opacity-75">{bs.startTime}〜{bs.endTime}</p>
+                                </div>
+                            ))}
                             {dayBkgs.map(b => (
                                 <div
                                     key={b.id}
@@ -1177,7 +1233,7 @@ function WeekView({ date, bookings, onBookingClick }: { date: Date; bookings: Bo
     );
 }
 
-function MonthView({ date, bookings, onDayClick }: { date: Date; bookings: Booking[]; onDayClick: (d: Date) => void }) {
+function MonthView({ date, bookings, onDayClick, blockedSlots = [] }: { date: Date; bookings: Booking[]; onDayClick: (d: Date) => void; blockedSlots?: BlockedSlot[] }) {
     const year = date.getFullYear();
     const month = date.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
@@ -1196,16 +1252,180 @@ function MonthView({ date, bookings, onDayClick }: { date: Date; bookings: Booki
                     if (!day) return <div key={i} />;
                     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                     const dayBkgs = bookings.filter(b => b.date === dateStr);
+                    const dayBlk = blockedSlots.filter(bs => bs.date === dateStr);
                     const isToday = dateStr === todayStr;
                     return (
                         <div key={i} onClick={() => onDayClick(new Date(year, month, day))} className={`bg-card rounded-xl p-2 min-h-16 border cursor-pointer hover:border-purple-500 transition-all ${isToday ? "border-purple-500" : "border-border"}`}>
                             <p className={`text-xs font-black mb-1 ${isToday ? "text-purple-400" : i % 7 === 0 ? "text-red-400" : i % 7 === 6 ? "text-blue-400" : "text-muted-foreground"}`}>{day}</p>
-                            {dayBkgs.slice(0, 2).map((b, bi) => <div key={bi} className="bg-purple-600/70 rounded px-1 py-0.5 text-[9px] font-bold text-white mb-0.5 truncate">{b.roomName}</div>)}
-                            {dayBkgs.length > 2 && <p className="text-[9px] text-muted-foreground">+{dayBkgs.length - 2}</p>}
+                            {dayBlk.slice(0, 1).map((bs, bi) => <div key={`bl-${bi}`} className="bg-red-600/70 rounded px-1 py-0.5 text-[9px] font-bold text-white mb-0.5 truncate">{bs.reason}</div>)}
+                            {dayBkgs.slice(0, 2 - Math.min(dayBlk.length, 1)).map((b, bi) => <div key={bi} className="bg-purple-600/70 rounded px-1 py-0.5 text-[9px] font-bold text-white mb-0.5 truncate">{b.roomName}</div>)}
+                            {(dayBkgs.length + dayBlk.length) > 2 && <p className="text-[9px] text-muted-foreground">+{dayBkgs.length + dayBlk.length - 2}</p>}
                         </div>
                     );
                 })}
             </div>
+        </div>
+    );
+}
+
+// ===== ブロック設定タブ =====
+function BlockedSlotsTab({ storeId, rooms, blockedSlots, setBlockedSlots }: { storeId: string; rooms: Room[]; blockedSlots: BlockedSlot[]; setBlockedSlots: (s: BlockedSlot[]) => void }) {
+    const [form, setForm] = useState({ roomName: "all", date: "", startTime: "10:00", endTime: "18:00", reason: "メンテナンス", teacher: "", memo: "" });
+    const [loading, setLoading] = useState(false);
+    const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+    const reasons = ["メンテナンス", "レッスン", "イベント", "清掃", "その他"];
+
+    const handleAdd = async () => {
+        if (!form.date) { setMsg({ type: "error", text: "日付を入力してください" }); return; }
+        setLoading(true);
+        setMsg(null);
+        try {
+            const res = await fetch("/api/blocked-slots", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ studioId: storeId, ...form, createdBy: localStorage.getItem("staffId") || "" }),
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                setBlockedSlots([...blockedSlots, data.slot]);
+                setForm({ ...form, date: "", teacher: "", memo: "" });
+                setMsg({ type: "success", text: "ブロック枠を追加しました" });
+            } else {
+                setMsg({ type: "error", text: data.error || "追加に失敗しました" });
+            }
+        } catch {
+            setMsg({ type: "error", text: "通信エラーが発生しました" });
+        }
+        setLoading(false);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("このブロック枠を削除しますか？")) return;
+        try {
+            const res = await fetch(`/api/blocked-slots?id=${id}`, { method: "DELETE" });
+            if (res.ok) {
+                setBlockedSlots(blockedSlots.filter(s => s.id !== id));
+            }
+        } catch { /* ignore */ }
+    };
+
+    // 今日以降のブロック枠を日付順で表示
+    const today = new Date().toISOString().split("T")[0];
+    const upcoming = [...blockedSlots].filter(s => s.date >= today).sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+    const past = [...blockedSlots].filter(s => s.date < today).sort((a, b) => b.date.localeCompare(a.date));
+
+    return (
+        <div className="space-y-6">
+            {/* 新規追加フォーム */}
+            <div className="bg-card border border-border rounded-2xl p-6">
+                <h3 className="font-black text-foreground text-lg mb-4">予約不可枠を追加</h3>
+                <p className="text-xs text-muted-foreground mb-4">メンテナンスやレッスンなど、お客様が予約できない時間帯を設定します。お客様にはこの詳細は表示されません。</p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">日付 *</label>
+                        <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
+                            className="w-full p-3 bg-accent/10 rounded-xl font-bold text-foreground border border-border outline-none focus:border-purple-500 transition-all" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">対象ルーム</label>
+                        <select value={form.roomName} onChange={e => setForm({ ...form, roomName: e.target.value })}
+                            className="w-full p-3 bg-accent/10 rounded-xl font-bold text-foreground border border-border outline-none focus:border-purple-500 transition-all">
+                            <option value="all">全ルーム</option>
+                            {rooms.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">開始時間 *</label>
+                        <input type="time" value={form.startTime} onChange={e => setForm({ ...form, startTime: e.target.value })}
+                            className="w-full p-3 bg-accent/10 rounded-xl font-bold text-foreground border border-border outline-none focus:border-purple-500 transition-all" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">終了時間 *</label>
+                        <input type="time" value={form.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })}
+                            className="w-full p-3 bg-accent/10 rounded-xl font-bold text-foreground border border-border outline-none focus:border-purple-500 transition-all" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">理由</label>
+                        <select value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })}
+                            className="w-full p-3 bg-accent/10 rounded-xl font-bold text-foreground border border-border outline-none focus:border-purple-500 transition-all">
+                            {reasons.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">先生・担当者名</label>
+                        <input type="text" value={form.teacher} onChange={e => setForm({ ...form, teacher: e.target.value })} placeholder="例：田中先生"
+                            className="w-full p-3 bg-accent/10 rounded-xl font-bold text-foreground border border-border outline-none focus:border-purple-500 transition-all" />
+                    </div>
+                    <div className="sm:col-span-2">
+                        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">メモ（内部用）</label>
+                        <input type="text" value={form.memo} onChange={e => setForm({ ...form, memo: e.target.value })} placeholder="例：ドラムセットのメンテナンス"
+                            className="w-full p-3 bg-accent/10 rounded-xl font-bold text-foreground border border-border outline-none focus:border-purple-500 transition-all" />
+                    </div>
+                </div>
+
+                {msg && <div className={`mt-3 px-3 py-2 rounded-lg text-sm font-bold ${msg.type === "success" ? "bg-emerald-600/20 text-emerald-400" : "bg-red-600/20 text-red-400"}`}>{msg.text}</div>}
+
+                <button onClick={handleAdd} disabled={loading}
+                    className="mt-4 px-6 py-3 bg-red-600 hover:bg-red-500 disabled:opacity-50 rounded-xl text-sm font-black text-white transition-all">
+                    {loading ? "追加中..." : "ブロック枠を追加"}
+                </button>
+            </div>
+
+            {/* 予定一覧 */}
+            {upcoming.length > 0 && (
+                <div className="bg-card border border-border rounded-2xl p-6">
+                    <h3 className="font-black text-foreground text-lg mb-4">今後のブロック枠</h3>
+                    <div className="space-y-2">
+                        {upcoming.map(bs => (
+                            <div key={bs.id} className="flex items-center justify-between bg-accent/10 rounded-xl p-4">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-xs font-black text-red-400 bg-red-600/20 px-2 py-0.5 rounded-full">{bs.reason}</span>
+                                        <span className="text-xs font-bold text-muted-foreground">{bs.roomName === "all" ? "全ルーム" : bs.roomName}</span>
+                                    </div>
+                                    <p className="text-sm font-black text-foreground">{bs.date} {bs.startTime}〜{bs.endTime}</p>
+                                    {bs.teacher && <p className="text-xs text-muted-foreground mt-0.5">担当: {bs.teacher}</p>}
+                                    {bs.memo && <p className="text-xs text-muted-foreground">メモ: {bs.memo}</p>}
+                                </div>
+                                <button onClick={() => handleDelete(bs.id)} className="ml-3 px-3 py-2 bg-red-800 hover:bg-red-700 rounded-lg text-xs font-black text-white transition-all">
+                                    削除
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {past.length > 0 && (
+                <details className="bg-card border border-border rounded-2xl p-6">
+                    <summary className="font-black text-foreground text-lg cursor-pointer">過去のブロック枠 ({past.length}件)</summary>
+                    <div className="space-y-2 mt-4">
+                        {past.map(bs => (
+                            <div key={bs.id} className="flex items-center justify-between bg-accent/5 rounded-xl p-3 opacity-60">
+                                <div>
+                                    <span className="text-xs font-black text-red-400 mr-2">{bs.reason}</span>
+                                    <span className="text-xs font-bold text-muted-foreground">{bs.roomName === "all" ? "全ルーム" : bs.roomName}</span>
+                                    <p className="text-sm font-bold text-foreground">{bs.date} {bs.startTime}〜{bs.endTime}</p>
+                                    {bs.teacher && <p className="text-xs text-muted-foreground">担当: {bs.teacher}</p>}
+                                </div>
+                                <button onClick={() => handleDelete(bs.id)} className="ml-3 px-3 py-2 bg-accent/20 hover:bg-red-800 rounded-lg text-xs font-bold text-muted-foreground hover:text-white transition-all">
+                                    削除
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </details>
+            )}
+
+            {blockedSlots.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                    <p className="text-3xl mb-2">🔒</p>
+                    <p className="font-bold text-sm">ブロック枠はまだ設定されていません</p>
+                    <p className="text-xs mt-1">上のフォームから追加してください</p>
+                </div>
+            )}
         </div>
     );
 }
@@ -1685,6 +1905,7 @@ function PlanTab({ store, setStore, notify }: any) {
     const [plans, setPlans] = React.useState<any[]>(PLANS);
     const [planOptions, setPlanOptions] = React.useState<any[]>(PLAN_OPTIONS);
     const [showFeatureTable, setShowFeatureTable] = React.useState(false);
+    const [customDomain, setCustomDomain] = React.useState(store.customDomain || "");
 
     // plan-features.tsからインポートしたデータを使う
     const { PLAN_DEFINITIONS, FEATURE_CATEGORIES, FEATURE_LABELS, canUseFeature: checkFeature } = React.useMemo(() => {
@@ -1722,7 +1943,8 @@ function PlanTab({ store, setStore, notify }: any) {
         if (!selectedPlan) { notify("プランを選択してください", "error"); return; }
         setSaving(true);
         try {
-            const updated = { ...store, planKey: selectedPlan, planOptions: selectedOptions, planPayMethod: payMethod, planUpdatedAt: new Date().toISOString() };
+            const domainValue = selectedOptions.includes("custom_domain") ? customDomain.trim() : "";
+            const updated = { ...store, planKey: selectedPlan, planOptions: selectedOptions, planPayMethod: payMethod, planUpdatedAt: new Date().toISOString(), customDomain: domainValue };
             const { saveStudioToFirestore } = await import("@/lib/db-firestore");
             await saveStudioToFirestore(updated);
             setStore(updated);
@@ -1859,6 +2081,29 @@ function PlanTab({ store, setStore, notify }: any) {
                     })}
                 </div>
             </div>
+
+            {/* カスタムドメイン設定（オプション選択時のみ表示） */}
+            {selectedOptions.includes("custom_domain") && (
+                <div className="bg-card border border-purple-500/30 rounded-2xl p-4 space-y-3">
+                    <h3 className="text-foreground font-black text-sm">カスタムドメイン設定</h3>
+                    <p className="text-muted-foreground text-xs">独自ドメインでスタジオページを公開できます。ドメインのDNS設定で CNAME を <code className="bg-accent/20 px-1.5 py-0.5 rounded text-xs font-mono">studios.studi-go.com</code> に向けてください。</p>
+                    <div>
+                        <label className="text-xs font-bold text-muted-foreground">ドメイン名</label>
+                        <input
+                            type="text"
+                            value={customDomain}
+                            onChange={e => setCustomDomain(e.target.value)}
+                            placeholder="例: booking.mystudio.com"
+                            className="w-full mt-1 bg-accent/10 border border-border rounded-xl px-4 py-3 text-sm text-foreground outline-none focus:border-purple-500 transition-colors"
+                        />
+                    </div>
+                    {customDomain && (
+                        <p className="text-xs text-muted-foreground">
+                            公開URL: <span className="text-purple-400 font-mono">https://{customDomain}</span>
+                        </p>
+                    )}
+                </div>
+            )}
 
             <div>
                 <h2 className="text-foreground font-black text-lg mb-3">お支払い方法</h2>

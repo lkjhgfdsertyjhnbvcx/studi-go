@@ -249,6 +249,19 @@ export const updatePaymentStatusInFirestore = async (id: string, status: string)
     }
 };
 
+// --- BLOCKED SLOTS ---
+export const getBlockedSlotsByStudioFromFirestore = async (studioId: string) => {
+    try {
+        const snapshot = await getDocs(collection(db, "blockedSlots"));
+        return snapshot.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter((s: any) => s.studioId === studioId);
+    } catch (e) {
+        console.error("Error fetching blocked slots:", e);
+        return [];
+    }
+};
+
 // --- AVAILABILITY ---
 export const checkAvailabilityFromFirestore = async (
     studioId: string,
@@ -265,6 +278,21 @@ export const checkAvailabilityFromFirestore = async (
         const [startH, startM] = startTime.split(':').map(Number);
         const newStart = startH * 60 + startM;
         const newEnd = newStart + (duration * 60);
+
+        // ブロック枠チェック
+        const blockedSlots = await getBlockedSlotsByStudioFromFirestore(studioId);
+        for (const bs of blockedSlots as any[]) {
+            if (bs.date !== date) continue;
+            // roomName が "all" なら全部屋ブロック、一致するならブロック
+            if (bs.roomName !== "all" && roomName && bs.roomName !== roomName) continue;
+            const [bsH, bsM] = (bs.startTime || "00:00").split(':').map(Number);
+            const [beH, beM] = (bs.endTime || "00:00").split(':').map(Number);
+            const bsStart = bsH * 60 + bsM;
+            const bsEnd = beH * 60 + beM;
+            if (newStart < bsEnd && newEnd > bsStart) {
+                return false; // ブロック枠と重複
+            }
+        }
 
         const conflictingBookings = bookings.filter(b => {
             if (b.status === 'cancelled') return false;
