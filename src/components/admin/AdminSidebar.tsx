@@ -16,7 +16,8 @@ import {
     Users,
     Mail,
     Package,
-    BookOpen
+    BookOpen,
+    Upload
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -59,6 +60,7 @@ export function AdminSidebar() {
         { name: '会計帳簿', href: '/admin/ledger', icon: BookOpen },
         { name: '広告管理', href: '/admin/ads', icon: Megaphone },
         { name: 'メール送信', href: '/admin/email', icon: Mail },
+        { name: '顧客インポート', href: '/admin/users-import', icon: Upload },
     ] : [
         { name: '店舗情報', href: auth.studioId ? `/admin/studios/${auth.studioId}` : '/admin', icon: Store },
         { name: '顧客管理', href: '/admin/users', icon: Users },
