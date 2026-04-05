@@ -43,10 +43,12 @@ export async function sendPasswordResetAction(formData: FormData) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
+    const emailFrom = process.env.EMAIL_FROM || 'Studi-Go <noreply@send.studi-go.com>';
+
     if (process.env.RESEND_API_KEY) {
         try {
             const { error } = await resend.emails.send({
-                from: 'Studi-Go <onboarding@resend.dev>',
+                from: emailFrom,
                 to: email,
                 subject: '【Studi-Go】パスワード再設定のご案内',
                 html: `
@@ -67,19 +69,21 @@ export async function sendPasswordResetAction(formData: FormData) {
             });
 
             if (error) {
-                console.error('[Reset Password] ❌ Resend Error (Returned):', error);
-                return { success: true, message: `(開発モード) メール送信に失敗しましたが、コンソールにURLを出力しました。` };
+                console.error('[Reset Password] Resend Error:', error);
+                console.log(`[Reset Password] Reset URL for ${email}: ${resetUrl}`);
+                return { success: false, message: 'メール送信に失敗しました。しばらく時間を置いてから再度お試しいただくか、サポートまでお問い合わせください。' };
             }
 
-            console.log(`[Reset Password] 📧 Email sent to ${email} via Resend.`);
-            return { success: true, message: 'パスワード再設定用のメールを送信しました。' };
+            console.log(`[Reset Password] Email sent to ${email} via Resend.`);
+            return { success: true, message: 'パスワード再設定用のメールを送信しました。メールをご確認ください。' };
         } catch (error) {
-            console.error('[Reset Password] ❌ Failed to send email via Resend (Exception):', error);
-            return { success: true, message: 'メール送信に失敗しました。(Dev: コンソールを確認)' };
+            console.error('[Reset Password] Failed to send email:', error);
+            console.log(`[Reset Password] Reset URL for ${email}: ${resetUrl}`);
+            return { success: false, message: 'メール送信に失敗しました。しばらく時間を置いてから再度お試しください。' };
         }
     } else {
-        console.log(`[Reset Password] ⚠️ No Resend API Key. DEV MODE: Reset URL is ${resetUrl}`);
-        return { success: true, message: '送信しました(Dev: コンソールを確認してください)' };
+        console.log(`[Reset Password] No Resend API Key. Reset URL: ${resetUrl}`);
+        return { success: false, message: 'メール送信サービスが設定されていません。管理者にお問い合わせください。' };
     }
 }
 
