@@ -54,12 +54,11 @@ function HeaderNav() {
       <ThemeToggleBtn />
       {loggedIn ? (
         <>
-          <a href="/mypage" className="text-xs font-medium px-3 py-1.5 rounded-full" style={{ color: "var(--sg-text-secondary)", background: "var(--sg-bg-secondary)" }}>{userName ? `${userName.split(" ")[0]} さん` : "マイページ"}</a>
           <a href="/mypage" className="text-xs font-semibold px-4 py-1.5 rounded-full text-white" style={{ background: "var(--sg-accent)" }}>マイページ</a>
         </>
       ) : (
         <>
-          <a href="/login" className="text-xs font-medium px-3 py-1.5 rounded-full" style={{ color: "var(--sg-text-secondary)", background: "var(--sg-bg-secondary)" }}>ログイン</a>
+          <a href="/login" className="text-xs font-semibold px-4 py-1.5 rounded-full text-white" style={{ background: "var(--sg-accent)" }}>ログイン</a>
           <a href="/register" className="text-xs font-semibold px-4 py-1.5 rounded-full text-white" style={{ background: "var(--sg-accent)" }}>新規登録</a>
         </>
       )}
