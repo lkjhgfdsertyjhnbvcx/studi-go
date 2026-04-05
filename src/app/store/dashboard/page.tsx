@@ -1105,12 +1105,37 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
                 <div className="bg-card border border-border rounded-2xl p-5 mb-4">
                     <h3 className="font-black text-foreground text-sm mb-2">予約データCSVインポート</h3>
                     <p className="text-xs text-muted-foreground mb-3">他社システムからの予約データを一括登録できます。過去の予約もインポート可能です。</p>
+                    <div className="bg-accent/10 border border-border/50 rounded-xl p-4 mb-4 text-xs text-muted-foreground space-y-2">
+                        <p className="font-black text-foreground text-xs mb-1">インポートの手順</p>
+                        <p>1. 下の「テンプレートCSVをダウンロード」ボタンからテンプレートを取得します</p>
+                        <p>2. Excel等でテンプレートを開き、既存の予約データを入力してCSV形式で保存します</p>
+                        <p>3. 下のエリアにCSVファイルをドラッグ&ドロップ、またはクリックして選択します</p>
+                        <p>4. プレビューを確認し、問題なければ「インポート実行」をクリックします</p>
+                        <div className="border-t border-border/50 pt-2 mt-2">
+                            <p className="font-black text-foreground mb-1">対応カラム（1行目はヘッダー行が必須です）</p>
+                            <p><span className="font-bold text-cyan-400">日付</span> — 予約日（必須）例: 2026-04-01 または 2026/4/1</p>
+                            <p><span className="font-bold text-cyan-400">開始時間</span> — 開始時間（必須）例: 10:00 または 9:00</p>
+                            <p><span className="font-bold text-cyan-400">顧客名</span> — 予約者名</p>
+                            <p><span className="font-bold text-cyan-400">メール</span> — 予約者メールアドレス（既存ユーザーとの照合に使用）</p>
+                            <p><span className="font-bold text-cyan-400">時間数</span> — 利用時間（例: 2）デフォルト: 1時間</p>
+                            <p><span className="font-bold text-cyan-400">部屋名</span> — スタジオ/部屋名（登録済みの部屋名と一致させてください）</p>
+                            <p><span className="font-bold text-cyan-400">料金</span> — 合計金額（数値のみ、¥やカンマは自動除去されます）</p>
+                            <p><span className="font-bold text-cyan-400">ステータス</span> — confirmed / pending / cancelled（デフォルト: confirmed）</p>
+                            <p><span className="font-bold text-cyan-400">メモ</span> — 備考（任意）</p>
+                        </div>
+                        <div className="border-t border-border/50 pt-2 mt-2">
+                            <p className="font-black text-foreground mb-1">注意事項</p>
+                            <p>・同じ日付・開始時間・部屋名の予約が既に存在する場合、重複としてスキップされます</p>
+                            <p>・メールアドレスが既存ユーザーと一致する場合はそのユーザーに紐付け、一致しない場合は仮ユーザーが自動作成されます</p>
+                            <p>・過去の予約もインポート可能です（売上実績・利用履歴として記録されます）</p>
+                            <p>・ファイルはCSV形式（.csv）で、文字コードはUTF-8を推奨します</p>
+                        </div>
+                    </div>
                     <div className="flex gap-2 mb-3">
                         <button onClick={downloadBkTemplate} className="px-3 py-1.5 bg-accent/20 hover:bg-accent/30 text-foreground text-xs font-bold rounded-lg transition-all">
                             テンプレートCSVをダウンロード
                         </button>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mb-3">対応カラム: 顧客名, メール, 日付, 開始時間, 時間数, 部屋名, 料金, ステータス, メモ（日付と開始時間は必須）</p>
                     <div
                         onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add("border-cyan-500"); }}
                         onDragLeave={e => { e.currentTarget.classList.remove("border-cyan-500"); }}
@@ -1951,12 +1976,32 @@ function CustomersTab({ customers, bookings, planKey, storeId, onRefresh }: { cu
                 <div className="bg-card border border-border rounded-2xl p-5 mb-6">
                     <h3 className="font-black text-foreground text-sm mb-2">顧客データCSVインポート</h3>
                     <p className="text-xs text-muted-foreground mb-3">他社予約システムからの乗り換え時に、顧客データを一括登録できます</p>
+                    <div className="bg-accent/10 border border-border/50 rounded-xl p-4 mb-4 text-xs text-muted-foreground space-y-2">
+                        <p className="font-black text-foreground text-xs mb-1">インポートの手順</p>
+                        <p>1. 下の「テンプレートCSVをダウンロード」ボタンからテンプレートを取得します</p>
+                        <p>2. Excel等でテンプレートを開き、既存の顧客データを入力してCSV形式で保存します</p>
+                        <p>3. 下のエリアにCSVファイルをドラッグ&ドロップ、またはクリックして選択します</p>
+                        <p>4. プレビューを確認し、問題なければ「インポート実行」をクリックします</p>
+                        <div className="border-t border-border/50 pt-2 mt-2">
+                            <p className="font-black text-foreground mb-1">対応カラム（1行目はヘッダー行が必須です）</p>
+                            <p><span className="font-bold text-purple-400">名前</span> — 顧客名（必須※メールがない場合）</p>
+                            <p><span className="font-bold text-purple-400">メール</span> — メールアドレス（既存ユーザーとの照合に使用）</p>
+                            <p><span className="font-bold text-purple-400">電話番号</span> — 任意</p>
+                            <p><span className="font-bold text-purple-400">LINE ID</span> — LINEユーザーID（将来のLINEログイン連携用、任意）</p>
+                            <p><span className="font-bold text-purple-400">メモ</span> — 備考や顧客情報など（任意）</p>
+                        </div>
+                        <div className="border-t border-border/50 pt-2 mt-2">
+                            <p className="font-black text-foreground mb-1">注意事項</p>
+                            <p>・メールアドレスが既存のユーザーと一致する場合、新規作成せず既存データに紐付けします</p>
+                            <p>・ファイルはCSV形式（.csv）で、文字コードはUTF-8を推奨します</p>
+                            <p>・一度にインポートできる件数に制限はありませんが、大量の場合は処理に時間がかかります</p>
+                        </div>
+                    </div>
                     <div className="flex gap-2 mb-3">
                         <button onClick={downloadTemplate} className="px-3 py-1.5 bg-accent/20 hover:bg-accent/30 text-foreground text-xs font-bold rounded-lg transition-all">
                             テンプレートCSVをダウンロード
                         </button>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mb-3">対応カラム: 名前, メール, 電話番号, LINE ID, メモ（ヘッダー行必須）</p>
                     <div
                         onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add("border-purple-500"); }}
                         onDragLeave={e => { e.currentTarget.classList.remove("border-purple-500"); }}
