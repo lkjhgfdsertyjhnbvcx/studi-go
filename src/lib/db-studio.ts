@@ -33,6 +33,12 @@ export interface Room {
 export interface EquipmentOption {
     name: string;
     pricePerHour: number;
+    priceType?: 'per_use' | 'per_hour';
+    imageUrl?: string;
+    quantity?: number;
+    category?: 'amp' | 'drums' | 'mic' | 'pa' | 'guitar' | 'bass' | 'keys' | 'other';
+    status?: 'active' | 'maintenance' | 'broken';
+    assignedRoom?: string;
 }
 export interface BusinessHours {
     weekday: string;
@@ -120,6 +126,7 @@ export interface StudioProfile {
     planKey?: string;
     planOptions?: string[];
     planPayMethod?: string;
+    customDomain?: string; // カスタムドメイン (例: "mystudio.com")
     planUpdatedAt?: string;
     planTrialDays?: number;
     trialEndDate?: string;  // ISO日付 例: "2026-06-01"

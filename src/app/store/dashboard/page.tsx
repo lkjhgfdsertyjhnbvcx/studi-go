@@ -14,7 +14,7 @@ interface Room {
 }
 interface StaffMember { id: string; name: string; email: string; password?: string; role: "admin" | "staff"; createdAt: string; }
 interface BlacklistEntry { userId: string; userName: string; email?: string; reason: string; createdAt: string; }
-interface EquipmentOption { name: string; pricePerHour: number; priceType?: "per_use" | "per_hour"; imageUrl?: string; }
+interface EquipmentOption { name: string; pricePerHour: number; priceType?: "per_use" | "per_hour"; imageUrl?: string; quantity?: number; category?: "amp" | "drums" | "mic" | "pa" | "guitar" | "bass" | "keys" | "other"; status?: "active" | "maintenance" | "broken"; assignedRoom?: string; }
 interface Discount { name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; }
 interface Store {
     id: string; storeName: string; companyName?: string; representative?: string; email?: string;
@@ -44,13 +44,18 @@ interface BlockedSlot {
     startTime: string; endTime: string; reason: string;
     teacher?: string; memo?: string; createdBy: string; createdAt: string;
 }
+interface EquipmentRental {
+    id: string; studioId: string; equipmentName: string; roomName?: string; date: string;
+    startTime: string; endTime: string; customerName: string; purpose: string;
+    memo?: string; createdBy: string; createdAt: string;
+}
 
 const MENU = [
     { key: "profile", label: "プロフィール" },
     { key: "branding", label: "ブランディング" },
     { key: "settings", label: "設定" },
     { key: "studios", label: "スタジオ設定" },
-    { key: "options", label: "オプション" },
+    { key: "options", label: "機材管理" },
     { key: "promotions", label: "特典・クーポン" },
     { key: "staff", label: "スタッフ" },
     { key: "blacklist", label: "ブラックリスト" },
@@ -60,6 +65,7 @@ const MENU = [
 const CENTER_TABS = [
     { key: "calendar", label: "予約カレンダー" },
     { key: "blocked", label: "ブロック設定" },
+    { key: "rentals", label: "機材貸出" },
     { key: "analytics", label: "予実管理" },
     { key: "customers", label: "顧客管理" },
     { key: "cancellations", label: "キャンセル・変更" },
@@ -71,6 +77,7 @@ export default function StoreDashboard() {
     const [centerTab, setCenterTab] = useState("calendar");
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [blockedSlots, setBlockedSlots] = useState<BlockedSlot[]>([]);
+    const [equipmentRentals, setEquipmentRentals] = useState<EquipmentRental[]>([]);
     const [customers, setCustomers] = useState<any[]>([]);
     const [showNotify, setShowNotify] = useState(false);
     const [notifyMsg, setNotifyMsg] = useState("");
@@ -94,6 +101,8 @@ export default function StoreDashboard() {
                 });
                 // ブロック枠を取得
                 fetch(`/api/blocked-slots?studioId=${data.id}`).then(r => r.json()).then(bs => { if (Array.isArray(bs)) setBlockedSlots(bs); });
+                // 機材貸出を取得
+                fetch(`/api/equipment-rentals?studioId=${data.id}`).then(r => r.json()).then(er => { if (Array.isArray(er)) setEquipmentRentals(er); });
                 return fetch(`/api/admin-bookings`);
             })
             .then(r => r?.json())
@@ -215,8 +224,9 @@ export default function StoreDashboard() {
                         ))}
                     </div>
                     <div className="flex-1 overflow-y-auto p-6">
-                        {centerTab === "calendar" && <CalendarTab bookings={storeBookings} rooms={store.rooms || []} setBookings={setBookings} allBookings={bookings} blockedSlots={blockedSlots} />}
+                        {centerTab === "calendar" && <CalendarTab bookings={storeBookings} rooms={store.rooms || []} setBookings={setBookings} allBookings={bookings} blockedSlots={blockedSlots} equipmentOptions={store.equipmentOptions || []} equipmentRentals={equipmentRentals} />}
                         {centerTab === "blocked" && <BlockedSlotsTab storeId={store.id} rooms={store.rooms || []} blockedSlots={blockedSlots} setBlockedSlots={setBlockedSlots} />}
+                        {centerTab === "rentals" && <EquipmentRentalsTab storeId={store.id} rooms={store.rooms || []} equipmentOptions={store.equipmentOptions || []} rentals={equipmentRentals} setRentals={setEquipmentRentals} />}
                         {centerTab === "analytics" && <AnalyticsTab bookings={storeBookings} store={store} setStore={setStore} planKey={store.planKey} />}
                         {centerTab === "customers" && <CustomersTab customers={customers} bookings={storeBookings} planKey={store.planKey} />}
                         {centerTab === "cancellations" && <CancellationsTab bookings={storeBookings} setBookings={setBookings} allBookings={bookings} />}
@@ -649,8 +659,19 @@ function StudiosTab({ store, setStore }: any) {
     );
 }
 
+const EQUIP_CATEGORIES: { value: string; label: string }[] = [
+    { value: "amp", label: "アンプ" }, { value: "drums", label: "ドラム" }, { value: "mic", label: "マイク" },
+    { value: "pa", label: "PA機器" }, { value: "guitar", label: "ギター" }, { value: "bass", label: "ベース" },
+    { value: "keys", label: "キーボード" }, { value: "other", label: "その他" },
+];
+const EQUIP_STATUS: { value: string; label: string; color: string }[] = [
+    { value: "active", label: "稼働中", color: "text-emerald-400 bg-emerald-600/20" },
+    { value: "maintenance", label: "メンテ中", color: "text-amber-400 bg-amber-600/20" },
+    { value: "broken", label: "故障", color: "text-red-400 bg-red-600/20" },
+];
+
 function OptionsTab({ store, setStore }: any) {
-    const addOption = () => setStore({ ...store, equipmentOptions: [...(store.equipmentOptions || []), { name: "", pricePerHour: 0, priceType: "per_use" }] });
+    const addOption = () => setStore({ ...store, equipmentOptions: [...(store.equipmentOptions || []), { name: "", pricePerHour: 0, priceType: "per_use", quantity: 1, category: "other", status: "active", assignedRoom: "" }] });
     const updateOption = (idx: number, key: string, val: any) => {
         const arr = [...(store.equipmentOptions || [])]; arr[idx] = { ...arr[idx], [key]: val };
         setStore({ ...store, equipmentOptions: arr });
@@ -659,27 +680,83 @@ function OptionsTab({ store, setStore }: any) {
         const arr = [...(store.equipmentOptions || [])]; arr.splice(idx, 1);
         setStore({ ...store, equipmentOptions: arr });
     };
+
+    const activeCount = (store.equipmentOptions || []).filter((o: EquipmentOption) => o.status !== "broken").length;
+    const brokenCount = (store.equipmentOptions || []).filter((o: EquipmentOption) => o.status === "broken").length;
+    const maintenanceCount = (store.equipmentOptions || []).filter((o: EquipmentOption) => o.status === "maintenance").length;
+
     return (
-        <Section title="オプション設定">
-            {(store.equipmentOptions || []).map((opt: EquipmentOption, idx: number) => (
-                <div key={idx} className="bg-accent/10/40 rounded-2xl p-4 space-y-3 mb-3">
-                    <div className="flex justify-between"><p className="text-[10px] font-black text-muted-foreground uppercase">OPTION {idx + 1}</p><button onClick={() => removeOption(idx)} className="text-red-400 text-xs">削除</button></div>
-                    <Field label="オプション名" value={opt.name} onChange={v => updateOption(idx, "name", v)} placeholder="マイク、ドラム台等" />
-                    <div className="flex gap-2">
-                        <Field label="金額（円）" value={String(opt.pricePerHour)} onChange={v => updateOption(idx, "pricePerHour", parseInt(v) || 0)} type="number" />
-                        <div className="flex-1">
-                            <Label>課金方式</Label>
-                            <select className="w-full mt-1 p-2.5 bg-accent/10 border border-border rounded-xl text-sm font-bold text-foreground outline-none" value={opt.priceType || "per_use"} onChange={e => updateOption(idx, "priceType", e.target.value)}>
-                                <option value="per_use">1回あたり</option>
-                                <option value="per_hour">1時間あたり</option>
-                            </select>
-                        </div>
-                    </div>
-                    <StorageImageUpload label="写真" image={opt.imageUrl} storagePath={`studios/${store.id}/options/${idx}`} onUpload={url => updateOption(idx, "imageUrl", url)} />
+        <Section title="機材・楽器管理">
+            {/* サマリー */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="bg-emerald-600/10 rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-emerald-400">{activeCount}</p>
+                    <p className="text-[10px] font-black text-muted-foreground uppercase">稼働中</p>
                 </div>
-            ))}
+                <div className="bg-amber-600/10 rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-amber-400">{maintenanceCount}</p>
+                    <p className="text-[10px] font-black text-muted-foreground uppercase">メンテ中</p>
+                </div>
+                <div className="bg-red-600/10 rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-red-400">{brokenCount}</p>
+                    <p className="text-[10px] font-black text-muted-foreground uppercase">故障</p>
+                </div>
+            </div>
+
+            {(store.equipmentOptions || []).map((opt: EquipmentOption, idx: number) => {
+                const statusInfo = EQUIP_STATUS.find(s => s.value === (opt.status || "active")) || EQUIP_STATUS[0];
+                const categoryInfo = EQUIP_CATEGORIES.find(c => c.value === (opt.category || "other"));
+                return (
+                    <div key={idx} className="bg-accent/10 rounded-2xl p-4 space-y-3 mb-3 border border-border">
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                                <p className="text-[10px] font-black text-muted-foreground uppercase">機材 {idx + 1}</p>
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${statusInfo.color}`}>{statusInfo.label}</span>
+                                {categoryInfo && <span className="text-[10px] font-bold text-muted-foreground bg-accent/20 px-2 py-0.5 rounded-full">{categoryInfo.label}</span>}
+                            </div>
+                            <button onClick={() => removeOption(idx)} className="text-red-400 text-xs font-bold hover:text-red-300">削除</button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Field label="機材名" value={opt.name} onChange={v => updateOption(idx, "name", v)} placeholder="Marshall JCM800 等" />
+                            <div>
+                                <Label>カテゴリ</Label>
+                                <select className="w-full mt-1 p-2.5 bg-accent/10 border border-border rounded-xl text-sm font-bold text-foreground outline-none" value={opt.category || "other"} onChange={e => updateOption(idx, "category", e.target.value)}>
+                                    {EQUIP_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                            <Field label="数量" value={String(opt.quantity ?? 1)} onChange={v => updateOption(idx, "quantity", Math.max(1, parseInt(v) || 1))} type="number" />
+                            <Field label="金額（円）" value={String(opt.pricePerHour)} onChange={v => updateOption(idx, "pricePerHour", parseInt(v) || 0)} type="number" />
+                            <div>
+                                <Label>課金方式</Label>
+                                <select className="w-full mt-1 p-2.5 bg-accent/10 border border-border rounded-xl text-sm font-bold text-foreground outline-none" value={opt.priceType || "per_use"} onChange={e => updateOption(idx, "priceType", e.target.value)}>
+                                    <option value="per_use">1回あたり</option>
+                                    <option value="per_hour">1時間あたり</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <Label>ステータス</Label>
+                                <select className="w-full mt-1 p-2.5 bg-accent/10 border border-border rounded-xl text-sm font-bold text-foreground outline-none" value={opt.status || "active"} onChange={e => updateOption(idx, "status", e.target.value)}>
+                                    {EQUIP_STATUS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <Label>所属ルーム</Label>
+                                <select className="w-full mt-1 p-2.5 bg-accent/10 border border-border rounded-xl text-sm font-bold text-foreground outline-none" value={opt.assignedRoom || ""} onChange={e => updateOption(idx, "assignedRoom", e.target.value)}>
+                                    <option value="">共有（どのルームでも使用可）</option>
+                                    {(store.rooms || []).map((r: Room) => <option key={r.id} value={r.name}>{r.name}（固定設置）</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <StorageImageUpload label="写真" image={opt.imageUrl} storagePath={`studios/${store.id}/options/${idx}`} onUpload={url => updateOption(idx, "imageUrl", url)} />
+                    </div>
+                );
+            })}
             <button onClick={addOption} className="w-full py-3 border-2 border-dashed border-border rounded-2xl text-sm font-black text-muted-foreground hover:text-foreground hover:border-purple-600 transition-all">
-                + オプションを追加
+                + 機材を追加
             </button>
         </Section>
     );
@@ -908,7 +985,7 @@ function ContactTab({ store, notify }: any) {
 // ===== カレンダー =====
 type CalendarView = "month" | "week" | "day";
 
-function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots = [] }: { bookings: Booking[]; rooms: Room[]; setBookings: any; allBookings: Booking[]; blockedSlots?: BlockedSlot[] }) {
+function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots = [], equipmentOptions = [], equipmentRentals = [] }: { bookings: Booking[]; rooms: Room[]; setBookings: any; allBookings: Booking[]; blockedSlots?: BlockedSlot[]; equipmentOptions?: EquipmentOption[]; equipmentRentals?: EquipmentRental[] }) {
     const [view, setView] = useState<CalendarView>("day");
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedRoom, setSelectedRoom] = useState("all");
@@ -982,7 +1059,7 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
                 </div>
             </div>
 
-            {view === "day" && <DayView date={currentDate} bookings={filtered} onBookingClick={setSelectedBooking} blockedSlots={blockedSlots} selectedRoom={selectedRoom} />}
+            {view === "day" && <DayView date={currentDate} bookings={filtered} onBookingClick={setSelectedBooking} blockedSlots={blockedSlots} selectedRoom={selectedRoom} equipmentOptions={equipmentOptions} equipmentRentals={equipmentRentals} />}
             {view === "week" && <WeekView date={currentDate} bookings={filtered} onBookingClick={setSelectedBooking} blockedSlots={blockedSlots} />}
             {view === "month" && <MonthView date={currentDate} bookings={filtered} onDayClick={d => { setCurrentDate(d); setView("day"); }} blockedSlots={blockedSlots} />}
 
@@ -1067,20 +1144,23 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
     );
 }
 
-function DayView({ date, bookings, onBookingClick, blockedSlots = [], selectedRoom = "all" }: { date: Date; bookings: Booking[]; onBookingClick?: (b: Booking) => void; blockedSlots?: BlockedSlot[]; selectedRoom?: string }) {
+function DayView({ date, bookings, onBookingClick, blockedSlots = [], selectedRoom = "all", equipmentOptions = [], equipmentRentals = [] }: { date: Date; bookings: Booking[]; onBookingClick?: (b: Booking) => void; blockedSlots?: BlockedSlot[]; selectedRoom?: string; equipmentOptions?: EquipmentOption[]; equipmentRentals?: EquipmentRental[] }) {
     const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
     const dayBookings = bookings.filter(b => b.date === dateStr);
     const dayBlocked = blockedSlots.filter(bs => bs.date === dateStr && (selectedRoom === "all" || bs.roomName === "all" || bs.roomName === selectedRoom));
+    const dayRentals = equipmentRentals.filter(r => r.date === dateStr && (selectedRoom === "all" || !r.roomName || r.roomName === selectedRoom));
     const ROW_H = 48;
     const START_H = 8;
     const HOURS = 15;
     const COL_W = 160;
-    // 部屋ごとにグループ化（予約 + ブロック枠の部屋を合算）
+    // 部屋ごとにグループ化（予約 + ブロック枠 + 機材貸出の部屋を合算）
     const bookingRooms = dayBookings.map(b => b.roomName);
     const blockedRooms = dayBlocked.filter(bs => bs.roomName !== "all").map(bs => bs.roomName);
-    const rooms = Array.from(new Set([...bookingRooms, ...blockedRooms]));
+    const rentalRooms = dayRentals.filter(r => r.roomName).map(r => r.roomName!);
+    const rooms = Array.from(new Set([...bookingRooms, ...blockedRooms, ...rentalRooms]));
     return (
-        <div className="bg-card rounded-2xl overflow-hidden border border-border">
+        <div className="flex gap-3">
+        <div className="flex-1 bg-card rounded-2xl overflow-hidden border border-border">
             <div className="overflow-x-auto">
                 <div style={{minWidth: 64 + Math.max(rooms.length, 1) * COL_W + 16}}>
                     {/* ヘッダー行 */}
@@ -1175,15 +1255,84 @@ function DayView({ date, bookings, onBookingClick, blockedSlots = [], selectedRo
                                 </div>
                             );
                         })}
+                        {/* 機材貸出表示 */}
+                        {dayRentals.map(r => {
+                            const [rH, rM] = (r.startTime || "00:00").split(":").map(Number);
+                            const [reH, reM] = (r.endTime || "00:00").split(":").map(Number);
+                            const top = (rH - START_H + rM / 60) * ROW_H + 2;
+                            const durationH = (reH * 60 + reM - rH * 60 - rM) / 60;
+                            const height = Math.max(durationH * ROW_H - 4, ROW_H - 4);
+                            const colIdx = r.roomName ? rooms.indexOf(r.roomName) : 0;
+                            if (colIdx === -1) return null;
+                            return (
+                                <div key={r.id} className="absolute rounded-lg px-2 py-1.5 text-xs font-bold text-white overflow-hidden" style={{
+                                    top, height, left: 64 + colIdx * COL_W + 4, width: COL_W - 8,
+                                    background: "rgba(6,182,212,0.8)",
+                                    boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+                                    border: "1px dashed rgba(255,255,255,0.4)",
+                                }}>
+                                    <p className="truncate font-black">{r.equipmentName}</p>
+                                    <p className="opacity-90 text-[10px]">{r.startTime}〜{r.endTime}</p>
+                                    <p className="opacity-80 text-[10px]">{r.customerName} ({r.purpose})</p>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
-            {dayBookings.length === 0 && (
+            {dayBookings.length === 0 && dayBlocked.length === 0 && dayRentals.length === 0 && (
                 <div className="text-center py-12 text-muted-foreground">
                     <p className="text-3xl mb-2">📅</p>
                     <p className="font-bold text-sm">この日の予約はありません</p>
                 </div>
             )}
+        </div>
+
+        {/* 機材状況パネル */}
+        {equipmentOptions.length > 0 && (
+            <div className="w-56 shrink-0 bg-card border border-border rounded-2xl p-3 self-start">
+                <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3">機材状況</h4>
+                <div className="space-y-2">
+                    {equipmentOptions.map((eq, i) => {
+                        const qty = eq.quantity ?? 1;
+                        // この日の予約で使われている数を計算
+                        const usedByBookings = dayBookings.filter(b =>
+                            b.status !== "cancelled" &&
+                            (b as any).equipmentIds?.includes(eq.name)
+                        ).length;
+                        // この日の貸出で使われている数を計算
+                        const usedByRentals = dayRentals.filter(r => r.equipmentName === eq.name).length;
+                        const usedCount = usedByBookings + usedByRentals;
+                        const available = Math.max(0, qty - usedCount);
+                        const statusColor = eq.status === "broken" ? "bg-red-600/20 border-red-600/30"
+                            : eq.status === "maintenance" ? "bg-amber-600/20 border-amber-600/30"
+                            : available === 0 ? "bg-purple-600/20 border-purple-600/30"
+                            : "bg-emerald-600/10 border-emerald-600/20";
+                        const dotColor = eq.status === "broken" ? "bg-red-500"
+                            : eq.status === "maintenance" ? "bg-amber-500"
+                            : available === 0 ? "bg-purple-500"
+                            : "bg-emerald-500";
+                        const statusLabel = eq.status === "broken" ? "故障"
+                            : eq.status === "maintenance" ? "メンテ中"
+                            : available === 0 ? "全て使用中"
+                            : `${available}/${qty} 空き`;
+
+                        return (
+                            <div key={i} className={`rounded-xl p-2.5 border ${statusColor}`}>
+                                <div className="flex items-center gap-1.5 mb-1">
+                                    <div className={`w-2 h-2 rounded-full ${dotColor}`} />
+                                    <p className="text-xs font-black text-foreground truncate">{eq.name}</p>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] text-muted-foreground">{eq.assignedRoom ? eq.assignedRoom : "共有"}</span>
+                                    <span className="text-[10px] font-bold text-muted-foreground">{statusLabel}</span>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        )}
         </div>
     );
 }
@@ -1424,6 +1573,169 @@ function BlockedSlotsTab({ storeId, rooms, blockedSlots, setBlockedSlots }: { st
                     <p className="text-3xl mb-2">🔒</p>
                     <p className="font-bold text-sm">ブロック枠はまだ設定されていません</p>
                     <p className="text-xs mt-1">上のフォームから追加してください</p>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ===== 機材貸出タブ =====
+function EquipmentRentalsTab({ storeId, rooms, equipmentOptions, rentals, setRentals }: { storeId: string; rooms: Room[]; equipmentOptions: EquipmentOption[]; rentals: EquipmentRental[]; setRentals: (r: EquipmentRental[]) => void }) {
+    const [form, setForm] = useState({ equipmentName: "", roomName: "", date: "", startTime: "10:00", endTime: "18:00", customerName: "", purpose: "レンタル", memo: "" });
+    const [loading, setLoading] = useState(false);
+    const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+    const purposes = ["レンタル", "内部利用", "レッスン", "イベント", "その他"];
+    const activeEquipment = equipmentOptions.filter(e => e.status !== "broken");
+
+    const handleAdd = async () => {
+        if (!form.equipmentName || !form.date || !form.customerName) {
+            setMsg({ type: "error", text: "機材名・日付・お客様名は必須です" }); return;
+        }
+        setLoading(true); setMsg(null);
+        try {
+            const res = await fetch("/api/equipment-rentals", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ studioId: storeId, ...form, createdBy: localStorage.getItem("staffId") || "" }),
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                setRentals([...rentals, data.rental]);
+                setForm({ ...form, date: "", customerName: "", memo: "" });
+                setMsg({ type: "success", text: "機材貸出を登録しました" });
+            } else {
+                setMsg({ type: "error", text: data.error || "登録に失敗しました" });
+            }
+        } catch {
+            setMsg({ type: "error", text: "通信エラーが発生しました" });
+        }
+        setLoading(false);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("この貸出予約を削除しますか？")) return;
+        try {
+            const res = await fetch(`/api/equipment-rentals?id=${id}`, { method: "DELETE" });
+            if (res.ok) setRentals(rentals.filter(r => r.id !== id));
+        } catch { /* ignore */ }
+    };
+
+    const today = new Date().toISOString().split("T")[0];
+    const upcoming = [...rentals].filter(r => r.date >= today).sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+    const past = [...rentals].filter(r => r.date < today).sort((a, b) => b.date.localeCompare(a.date));
+
+    return (
+        <div className="space-y-6">
+            <div className="bg-card border border-border rounded-2xl p-6">
+                <h3 className="font-black text-foreground text-lg mb-2">機材貸出を登録</h3>
+                <p className="text-xs text-muted-foreground mb-4">店舗側から機材の貸し出しや内部利用を予約します。</p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">機材 *</label>
+                        <select value={form.equipmentName} onChange={e => setForm({ ...form, equipmentName: e.target.value })}
+                            className="w-full p-3 bg-accent/10 rounded-xl font-bold text-foreground border border-border outline-none focus:border-purple-500 transition-all">
+                            <option value="">選択してください</option>
+                            {activeEquipment.map((eq, i) => <option key={i} value={eq.name}>{eq.name}{eq.quantity && eq.quantity > 1 ? ` (${eq.quantity}台)` : ""}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">日付 *</label>
+                        <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
+                            className="w-full p-3 bg-accent/10 rounded-xl font-bold text-foreground border border-border outline-none focus:border-purple-500 transition-all" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">開始時間</label>
+                        <input type="time" value={form.startTime} onChange={e => setForm({ ...form, startTime: e.target.value })}
+                            className="w-full p-3 bg-accent/10 rounded-xl font-bold text-foreground border border-border outline-none focus:border-purple-500 transition-all" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">終了時間</label>
+                        <input type="time" value={form.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })}
+                            className="w-full p-3 bg-accent/10 rounded-xl font-bold text-foreground border border-border outline-none focus:border-purple-500 transition-all" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">お客様名 / 利用者名 *</label>
+                        <input type="text" value={form.customerName} onChange={e => setForm({ ...form, customerName: e.target.value })} placeholder="例：田中太郎 / スタッフ山田"
+                            className="w-full p-3 bg-accent/10 rounded-xl font-bold text-foreground border border-border outline-none focus:border-purple-500 transition-all" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">用途</label>
+                        <select value={form.purpose} onChange={e => setForm({ ...form, purpose: e.target.value })}
+                            className="w-full p-3 bg-accent/10 rounded-xl font-bold text-foreground border border-border outline-none focus:border-purple-500 transition-all">
+                            {purposes.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">使用ルーム</label>
+                        <select value={form.roomName} onChange={e => setForm({ ...form, roomName: e.target.value })}
+                            className="w-full p-3 bg-accent/10 rounded-xl font-bold text-foreground border border-border outline-none focus:border-purple-500 transition-all">
+                            <option value="">指定なし</option>
+                            {rooms.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">メモ</label>
+                        <input type="text" value={form.memo} onChange={e => setForm({ ...form, memo: e.target.value })} placeholder="例：アンプヘッドのみ貸出"
+                            className="w-full p-3 bg-accent/10 rounded-xl font-bold text-foreground border border-border outline-none focus:border-purple-500 transition-all" />
+                    </div>
+                </div>
+
+                {msg && <div className={`mt-3 px-3 py-2 rounded-lg text-sm font-bold ${msg.type === "success" ? "bg-emerald-600/20 text-emerald-400" : "bg-red-600/20 text-red-400"}`}>{msg.text}</div>}
+
+                <button onClick={handleAdd} disabled={loading}
+                    className="mt-4 px-6 py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded-xl text-sm font-black text-white transition-all">
+                    {loading ? "登録中..." : "貸出を登録"}
+                </button>
+            </div>
+
+            {upcoming.length > 0 && (
+                <div className="bg-card border border-border rounded-2xl p-6">
+                    <h3 className="font-black text-foreground text-lg mb-4">今後の貸出予約</h3>
+                    <div className="space-y-2">
+                        {upcoming.map(r => (
+                            <div key={r.id} className="flex items-center justify-between bg-accent/10 rounded-xl p-4">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-xs font-black text-purple-400 bg-purple-600/20 px-2 py-0.5 rounded-full">{r.equipmentName}</span>
+                                        <span className="text-xs font-bold text-muted-foreground">{r.purpose}</span>
+                                    </div>
+                                    <p className="text-sm font-black text-foreground">{r.date} {r.startTime}〜{r.endTime}</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">利用者: {r.customerName}</p>
+                                    {r.roomName && <p className="text-xs text-muted-foreground">ルーム: {r.roomName}</p>}
+                                    {r.memo && <p className="text-xs text-muted-foreground">メモ: {r.memo}</p>}
+                                </div>
+                                <button onClick={() => handleDelete(r.id)} className="ml-3 px-3 py-2 bg-red-800 hover:bg-red-700 rounded-lg text-xs font-black text-white transition-all">削除</button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {past.length > 0 && (
+                <details className="bg-card border border-border rounded-2xl p-6">
+                    <summary className="font-black text-foreground text-lg cursor-pointer">過去の貸出 ({past.length}件)</summary>
+                    <div className="space-y-2 mt-4">
+                        {past.map(r => (
+                            <div key={r.id} className="flex items-center justify-between bg-accent/5 rounded-xl p-3 opacity-60">
+                                <div>
+                                    <span className="text-xs font-black text-purple-400 mr-2">{r.equipmentName}</span>
+                                    <span className="text-xs font-bold text-muted-foreground">{r.customerName}</span>
+                                    <p className="text-sm font-bold text-foreground">{r.date} {r.startTime}〜{r.endTime}</p>
+                                </div>
+                                <button onClick={() => handleDelete(r.id)} className="ml-3 px-3 py-2 bg-accent/20 hover:bg-red-800 rounded-lg text-xs font-bold text-muted-foreground hover:text-white transition-all">削除</button>
+                            </div>
+                        ))}
+                    </div>
+                </details>
+            )}
+
+            {rentals.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                    <p className="text-3xl mb-2">🎸</p>
+                    <p className="font-bold text-sm">機材貸出の予約はまだありません</p>
+                    <p className="text-xs mt-1">上のフォームから登録してください</p>
                 </div>
             )}
         </div>

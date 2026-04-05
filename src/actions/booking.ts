@@ -64,6 +64,36 @@ export async function createBooking(data: BookingRequest): Promise<BookingRespon
     }
 
     const studio = await fetchStudio(studioId);
+
+    // 機材在庫チェック
+    if (data.equipmentIds && data.equipmentIds.length > 0 && studio?.equipmentOptions) {
+        const allBookings = await getAllBookingsFromFirestore();
+        const [reqStartH, reqStartM] = startTime.split(':').map(Number);
+        const reqStart = reqStartH * 60 + reqStartM;
+        const reqEnd = reqStart + durationHours * 60;
+
+        // 同日同時間帯の予約を取得
+        const overlapping = allBookings.filter(b => {
+            if (b.studioId !== studioId || b.date !== date || b.status === 'cancelled') return false;
+            const [bh, bm] = (b.startTime || '00:00').split(':').map(Number);
+            const bStart = bh * 60 + bm;
+            const bEnd = bStart + (b.durationHours || 1) * 60;
+            return reqStart < bEnd && reqEnd > bStart;
+        });
+
+        for (const eqName of data.equipmentIds) {
+            const eqOption = studio.equipmentOptions.find((o: any) => o.name === eqName);
+            if (!eqOption) continue;
+            if (eqOption.status === 'broken' || eqOption.status === 'maintenance') {
+                return { success: false, message: `${eqName} は現在使用できません（${eqOption.status === 'broken' ? '故障中' : 'メンテナンス中'}）。` };
+            }
+            const maxQty = eqOption.quantity ?? 1;
+            const usedCount = overlapping.filter(b => (b as any).equipmentIds?.includes(eqName)).length;
+            if (usedCount >= maxQty) {
+                return { success: false, message: `${eqName} はこの時間帯に空きがありません（${maxQty}台中${usedCount}台使用中）。` };
+            }
+        }
+    }
     if (data.isPersonalPractice) {
         if (!studio?.personalPracticeSettings?.enabled) {
             return { success: false, message: "個人練習の受付は現在停止しています。" };
