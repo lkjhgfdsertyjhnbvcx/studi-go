@@ -224,11 +224,11 @@ export default function StoreDashboard() {
                         ))}
                     </div>
                     <div className="flex-1 overflow-y-auto p-6">
-                        {centerTab === "calendar" && <CalendarTab bookings={storeBookings} rooms={store.rooms || []} setBookings={setBookings} allBookings={bookings} blockedSlots={blockedSlots} equipmentOptions={store.equipmentOptions || []} equipmentRentals={equipmentRentals} />}
+                        {centerTab === "calendar" && <CalendarTab bookings={storeBookings} rooms={store.rooms || []} setBookings={setBookings} allBookings={bookings} blockedSlots={blockedSlots} equipmentOptions={store.equipmentOptions || []} equipmentRentals={equipmentRentals} storeId={store.id} onRefreshBookings={() => fetch(`/api/bookings?studioId=${store.id}`).then(r => r.json()).then(b => { if (!b.error) setBookings(b); })} />}
                         {centerTab === "blocked" && <BlockedSlotsTab storeId={store.id} rooms={store.rooms || []} blockedSlots={blockedSlots} setBlockedSlots={setBlockedSlots} />}
                         {centerTab === "rentals" && <EquipmentRentalsTab storeId={store.id} rooms={store.rooms || []} equipmentOptions={store.equipmentOptions || []} rentals={equipmentRentals} setRentals={setEquipmentRentals} />}
                         {centerTab === "analytics" && <AnalyticsTab bookings={storeBookings} store={store} setStore={setStore} planKey={store.planKey} />}
-                        {centerTab === "customers" && <CustomersTab customers={customers} bookings={storeBookings} planKey={store.planKey} />}
+                        {centerTab === "customers" && <CustomersTab customers={customers} bookings={storeBookings} planKey={store.planKey} storeId={store.id} onRefresh={() => fetch("/api/users").then(r => r.json()).then(u => { if (!u.error) setCustomers(u); })} />}
                         {centerTab === "cancellations" && <CancellationsTab bookings={storeBookings} setBookings={setBookings} allBookings={bookings} />}
                     </div>
                 </div>
@@ -985,13 +985,52 @@ function ContactTab({ store, notify }: any) {
 // ===== カレンダー =====
 type CalendarView = "month" | "week" | "day";
 
-function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots = [], equipmentOptions = [], equipmentRentals = [] }: { bookings: Booking[]; rooms: Room[]; setBookings: any; allBookings: Booking[]; blockedSlots?: BlockedSlot[]; equipmentOptions?: EquipmentOption[]; equipmentRentals?: EquipmentRental[] }) {
+function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots = [], equipmentOptions = [], equipmentRentals = [], storeId, onRefreshBookings }: { bookings: Booking[]; rooms: Room[]; setBookings: any; allBookings: Booking[]; blockedSlots?: BlockedSlot[]; equipmentOptions?: EquipmentOption[]; equipmentRentals?: EquipmentRental[]; storeId?: string; onRefreshBookings?: () => void }) {
     const [view, setView] = useState<CalendarView>("day");
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedRoom, setSelectedRoom] = useState("all");
     const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+    const [showBkImport, setShowBkImport] = useState(false);
+    const [bkFile, setBkFile] = useState<File | null>(null);
+    const [bkPreview, setBkPreview] = useState<string[][]>([]);
+    const [bkImporting, setBkImporting] = useState(false);
+    const [bkResult, setBkResult] = useState<any>(null);
+    const bkFileRef = React.useRef<HTMLInputElement>(null);
+
+    const handleBkFile = (f: File) => {
+        setBkFile(f); setBkResult(null);
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const text = ev.target?.result as string;
+            const lines = text.split(/\r?\n/).filter(l => l.trim());
+            setBkPreview(lines.slice(0, 6).map(l => l.split(",").map(c => c.replace(/^"|"$/g, "").trim())));
+        };
+        reader.readAsText(f);
+    };
+
+    const handleBkImport = async () => {
+        if (!bkFile || !storeId) return;
+        setBkImporting(true); setBkResult(null);
+        try {
+            const fd = new FormData();
+            fd.append("file", bkFile);
+            fd.append("studioId", storeId);
+            const res = await fetch("/api/store/bookings-import", { method: "POST", body: fd });
+            const data = await res.json();
+            setBkResult(data);
+            if (data.success && onRefreshBookings) onRefreshBookings();
+        } catch { setBkResult({ error: "インポートに失敗しました" }); }
+        finally { setBkImporting(false); }
+    };
+
+    const downloadBkTemplate = () => {
+        const bom = "\uFEFF";
+        const csv = bom + "顧客名,メール,日付,開始時間,時間数,部屋名,料金,ステータス,メモ\n山田太郎,yamada@example.com,2026-04-01,10:00,2,Aスタジオ,5000,confirmed,\n";
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "予約インポートテンプレート.csv"; a.click();
+    };
 
     const filtered = bookings.filter(b => b.status !== "cancelled" && (selectedRoom === "all" || b.roomName === selectedRoom));
 
@@ -1049,6 +1088,9 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
                         <option value="all">全スタジオ</option>
                         {rooms.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
                     </select>
+                    <button onClick={() => setShowBkImport(!showBkImport)} className="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-black rounded-lg transition-all">
+                        予約CSVインポート
+                    </button>
                     <div className="flex bg-accent/10 rounded-lg overflow-hidden">
                         {(["month", "week", "day"] as CalendarView[]).map(v => (
                             <button key={v} onClick={() => setView(v)} className={`px-3 py-2 text-xs font-black transition-all ${view === v ? "bg-purple-600 text-white" : "text-muted-foreground hover:text-foreground"}`}>
@@ -1058,6 +1100,52 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
                     </div>
                 </div>
             </div>
+
+            {showBkImport && (
+                <div className="bg-card border border-border rounded-2xl p-5 mb-4">
+                    <h3 className="font-black text-foreground text-sm mb-2">予約データCSVインポート</h3>
+                    <p className="text-xs text-muted-foreground mb-3">他社システムからの予約データを一括登録できます。過去の予約もインポート可能です。</p>
+                    <div className="flex gap-2 mb-3">
+                        <button onClick={downloadBkTemplate} className="px-3 py-1.5 bg-accent/20 hover:bg-accent/30 text-foreground text-xs font-bold rounded-lg transition-all">
+                            テンプレートCSVをダウンロード
+                        </button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mb-3">対応カラム: 顧客名, メール, 日付, 開始時間, 時間数, 部屋名, 料金, ステータス, メモ（日付と開始時間は必須）</p>
+                    <div
+                        onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add("border-cyan-500"); }}
+                        onDragLeave={e => { e.currentTarget.classList.remove("border-cyan-500"); }}
+                        onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove("border-cyan-500"); const f = e.dataTransfer.files[0]; if (f) handleBkFile(f); }}
+                        onClick={() => bkFileRef.current?.click()}
+                        className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-cyan-500/50 transition-all"
+                    >
+                        <input ref={bkFileRef} type="file" accept=".csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleBkFile(f); }} />
+                        <p className="text-muted-foreground text-sm font-bold">{bkFile ? bkFile.name : "CSVファイルをドラッグ&ドロップ または クリックして選択"}</p>
+                    </div>
+                    {bkPreview.length > 0 && (
+                        <div className="mt-3 overflow-x-auto">
+                            <p className="text-xs font-black text-muted-foreground mb-2">プレビュー（最大5行）</p>
+                            <table className="w-full text-xs">
+                                <thead><tr>{bkPreview[0].map((h, i) => <th key={i} className="text-left p-1.5 bg-accent/10 font-black text-muted-foreground border-b border-border">{h}</th>)}</tr></thead>
+                                <tbody>{bkPreview.slice(1).map((row, ri) => <tr key={ri}>{row.map((c, ci) => <td key={ci} className="p-1.5 border-b border-border/50 text-foreground">{c}</td>)}</tr>)}</tbody>
+                            </table>
+                        </div>
+                    )}
+                    {bkFile && (
+                        <button onClick={handleBkImport} disabled={bkImporting} className="mt-3 px-5 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white text-xs font-black rounded-lg transition-all">
+                            {bkImporting ? "インポート中..." : "インポート実行"}
+                        </button>
+                    )}
+                    {bkResult && (
+                        <div className={`mt-3 p-3 rounded-xl text-xs font-bold ${bkResult.success ? "bg-emerald-900/30 text-emerald-300" : "bg-red-900/30 text-red-300"}`}>
+                            {bkResult.success
+                                ? <p>完了: 新規{bkResult.created}件 / スキップ{bkResult.skipped}件（重複等）</p>
+                                : <p>エラー: {bkResult.error}</p>
+                            }
+                            {bkResult.errors?.length > 0 && <ul className="mt-1 list-disc list-inside opacity-80">{bkResult.errors.map((e: string, i: number) => <li key={i}>{e}</li>)}</ul>}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {view === "day" && <DayView date={currentDate} bookings={filtered} onBookingClick={setSelectedBooking} blockedSlots={blockedSlots} selectedRoom={selectedRoom} equipmentOptions={equipmentOptions} equipmentRentals={equipmentRentals} />}
             {view === "week" && <WeekView date={currentDate} bookings={filtered} onBookingClick={setSelectedBooking} blockedSlots={blockedSlots} />}
@@ -1795,7 +1883,47 @@ function AnalyticsTab({ bookings, store, setStore, planKey }: any) {
     );
 }
 
-function CustomersTab({ customers, bookings, planKey }: { customers: any[]; bookings: Booking[]; planKey?: string }) {
+function CustomersTab({ customers, bookings, planKey, storeId, onRefresh }: { customers: any[]; bookings: Booking[]; planKey?: string; storeId?: string; onRefresh?: () => void }) {
+    const [showImport, setShowImport] = React.useState(false);
+    const [csvFile, setCsvFile] = React.useState<File | null>(null);
+    const [csvPreview, setCsvPreview] = React.useState<string[][]>([]);
+    const [importing, setImporting] = React.useState(false);
+    const [importResult, setImportResult] = React.useState<any>(null);
+    const fileRef = React.useRef<HTMLInputElement>(null);
+
+    const handleFile = (f: File) => {
+        setCsvFile(f); setImportResult(null);
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const text = ev.target?.result as string;
+            const lines = text.split(/\r?\n/).filter(l => l.trim());
+            setCsvPreview(lines.slice(0, 6).map(l => l.split(",").map(c => c.replace(/^"|"$/g, "").trim())));
+        };
+        reader.readAsText(f);
+    };
+
+    const handleImport = async () => {
+        if (!csvFile || !storeId) return;
+        setImporting(true); setImportResult(null);
+        try {
+            const fd = new FormData();
+            fd.append("file", csvFile);
+            fd.append("studioId", storeId);
+            const res = await fetch("/api/store/customers-import", { method: "POST", body: fd });
+            const data = await res.json();
+            setImportResult(data);
+            if (data.success && onRefresh) onRefresh();
+        } catch { setImportResult({ error: "インポートに失敗しました" }); }
+        finally { setImporting(false); }
+    };
+
+    const downloadTemplate = () => {
+        const bom = "\uFEFF";
+        const csv = bom + "名前,メール,電話番号,LINE ID,メモ\n山田太郎,yamada@example.com,090-1234-5678,,常連のお客様\n";
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "顧客インポートテンプレート.csv"; a.click();
+    };
+
     return (
         <div>
             <PlanGate planKey={planKey} feature="customer_rank">
@@ -1812,9 +1940,61 @@ function CustomersTab({ customers, bookings, planKey }: { customers: any[]; book
                     </div>
                 </div>
             </PlanGate>
-            <h2 className="font-black text-lg text-foreground mb-4">顧客一覧</h2>
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="font-black text-lg text-foreground">顧客一覧 ({customers.length}件)</h2>
+                <button onClick={() => setShowImport(!showImport)} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-black rounded-lg transition-all">
+                    CSVインポート
+                </button>
+            </div>
+
+            {showImport && (
+                <div className="bg-card border border-border rounded-2xl p-5 mb-6">
+                    <h3 className="font-black text-foreground text-sm mb-2">顧客データCSVインポート</h3>
+                    <p className="text-xs text-muted-foreground mb-3">他社予約システムからの乗り換え時に、顧客データを一括登録できます</p>
+                    <div className="flex gap-2 mb-3">
+                        <button onClick={downloadTemplate} className="px-3 py-1.5 bg-accent/20 hover:bg-accent/30 text-foreground text-xs font-bold rounded-lg transition-all">
+                            テンプレートCSVをダウンロード
+                        </button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mb-3">対応カラム: 名前, メール, 電話番号, LINE ID, メモ（ヘッダー行必須）</p>
+                    <div
+                        onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add("border-purple-500"); }}
+                        onDragLeave={e => { e.currentTarget.classList.remove("border-purple-500"); }}
+                        onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove("border-purple-500"); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+                        onClick={() => fileRef.current?.click()}
+                        className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-purple-500/50 transition-all"
+                    >
+                        <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+                        <p className="text-muted-foreground text-sm font-bold">{csvFile ? csvFile.name : "CSVファイルをドラッグ&ドロップ または クリックして選択"}</p>
+                    </div>
+                    {csvPreview.length > 0 && (
+                        <div className="mt-3 overflow-x-auto">
+                            <p className="text-xs font-black text-muted-foreground mb-2">プレビュー（最大5行）</p>
+                            <table className="w-full text-xs">
+                                <thead><tr>{csvPreview[0].map((h, i) => <th key={i} className="text-left p-1.5 bg-accent/10 font-black text-muted-foreground border-b border-border">{h}</th>)}</tr></thead>
+                                <tbody>{csvPreview.slice(1).map((row, ri) => <tr key={ri}>{row.map((c, ci) => <td key={ci} className="p-1.5 border-b border-border/50 text-foreground">{c}</td>)}</tr>)}</tbody>
+                            </table>
+                        </div>
+                    )}
+                    {csvFile && (
+                        <button onClick={handleImport} disabled={importing} className="mt-3 px-5 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-black rounded-lg transition-all">
+                            {importing ? "インポート中..." : "インポート実行"}
+                        </button>
+                    )}
+                    {importResult && (
+                        <div className={`mt-3 p-3 rounded-xl text-xs font-bold ${importResult.success ? "bg-emerald-900/30 text-emerald-300" : "bg-red-900/30 text-red-300"}`}>
+                            {importResult.success
+                                ? <p>完了: 新規{importResult.created}件 / 更新{importResult.updated}件 / スキップ{importResult.skipped}件</p>
+                                : <p>エラー: {importResult.error}</p>
+                            }
+                            {importResult.errors?.length > 0 && <ul className="mt-1 list-disc list-inside opacity-80">{importResult.errors.map((e: string, i: number) => <li key={i}>{e}</li>)}</ul>}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {customers.length === 0
-                ? <div className="text-center py-20 text-muted-foreground"><p className="text-4xl mb-3">👥</p><p className="font-bold">顧客データがありません</p></div>
+                ? <div className="text-center py-20 text-muted-foreground"><p className="text-4xl mb-3">👥</p><p className="font-bold">顧客データがありません</p><p className="text-xs mt-2">CSVインポートで他社システムから顧客データを移行できます</p></div>
                 : <div className="space-y-3">{customers.map((c: any) => {
                     const userBookings = bookings.filter(b => b.userId === c.id);
                     const ltv = userBookings.reduce((s, b) => s + (b.totalPrice || 0), 0);
