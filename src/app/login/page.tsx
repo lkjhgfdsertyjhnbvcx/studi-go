@@ -29,6 +29,7 @@ export default function LoginPage() {
 
             localStorage.setItem("userId", data.userId);
             localStorage.setItem("userEmail", email);
+            if (data.name) localStorage.setItem("userName", data.name);
             router.push("/");
         } catch {
             setError("サーバーエラーが発生しました");

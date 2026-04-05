@@ -42,13 +42,19 @@ function ThemeToggleBtn() {
 
 function HeaderNav() {
   const [userName, setUserName] = React.useState("");
-  React.useEffect(() => { const n = localStorage.getItem("userName"); if (n) setUserName(n); }, []);
+  const [loggedIn, setLoggedIn] = React.useState(false);
+  React.useEffect(() => {
+    const n = localStorage.getItem("userName");
+    const uid = localStorage.getItem("userId");
+    if (n) setUserName(n);
+    if (uid) setLoggedIn(true);
+  }, []);
   return (
     <div className="flex items-center gap-3">
       <ThemeToggleBtn />
-      {userName ? (
+      {loggedIn ? (
         <>
-          <a href="/mypage" className="text-xs font-medium px-3 py-1.5 rounded-full" style={{ color: "var(--sg-text-secondary)", background: "var(--sg-bg-secondary)" }}>{userName.split(" ")[0]} さん</a>
+          <a href="/mypage" className="text-xs font-medium px-3 py-1.5 rounded-full" style={{ color: "var(--sg-text-secondary)", background: "var(--sg-bg-secondary)" }}>{userName ? `${userName.split(" ")[0]} さん` : "マイページ"}</a>
           <a href="/mypage" className="text-xs font-semibold px-4 py-1.5 rounded-full text-white" style={{ background: "var(--sg-accent)" }}>マイページ</a>
         </>
       ) : (
