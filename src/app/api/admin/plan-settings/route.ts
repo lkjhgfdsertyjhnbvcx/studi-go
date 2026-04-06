@@ -7,10 +7,10 @@ const SETTINGS_DOC_PATH = "settings/planConfig";
 
 const DEFAULT_CONFIG = {
     plans: [
-        { id: "free",     name: "フリー",       price: 0,     color: "#9ca3af", description: "お試し利用向け（1ルームまで）",          features: ["予約管理", "顧客管理", "メール通知", "クーポン発行", "1ルーム / 1拠点", "予約手数料5%"] },
-        { id: "light",    name: "ライト",       price: 2980,  color: "#22c55e", description: "小規模スタジオ向け（5ルームまで）",      features: ["予約管理", "顧客管理", "メール通知", "売上レポート（基本）", "スタッフ管理", "ページデザイン変更", "5ルーム / 1拠点"] },
-        { id: "standard", name: "スタンダード", price: 5980,  color: "#f97316", description: "中規模スタジオ向け（15ルーム / 2拠点）", features: ["ライトの全機能", "クーポン発行", "CSV出力", "自動リマインダーメール", "稼働率ヒートマップ", "トップページ優先掲載", "15ルーム / 2拠点"] },
-        { id: "pro",      name: "プロ",         price: 12800, color: "#eab308", description: "大規模・複数拠点向け（無制限）",         features: ["スタンダードの全機能", "LINEログイン", "直前割引・タイムセール", "顧客ランク管理", "キャンセル待ち", "定期予約（月額会員）", "請求書払い対応", "優先サポート", "API連携", "ルーム・拠点無制限"] },
+        { id: "free",     name: "フリー",       price: 0,     color: "#9ca3af", description: "お試し利用向け（1ルームまで）",          features: ["予約カレンダー", "顧客一覧", "ブラックリスト", "トップページ掲載", "1ルーム / 1拠点", "予約手数料5%"] },
+        { id: "light",    name: "ライト",       price: 4980,  color: "#22c55e", description: "小規模スタジオ向け（5ルームまで）",      features: ["予約管理", "顧客管理", "売上レポート", "CSV入出力", "機材管理", "ページデザイン変更", "メール通知", "5ルーム / 1拠点"] },
+        { id: "standard", name: "スタンダード", price: 9800,  color: "#f97316", description: "中規模スタジオ向け（15ルーム / 2拠点）", features: ["ライトの全機能", "スタッフ管理", "クーポン・学割", "月次レポート", "ヒートマップ", "自動リマインダー", "個人練習設定", "15ルーム / 2拠点"] },
+        { id: "pro",      name: "プロ",         price: 14800, color: "#eab308", description: "大規模・複数拠点向け（無制限）",         features: ["スタンダードの全機能", "LINE連携", "VOUCHA連携", "顧客ランク", "キャンセル待ち", "定期予約", "API連携", "優先サポート", "ルーム・拠点無制限"] },
     ],
     options: [
         { id: "custom_domain",  name: "カスタムドメイン",   price: 1000,  billingType: "monthly" },

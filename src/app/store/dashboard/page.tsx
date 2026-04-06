@@ -195,7 +195,7 @@ export default function StoreDashboard() {
                             {activeMenu === "studios" && <StudiosTab store={store} setStore={setStore} />}
                             {activeMenu === "options" && <OptionsTab store={store} setStore={setStore} />}
                             {activeMenu === "staff" && (
-                                <PlanGate planKey={store.planKey} feature="staff_management">
+                                <PlanGate planKey={store.planKey} feature="staff_account">
                                     <StaffTab store={store} setStore={setStore} notify={notify} />
                                 </PlanGate>
                             )}
@@ -1874,7 +1874,7 @@ function AnalyticsTab({ bookings, store, setStore, planKey }: any) {
 
     return (
         <div className="space-y-6">
-            <PlanGate planKey={planKey} feature="sales_report_basic">
+            <PlanGate planKey={planKey} feature="sales_report">
                 <div className="grid grid-cols-3 gap-4">
                     <StatCard label="総売上" value={`¥${totalRevenue.toLocaleString()}`} sub={`目標: ¥${target.toLocaleString()}`} />
                     <StatCard label="達成率" value={`${rate}%`} sub={`予約件数: ${activeBookings.length}件`} />
@@ -1899,7 +1899,7 @@ function AnalyticsTab({ bookings, store, setStore, planKey }: any) {
                     <p className="text-xs text-muted-foreground mt-2">{rate}% 達成</p>
                 </div>
             </PlanGate>
-            <PlanGate planKey={planKey} feature="csv_export">
+            <PlanGate planKey={planKey} feature="booking_csv_export">
                 <button onClick={downloadCSV} className="flex items-center gap-2 px-6 py-3 bg-accent/10 hover:bg-accent/20 border border-border rounded-xl text-sm font-black text-foreground transition-all">
                     📥 売上データをCSVダウンロード
                 </button>
@@ -2229,34 +2229,34 @@ const PLANS = [
         price: 0,
         color: "#9ca3af",
         desc: "お試し利用向け（1ルームまで）",
-        features: ["予約管理", "顧客管理", "メール通知", "クーポン発行"],
+        features: ["予約カレンダー", "顧客一覧", "ブラックリスト", "トップページ掲載"],
         limits: "1ルーム / 1拠点 / 手数料5%",
     },
     {
         key: "light",
         name: "ライト",
-        price: 2980,
+        price: 4980,
         color: "#22c55e",
         desc: "小規模スタジオ向け（5ルームまで）",
-        features: ["予約管理", "顧客管理", "メール通知", "売上レポート", "スタッフ管理", "ページデザイン変更"],
+        features: ["予約管理", "顧客管理", "売上レポート", "CSV入出力", "機材管理", "ページデザイン変更", "メール通知"],
         limits: "5ルーム / 1拠点 / 手数料なし",
     },
     {
         key: "standard",
         name: "スタンダード",
-        price: 5980,
+        price: 9800,
         color: "#f97316",
         desc: "中規模スタジオ向け（15ルーム / 2拠点）",
-        features: ["ライトの全機能", "クーポン発行", "CSV出力", "自動リマインダー", "稼働率ヒートマップ", "優先掲載"],
+        features: ["ライトの全機能", "スタッフ管理", "クーポン・学割", "月次レポート", "ヒートマップ", "自動リマインダー", "個人練習設定"],
         limits: "15ルーム / 2拠点 / 手数料なし",
     },
     {
         key: "pro",
         name: "プロ",
-        price: 12800,
+        price: 14800,
         color: "#eab308",
         desc: "大規模・複数拠点向け（無制限）",
-        features: ["スタンダードの全機能", "LINEログイン", "直前割引", "顧客ランク", "キャンセル待ち", "定期予約", "API連携", "優先サポート"],
+        features: ["スタンダードの全機能", "LINE連携", "VOUCHA連携", "顧客ランク", "キャンセル待ち", "定期予約", "API連携", "優先サポート"],
         limits: "ルーム・拠点無制限 / 手数料なし",
     },
 ];
