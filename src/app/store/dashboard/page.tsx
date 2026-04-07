@@ -2229,34 +2229,66 @@ const PLANS = [
         price: 0,
         color: "#9ca3af",
         desc: "お試し利用向け（1ルームまで）",
-        features: ["予約カレンダー", "顧客一覧", "ブラックリスト", "トップページ掲載"],
+        features: [
+            "予約カレンダー・手動予約",
+            "Stripe決済（手数料5%）",
+            "顧客一覧・予約履歴",
+            "クーポン発行（一部制限）",
+            "VOUCHA連携",
+            "予約確認メール",
+            "ブラックリスト",
+        ],
         limits: "1ルーム / 1拠点 / 手数料5%",
     },
     {
         key: "light",
         name: "ライト",
-        price: 4980,
+        price: 2980,
         color: "#22c55e",
         desc: "小規模スタジオ向け（5ルームまで）",
-        features: ["予約管理", "顧客管理", "売上レポート", "CSV入出力", "機材管理", "ページデザイン変更", "メール通知"],
+        features: [
+            "フリーの全機能（手数料なし）",
+            "売上レポート・予実管理",
+            "CSVエクスポート",
+            "スタッフ管理",
+            "機材管理",
+            "学割・キャンペーン管理",
+            "ページデザイン変更",
+            "KPIダッシュボード",
+        ],
         limits: "5ルーム / 1拠点 / 手数料なし",
     },
     {
         key: "standard",
         name: "スタンダード",
-        price: 9800,
+        price: 5980,
         color: "#f97316",
         desc: "中規模スタジオ向け（15ルーム / 2拠点）",
-        features: ["ライトの全機能", "スタッフ管理", "クーポン・学割", "月次レポート", "ヒートマップ", "自動リマインダー", "個人練習設定"],
+        features: [
+            "ライトの全機能",
+            "複数拠点管理（2拠点）",
+            "ヒートマップ分析",
+            "自動リマインドメール",
+            "トップページ優先掲載",
+        ],
         limits: "15ルーム / 2拠点 / 手数料なし",
     },
     {
         key: "pro",
         name: "プロ",
-        price: 14800,
+        price: 12800,
         color: "#eab308",
         desc: "大規模・複数拠点向け（無制限）",
-        features: ["スタンダードの全機能", "LINE連携", "VOUCHA連携", "顧客ランク", "キャンセル待ち", "定期予約", "API連携", "優先サポート"],
+        features: [
+            "スタンダードの全機能",
+            "LINE連携",
+            "API連携",
+            "顧客ランク",
+            "キャンセル待ち",
+            "定期予約（月額会員）",
+            "直前割引（フラッシュ）",
+            "優先サポート",
+        ],
         limits: "ルーム・拠点無制限 / 手数料なし",
     },
 ];
@@ -2443,6 +2475,7 @@ function PlanTab({ store, setStore, notify }: any) {
     const [planOptions, setPlanOptions] = React.useState<any[]>(PLAN_OPTIONS);
     const [showFeatureTable, setShowFeatureTable] = React.useState(false);
     const [customDomain, setCustomDomain] = React.useState(store.customDomain || "");
+    const [showPlanList, setShowPlanList] = React.useState(!currentPlan);
 
     // plan-features.tsからインポートしたデータを使う
     const { PLAN_DEFINITIONS, FEATURE_CATEGORIES, FEATURE_LABELS, canUseFeature: checkFeature } = React.useMemo(() => {
@@ -2507,17 +2540,17 @@ function PlanTab({ store, setStore, notify }: any) {
 
     return (
         <div className="p-6 space-y-8 max-w-2xl">
-            {/* 現在のプラン表示 */}
+            {/* 現在のプラン表示（選択済みの場合） */}
             {currentPlan && (
-                <div className="bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border border-purple-500/30 rounded-2xl p-4">
+                <div className="bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border border-purple-500/30 rounded-2xl p-5">
                     <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">現在のプラン</p>
                     <div className="flex items-center justify-between">
-                        <span className="text-lg font-black text-foreground">
+                        <span className="text-xl font-black text-foreground">
                             {PLAN_DEFINITIONS.find((p: any) => p.id === currentPlan)?.emoji}{" "}
                             {PLAN_DEFINITIONS.find((p: any) => p.id === currentPlan)?.name || currentPlan}
                         </span>
-                        <span className="text-purple-400 font-black">
-                            ¥{(PLAN_DEFINITIONS.find((p: any) => p.id === currentPlan)?.price || 0).toLocaleString()}/月
+                        <span className="text-purple-400 font-black text-lg">
+                            ¥{(PLAN_DEFINITIONS.find((p: any) => p.id === currentPlan)?.price || 0).toLocaleString()}<span className="text-muted-foreground text-xs font-normal">/月</span>
                         </span>
                     </div>
                     {store.trialEndDate && new Date(store.trialEndDate) > new Date() && (
@@ -2525,9 +2558,28 @@ function PlanTab({ store, setStore, notify }: any) {
                             無料トライアル中（{new Date(store.trialEndDate).toLocaleDateString("ja-JP")}まで）
                         </p>
                     )}
+                    {/* 現在のプランの機能一覧 */}
+                    {(() => {
+                        const cp = plans.find((p: any) => (p.id || p.key) === currentPlan);
+                        return cp ? (
+                            <div className="mt-3 flex flex-wrap gap-1">
+                                {(cp.features || []).map((f: string) => (
+                                    <span key={f} className="text-xs bg-purple-500/15 text-purple-300 px-2 py-0.5 rounded-full">{f}</span>
+                                ))}
+                            </div>
+                        ) : null;
+                    })()}
+                    <button
+                        onClick={() => setShowPlanList(!showPlanList)}
+                        className="mt-3 text-sm text-purple-400 hover:text-purple-300 font-bold underline underline-offset-4 transition-colors"
+                    >
+                        {showPlanList ? "プラン一覧を閉じる" : "プラン一覧を見る / 変更する"}
+                    </button>
                 </div>
             )}
 
+            {/* プラン一覧（未選択時は常に表示、選択済みならリンク押下時に表示） */}
+            {showPlanList && (
             <div>
                 <h2 className="text-foreground font-black text-lg mb-1">プラン選択</h2>
                 <p className="text-muted-foreground text-xs mb-4">月額料金はStudi-Goへの掲載・利用料です</p>
@@ -2554,8 +2606,9 @@ function PlanTab({ store, setStore, notify }: any) {
                     })}
                 </div>
             </div>
+            )}
 
-            {/* 機能比較表トグル */}
+            {/* 機能比較表トグル（常時表示） */}
             <div>
                 <button onClick={() => setShowFeatureTable(!showFeatureTable)}
                     className="w-full text-left px-4 py-3 bg-accent/10 border border-border rounded-xl text-sm font-bold text-muted-foreground hover:text-foreground transition-all flex justify-between items-center">
@@ -2597,6 +2650,8 @@ function PlanTab({ store, setStore, notify }: any) {
                 )}
             </div>
 
+            {/* オプション・支払い・保存はプラン一覧表示時のみ */}
+            {showPlanList && (<>
             <div>
                 <h2 className="text-foreground font-black text-lg mb-1">オプション</h2>
                 <p className="text-muted-foreground text-xs mb-4">必要なオプションを追加できます</p>
@@ -2645,7 +2700,7 @@ function PlanTab({ store, setStore, notify }: any) {
             <div>
                 <h2 className="text-foreground font-black text-lg mb-3">お支払い方法</h2>
                 <div className="grid grid-cols-2 gap-3">
-                    {[{key:"stripe",label:"💳 クレジットカード"},{key:"invoice",label:"🧾 請求書払い"}].map(m => (
+                    {[{key:"stripe",label:"クレジットカード"},{key:"invoice",label:"請求書払い"}].map(m => (
                         <button key={m.key} onClick={() => setPayMethod(m.key)}
                             className={`p-4 rounded-2xl border-2 font-black text-sm transition-all ${payMethod === m.key ? "border-purple-500 bg-purple-600/10 text-white" : "border-border bg-card text-muted-foreground hover:border-gray-500"}`}>
                             {m.label}
@@ -2666,8 +2721,9 @@ function PlanTab({ store, setStore, notify }: any) {
 
             <button onClick={handleSave} disabled={saving || !selectedPlan}
                 className="w-full py-4 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded-2xl font-black text-white transition-all">
-                {saving ? "処理中..." : payMethod === "stripe" ? "Stripeで契約する" : "プランを保存する"}
+                {saving ? "処理中..." : currentPlan && selectedPlan !== currentPlan ? "プランを変更する" : payMethod === "stripe" ? "Stripeで契約する" : "プランを保存する"}
             </button>
+            </>)}
         </div>
     );
 }

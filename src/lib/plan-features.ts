@@ -74,73 +74,73 @@ export type FeatureKey =
     | "priority_support"         // 優先サポート
     | "setup_support";           // 導入支援
 
-// ===== プラン別の機能マップ =====
+// ===== プラン別の機能マップ（PDF全機能一覧に完全準拠） =====
 const FEATURE_MAP: Record<FeatureKey, Record<PlanKey, boolean>> = {
     // ── 予約管理 ──
     booking_calendar:       { free: true,  light: true,  standard: true,  pro: true  },
     booking_manual:         { free: true,  light: true,  standard: true,  pro: true  },
     booking_cancel:         { free: true,  light: true,  standard: true,  pro: true  },
     blocked_slots:          { free: true,  light: true,  standard: true,  pro: true  },
-    booking_csv_export:     { free: false, light: true,  standard: true,  pro: true  },
-    booking_csv_import:     { free: false, light: true,  standard: true,  pro: true  },
-    recurring_booking:      { free: false, light: false, standard: false, pro: true  },
-    // ── 管理・集計 ──
-    customer_list:          { free: true,  light: true,  standard: true,  pro: true  },
-    customer_search:        { free: true,  light: true,  standard: true,  pro: true  },
-    customer_detail:        { free: false, light: true,  standard: true,  pro: true  },
-    customer_rank:          { free: false, light: false, standard: false, pro: true  },
-    // ── 決済・売上 ──
-    stripe_payment:         { free: false, light: true,  standard: true,  pro: true  },
-    sales_report:           { free: false, light: true,  standard: true,  pro: true  },
-    monthly_report:         { free: false, light: false, standard: true,  pro: true  },
-    invoice_receipt:        { free: false, light: false, standard: true,  pro: true  },
-    sales_target:           { free: false, light: false, standard: true,  pro: true  },
+    booking_csv_export:     { free: false, light: true,  standard: true,  pro: true  }, // Light+
+    booking_csv_import:     { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
+    recurring_booking:      { free: false, light: false, standard: false, pro: true  }, // Pro
     // ── 顧客管理 ──
-    customer_csv_export:    { free: false, light: true,  standard: true,  pro: true  },
-    customer_csv_import:    { free: false, light: true,  standard: true,  pro: true  },
-    booking_history:        { free: true,  light: true,  standard: true,  pro: true  },
+    customer_list:          { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
+    customer_search:        { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
+    customer_detail:        { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン（予約履歴閲覧）
+    customer_rank:          { free: false, light: false, standard: false, pro: true  }, // Pro
+    // ── 決済・売上 ──
+    stripe_payment:         { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン（Freeは手数料5%）
+    sales_report:           { free: false, light: true,  standard: true,  pro: true  }, // Light+
+    monthly_report:         { free: false, light: true,  standard: true,  pro: true  }, // Light+（売上レポートに含む）
+    invoice_receipt:        { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
+    sales_target:           { free: false, light: true,  standard: true,  pro: true  }, // Light+（予実管理）
+    // ── 顧客データ ──
+    customer_csv_export:    { free: false, light: true,  standard: true,  pro: true  }, // Light+
+    customer_csv_import:    { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
+    booking_history:        { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
     // ── マーケティング ──
-    blacklist:              { free: true,  light: true,  standard: true,  pro: true  },
-    coupon:                 { free: false, light: false, standard: true,  pro: true  },
-    student_discount:       { free: false, light: false, standard: true,  pro: true  },
-    reservation_benefit:    { free: false, light: false, standard: true,  pro: true  },
-    voucha:                 { free: false, light: false, standard: false, pro: true  },
+    blacklist:              { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
+    coupon:                 { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン（Freeは一部制限あり）
+    student_discount:       { free: false, light: true,  standard: true,  pro: true  }, // Light+
+    reservation_benefit:    { free: false, light: true,  standard: true,  pro: true  }, // Light+（その他割引設定）
+    voucha:                 { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン（利用登録が必要）
     // ── 店舗設定 ──
-    payment_method:         { free: true,  light: true,  standard: true,  pro: true  },
-    top_page_listing:       { free: true,  light: true,  standard: true,  pro: true  },
-    equipment_options:      { free: false, light: true,  standard: true,  pro: true  },
-    multi_room:             { free: false, light: true,  standard: true,  pro: true  },
+    payment_method:         { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
+    top_page_listing:       { free: false, light: false, standard: true,  pro: true  }, // Standard+（優先掲載）
+    equipment_options:      { free: false, light: true,  standard: true,  pro: true  }, // Light+
+    multi_room:             { free: false, light: true,  standard: true,  pro: true  }, // Light+
     // ── 予約（ユーザー向け設定） ──
-    personal_practice:      { free: false, light: false, standard: true,  pro: true  },
-    booking_confirm_email:  { free: false, light: true,  standard: true,  pro: true  },
-    auto_reminder_email:    { free: false, light: false, standard: true,  pro: true  },
-    waitlist:               { free: false, light: false, standard: false, pro: true  },
+    personal_practice:      { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
+    booking_confirm_email:  { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
+    auto_reminder_email:    { free: false, light: false, standard: true,  pro: true  }, // Standard+
+    waitlist:               { free: false, light: false, standard: false, pro: true  }, // Pro
     // ── 決済（ユーザー向け） ──
-    credit_card_payment:    { free: false, light: true,  standard: true,  pro: true  },
-    split_payment:          { free: false, light: true,  standard: true,  pro: true  },
-    coupon_apply:           { free: false, light: false, standard: true,  pro: true  },
-    activa_usage:           { free: false, light: false, standard: false, pro: true  },
+    credit_card_payment:    { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
+    split_payment:          { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
+    coupon_apply:           { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
+    activa_usage:           { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン（ACTIVA登録ユーザー対象）
     // ── スタッフ管理 ──
-    staff_account:          { free: false, light: false, standard: true,  pro: true  },
-    staff_permission:       { free: false, light: false, standard: true,  pro: true  },
-    staff_schedule:         { free: false, light: false, standard: true,  pro: true  },
-    staff_password:         { free: false, light: false, standard: true,  pro: true  },
+    staff_account:          { free: false, light: true,  standard: true,  pro: true  }, // Light+
+    staff_permission:       { free: false, light: true,  standard: true,  pro: true  }, // Light+
+    staff_schedule:         { free: false, light: true,  standard: true,  pro: true  }, // Light+
+    staff_password:         { free: false, light: true,  standard: true,  pro: true  }, // Light+
     // ── 通知・メール ──
-    email_notification:     { free: false, light: true,  standard: true,  pro: true  },
-    promo_email_template:   { free: false, light: false, standard: false, pro: true  },
+    email_notification:     { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
+    promo_email_template:   { free: false, light: false, standard: false, pro: true  }, // Pro（販促メール）
     // ── ブランディング・デザイン ──
-    email_template_design:  { free: false, light: false, standard: true,  pro: true  },
-    page_design:            { free: false, light: true,  standard: true,  pro: true  },
+    email_template_design:  { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン（メールテンプレート設定）
+    page_design:            { free: false, light: true,  standard: true,  pro: true  }, // Light+
     // ── 分析 ──
-    heatmap:                { free: false, light: false, standard: true,  pro: true  },
-    kpi_analysis:           { free: false, light: false, standard: true,  pro: true  },
+    heatmap:                { free: false, light: false, standard: true,  pro: true  }, // Standard+
+    kpi_analysis:           { free: false, light: true,  standard: true,  pro: true  }, // Light+
     // ── 外部連携 ──
-    line_login:             { free: false, light: false, standard: false, pro: true  },
-    api_access:             { free: false, light: false, standard: false, pro: true  },
+    line_login:             { free: false, light: false, standard: false, pro: true  }, // Pro（Light/Standardは近日実装）
+    api_access:             { free: false, light: false, standard: false, pro: true  }, // Pro
     // ── サポート ──
-    basic_support:          { free: true,  light: true,  standard: true,  pro: true  },
-    priority_support:       { free: false, light: false, standard: false, pro: true  },
-    setup_support:          { free: false, light: false, standard: false, pro: true  },
+    basic_support:          { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
+    priority_support:       { free: false, light: false, standard: false, pro: true  }, // Pro
+    setup_support:          { free: false, light: false, standard: false, pro: true  }, // オプション（別途¥12,000）
 };
 
 // ===== プラン別の制限値 =====
@@ -171,9 +171,9 @@ export interface PlanInfo {
 
 export const PLAN_DEFINITIONS: PlanInfo[] = [
     { id: "free",     name: "フリー",       price: 0,     color: "#9ca3af", emoji: "🔓", description: "お試し利用向け（1ルームまで）" },
-    { id: "light",    name: "ライト",       price: 4980,  color: "#22c55e", emoji: "🟢", description: "小規模スタジオ向け（5ルームまで）" },
-    { id: "standard", name: "スタンダード", price: 9800,  color: "#f97316", emoji: "🟠", description: "中規模スタジオ向け（15ルーム / 2拠点）" },
-    { id: "pro",      name: "プロ",         price: 14800, color: "#eab308", emoji: "🟡", description: "大規模・複数拠点向け（無制限）" },
+    { id: "light",    name: "ライト",       price: 2980,  color: "#22c55e", emoji: "🟢", description: "小規模スタジオ向け（5ルームまで）" },
+    { id: "standard", name: "スタンダード", price: 5980,  color: "#f97316", emoji: "🟠", description: "中規模スタジオ向け（15ルーム / 2拠点）" },
+    { id: "pro",      name: "プロ",         price: 12800, color: "#eab308", emoji: "🟡", description: "大規模・複数拠点向け（無制限）" },
 ];
 
 // ===== オプション定義 =====

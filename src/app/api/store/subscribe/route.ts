@@ -3,9 +3,9 @@ import { stripe } from "@/lib/stripe";
 
 const PLAN_PRICES: Record<string, number> = {
     free: 0,
-    light: 4980,
-    standard: 9800,
-    pro: 14800,
+    light: 2980,
+    standard: 5980,
+    pro: 12800,
 };
 
 const OPTION_PRICES: Record<string, number> = {
