@@ -1395,7 +1395,6 @@ function DayView({ date, bookings, onBookingClick, blockedSlots = [], selectedRo
             </div>
             {dayBookings.length === 0 && dayBlocked.length === 0 && dayRentals.length === 0 && (
                 <div className="text-center py-12 text-muted-foreground">
-                    <p className="text-3xl mb-2">📅</p>
                     <p className="font-bold text-sm">この日の予約はありません</p>
                 </div>
             )}
@@ -2546,7 +2545,6 @@ function PlanTab({ store, setStore, notify }: any) {
                     <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">現在のプラン</p>
                     <div className="flex items-center justify-between">
                         <span className="text-xl font-black text-foreground">
-                            {PLAN_DEFINITIONS.find((p: any) => p.id === currentPlan)?.emoji}{" "}
                             {PLAN_DEFINITIONS.find((p: any) => p.id === currentPlan)?.name || currentPlan}
                         </span>
                         <span className="text-purple-400 font-black text-lg">
@@ -2554,7 +2552,7 @@ function PlanTab({ store, setStore, notify }: any) {
                         </span>
                     </div>
                     {store.trialEndDate && new Date(store.trialEndDate) > new Date() && (
-                        <p className="text-xs text-green-400 mt-1 font-bold">
+                        <p className="text-xs text-purple-300 mt-2 font-bold">
                             無料トライアル中（{new Date(store.trialEndDate).toLocaleDateString("ja-JP")}まで）
                         </p>
                     )}
@@ -2622,8 +2620,8 @@ function PlanTab({ store, setStore, notify }: any) {
                                 <tr className="bg-accent/10">
                                     <th className="text-left px-3 py-2 font-black text-muted-foreground">機能</th>
                                     {PLAN_DEFINITIONS.map((p: any) => (
-                                        <th key={p.id} className="text-center px-2 py-2 font-black" style={{ color: p.color }}>
-                                            {p.emoji} {p.name}
+                                        <th key={p.id} className="text-center px-2 py-2 font-black text-foreground">
+                                            {p.name}
                                         </th>
                                     ))}
                                 </tr>
@@ -2637,7 +2635,7 @@ function PlanTab({ store, setStore, notify }: any) {
                                                 <td className="px-3 py-1.5 text-foreground font-bold">{FEATURE_LABELS[fk]}</td>
                                                 {PLAN_DEFINITIONS.map((p: any) => (
                                                     <td key={p.id} className="text-center px-2 py-1.5">
-                                                        {checkFeature(p.id, fk) ? <span className="text-green-400">○</span> : <span className="text-muted-foreground/30">-</span>}
+                                                        {checkFeature(p.id, fk) ? <span className="text-white font-bold">○</span> : <span className="text-muted-foreground">-</span>}
                                                     </td>
                                                 ))}
                                             </tr>
