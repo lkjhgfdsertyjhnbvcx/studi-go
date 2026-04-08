@@ -2635,7 +2635,7 @@ function PlanTab({ store, setStore, notify }: any) {
                                                 <td className="px-3 py-1.5 text-foreground font-bold">{FEATURE_LABELS[fk]}</td>
                                                 {PLAN_DEFINITIONS.map((p: any) => (
                                                     <td key={p.id} className="text-center px-2 py-1.5">
-                                                        {checkFeature(p.id, fk) ? <span className="text-white font-bold">○</span> : <span className="text-muted-foreground">-</span>}
+                                                        {checkFeature(p.id, fk) ? <span className="text-purple-600 font-bold">○</span> : <span className="text-gray-400">-</span>}
                                                     </td>
                                                 ))}
                                             </tr>
