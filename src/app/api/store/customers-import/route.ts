@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, setDoc } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 import { v4 as uuidv4 } from "uuid";
 
 export const dynamic = "force-dynamic";
@@ -74,8 +73,8 @@ export async function POST(request: Request) {
             }, { status: 400 });
         }
 
-        // 既存ユーザーを取得
-        const usersSnap = await getDocs(collection(db, "users"));
+        // 既存ユーザーを取得（Admin SDK）
+        const usersSnap = await adminDb.collection("users").get();
         const existingUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 
         let created = 0;
@@ -118,7 +117,7 @@ export async function POST(request: Request) {
                     updates.studioIds = [...(existing.studioIds || []), studioId];
                 }
                 if (Object.keys(updates).length > 0) {
-                    await setDoc(doc(db, "users", existing.id), { ...existing, ...updates }, { merge: true });
+                    await adminDb.collection("users").doc(existing.id).set({ ...existing, ...updates }, { merge: true });
                     updated++;
                 } else {
                     skipped++;
@@ -139,7 +138,7 @@ export async function POST(request: Request) {
                     createdAt: new Date().toISOString(),
                 };
                 if (lineUserId) newUser.lineUserId = lineUserId;
-                await setDoc(doc(db, "users", userId), newUser);
+                await adminDb.collection("users").doc(userId).set(newUser);
                 existingUsers.push(newUser);
                 created++;
             }
