@@ -1018,10 +1018,12 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
             fd.append("file", bkFile);
             fd.append("studioId", storeId);
             const res = await fetch("/api/store/bookings-import", { method: "POST", body: fd });
-            const data = await res.json();
+            const text = await res.text();
+            let data;
+            try { data = JSON.parse(text); } catch { data = { error: "サーバーエラー: " + text.substring(0, 300) }; }
             setBkResult(data);
             if (data.success && onRefreshBookings) onRefreshBookings();
-        } catch { setBkResult({ error: "インポートに失敗しました" }); }
+        } catch (e: any) { setBkResult({ error: "インポートに失敗しました: " + (e?.message || String(e)) }); }
         finally { setBkImporting(false); }
     };
 
@@ -1934,10 +1936,12 @@ function CustomersTab({ customers, bookings, planKey, storeId, onRefresh }: { cu
             fd.append("file", csvFile);
             fd.append("studioId", storeId);
             const res = await fetch("/api/store/customers-import", { method: "POST", body: fd });
-            const data = await res.json();
+            const text = await res.text();
+            let data;
+            try { data = JSON.parse(text); } catch { data = { error: "サーバーエラー: " + text.substring(0, 300) }; }
             setImportResult(data);
             if (data.success && onRefresh) onRefresh();
-        } catch { setImportResult({ error: "インポートに失敗しました" }); }
+        } catch (e: any) { setImportResult({ error: "インポートに失敗しました: " + (e?.message || String(e)) }); }
         finally { setImporting(false); }
     };
 
