@@ -6,25 +6,50 @@ import { PlanGate } from "@/components/PlanGate";
 import { canUseFeature, getPlanLimits, normalizePlanKey, type FeatureKey } from "@/lib/plan-features";
 import CsvColumnMapper, { type ColumnMapping, type TargetField } from "@/components/CsvColumnMapper";
 
+// ===== CSVファイル読み取りユーティリティ（Shift-JIS自動検出） =====
+function readCsvFileAsText(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const buf = ev.target?.result as ArrayBuffer;
+            const bytes = new Uint8Array(buf);
+            // BOM検出: UTF-8 BOM (EF BB BF) or UTF-16 LE (FF FE)
+            const isUtf8Bom = bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF;
+            // Shift-JIS検出: 0x80-0x9F or 0xE0-0xEF の範囲のバイトが多ければShift-JIS
+            let sjisLike = 0;
+            for (let i = 0; i < Math.min(bytes.length, 500); i++) {
+                if ((bytes[i] >= 0x81 && bytes[i] <= 0x9F) || (bytes[i] >= 0xE0 && bytes[i] <= 0xEF)) sjisLike++;
+            }
+            const encoding = (!isUtf8Bom && sjisLike > 5) ? "shift_jis" : "utf-8";
+            const decoder = new TextDecoder(encoding);
+            resolve(decoder.decode(buf));
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsArrayBuffer(file);
+    });
+}
+
 // ===== CSVマッピング用フィールド定義 =====
 const CUSTOMER_TARGET_FIELDS: TargetField[] = [
-    { key: "name", label: "顧客名", required: false, aliases: ["名前", "氏名", "name", "顧客名", "お名前", "ご利用者名", "利用者名", "氏名（漢字）", "フルネーム"] },
-    { key: "email", label: "メールアドレス", required: false, aliases: ["メール", "メールアドレス", "email", "e-mail", "mail", "Eメール"] },
+    { key: "name", label: "顧客名", required: false, aliases: ["名前", "氏名", "name", "顧客名", "お名前", "ご利用者名", "利用者名", "氏名（漢字）", "フルネーム", "予約者名"] },
+    { key: "email", label: "メールアドレス", required: false, aliases: ["メール", "メールアドレス", "email", "e-mail", "mail", "Eメール", "連絡先メール"] },
     { key: "phone", label: "電話番号", required: false, aliases: ["電話", "電話番号", "phone", "tel", "携帯", "携帯番号", "連絡先"] },
-    { key: "memo", label: "メモ/備考", required: false, aliases: ["メモ", "備考", "memo", "note", "notes", "コメント", "ノート", "特記事項"] },
+    { key: "memo", label: "メモ/備考", required: false, aliases: ["メモ", "備考", "memo", "note", "notes", "コメント", "ノート", "特記事項", "備考（ユーザ）", "備考（ショップ）"] },
     { key: "lineUserId", label: "LINE ID", required: false, aliases: ["lineid", "line_id", "line id", "ラインid", "lineユーザーid", "line"] },
 ];
 
 const BOOKING_TARGET_FIELDS: TargetField[] = [
-    { key: "date", label: "予約日", required: true, aliases: ["日付", "予約日", "date", "利用日", "ご利用日", "年月日", "使用日"] },
-    { key: "startTime", label: "開始時間", required: true, aliases: ["開始時間", "時間", "start", "starttime", "開始", "利用開始", "入室時間", "from", "開始時刻"] },
+    { key: "date", label: "予約日", required: true, aliases: ["日付", "予約日", "date", "利用日", "ご利用日", "年月日", "使用日", "予約開始時刻"] },
+    { key: "startTime", label: "開始時間", required: true, aliases: ["開始時間", "時間", "start", "starttime", "開始", "利用開始", "入室時間", "from", "開始時刻", "予約開始時刻"] },
+    { key: "endTime", label: "終了時間", required: false, aliases: ["終了時間", "終了", "退室時間", "end", "endtime", "to", "終了時刻", "予約終了時刻", "予約終了時間"] },
     { key: "customerName", label: "顧客名", required: false, aliases: ["顧客名", "名前", "氏名", "name", "お名前", "ご利用者名", "利用者名", "予約者", "予約者名"] },
-    { key: "email", label: "メールアドレス", required: false, aliases: ["メール", "メールアドレス", "email", "Eメール"] },
+    { key: "email", label: "メールアドレス", required: false, aliases: ["メール", "メールアドレス", "email", "Eメール", "連絡先メール"] },
     { key: "durationHours", label: "利用時間(h)", required: false, aliases: ["時間数", "利用時間", "duration", "hours", "時間（h）", "ご利用時間"] },
-    { key: "roomName", label: "部屋/スタジオ名", required: false, aliases: ["部屋", "部屋名", "room", "スタジオ名", "ルーム", "スタジオ", "ブース", "ブース名"] },
+    { key: "roomName", label: "部屋/スタジオ名", required: false, aliases: ["部屋", "部屋名", "room", "スタジオ名", "ルーム", "スタジオ", "ブース", "ブース名", "部屋名"] },
     { key: "totalPrice", label: "料金", required: false, aliases: ["料金", "金額", "price", "合計", "合計金額", "利用料金", "合計料金", "総額"] },
     { key: "status", label: "ステータス", required: false, aliases: ["ステータス", "状態", "status", "予約状態"] },
-    { key: "memo", label: "メモ/備考", required: false, aliases: ["メモ", "備考", "memo", "ノート", "備考欄", "コメント"] },
+    { key: "memo", label: "メモ/備考", required: false, aliases: ["メモ", "備考", "memo", "ノート", "備考欄", "コメント", "備考（ユーザ）", "備考（ショップ）"] },
+    { key: "people", label: "人数", required: false, aliases: ["人数", "利用人数", "people", "人"] },
 ];
 
 // ===== 型定義 =====
@@ -1023,11 +1048,10 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
     const [bkResult, setBkResult] = useState<any>(null);
     const bkFileRef = React.useRef<HTMLInputElement>(null);
 
-    const handleBkFile = (f: File) => {
+    const handleBkFile = async (f: File) => {
         setBkFile(f); setBkResult(null); setShowBkMapper(false);
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const text = ev.target?.result as string;
+        try {
+            const text = await readCsvFileAsText(f);
             const lines = text.split(/\r?\n/).filter(l => l.trim());
             const parsed = lines.slice(0, 6).map(l => l.split(",").map(c => c.replace(/^"|"$/g, "").trim()));
             if (parsed.length > 0) {
@@ -1035,8 +1059,7 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
                 setBkPreviewRows(parsed.slice(1));
                 setShowBkMapper(true);
             }
-        };
-        reader.readAsText(f);
+        } catch (e) { console.error("CSV読み取りエラー:", e); }
     };
 
     const handleBkMappingConfirm = async (mapping: ColumnMapping) => {
@@ -1140,21 +1163,24 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
                     <p className="text-xs text-muted-foreground mb-3">他社システムからの予約データを一括登録できます。CSVをアップロードすると、列の対応関係を設定できます。</p>
                     <div className="bg-accent/10 border border-border/50 rounded-xl p-4 mb-4 text-xs text-muted-foreground space-y-2">
                         <p className="font-black text-foreground text-xs mb-1">インポートの手順</p>
-                        <p>1. テンプレートCSVをダウンロード、または他社システムからエクスポートしたCSVを用意します</p>
+                        <p>1. テンプレートCSVを取得、または他社システムからエクスポートしたCSVを用意します</p>
                         <p>2. 下のエリアにCSVファイルをドラッグ&ドロップ、またはクリックして選択します</p>
                         <p>3. カラムマッピング画面で、CSVの各列がどのフィールドに対応するか確認・調整します</p>
                         <p>4. マッピングを確認し「このマッピングでインポート」をクリックします</p>
                         <div className="border-t border-border/50 pt-2 mt-2">
                             <p className="font-black text-foreground mb-1">注意事項</p>
                             <p>・「予約日」と「開始時間」は必須です（マッピング画面で * マーク）</p>
+                            <p>・「終了時間」があれば利用時間は自動計算されます（「利用時間」列がなくてもOK）</p>
+                            <p>・「2026/4/11 13:00」のように日付と時刻が一列にまとまっていても対応します</p>
                             <p>・同じ日付・開始時間・部屋名の予約が既に存在する場合、重複としてスキップされます</p>
                             <p>・過去の予約もインポート可能です（売上実績・利用履歴として記録されます）</p>
+                            <p>・Shift-JIS（他社エクスポートに多い）もUTF-8も自動判別します</p>
                             <p>・スタジオル等の他社CSVも、マッピング画面で列の対応を指定すればインポートできます</p>
                         </div>
                     </div>
                     <div className="flex gap-2 mb-3">
                         <button onClick={downloadBkTemplate} className="px-3 py-1.5 bg-accent/20 hover:bg-accent/30 text-foreground text-xs font-bold rounded-lg transition-all">
-                            テンプレートCSVをダウンロード
+                            テンプレートCSVを取得
                         </button>
                     </div>
                     <div
@@ -1942,11 +1968,10 @@ function CustomersTab({ customers, bookings, planKey, storeId, onRefresh }: { cu
     const [importResult, setImportResult] = React.useState<any>(null);
     const fileRef = React.useRef<HTMLInputElement>(null);
 
-    const handleFile = (f: File) => {
+    const handleFile = async (f: File) => {
         setCsvFile(f); setImportResult(null); setShowMapper(false);
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const text = ev.target?.result as string;
+        try {
+            const text = await readCsvFileAsText(f);
             const lines = text.split(/\r?\n/).filter(l => l.trim());
             const parsed = lines.slice(0, 6).map(l => l.split(",").map(c => c.replace(/^"|"$/g, "").trim()));
             if (parsed.length > 0) {
@@ -1954,8 +1979,7 @@ function CustomersTab({ customers, bookings, planKey, storeId, onRefresh }: { cu
                 setCsvPreviewRows(parsed.slice(1));
                 setShowMapper(true);
             }
-        };
-        reader.readAsText(f);
+        } catch (e) { console.error("CSV読み取りエラー:", e); }
     };
 
     const handleMappingConfirm = async (mapping: ColumnMapping) => {
@@ -2013,7 +2037,7 @@ function CustomersTab({ customers, bookings, planKey, storeId, onRefresh }: { cu
                     <p className="text-xs text-muted-foreground mb-3">他社予約システムからの乗り換え時に、顧客データを一括登録できます。CSVをアップロードすると、列の対応関係を設定できます。</p>
                     <div className="bg-accent/10 border border-border/50 rounded-xl p-4 mb-4 text-xs text-muted-foreground space-y-2">
                         <p className="font-black text-foreground text-xs mb-1">インポートの手順</p>
-                        <p>1. テンプレートCSVをダウンロード、または他社システムからエクスポートしたCSVを用意します</p>
+                        <p>1. テンプレートCSVを取得、または他社システムからエクスポートしたCSVを用意します</p>
                         <p>2. 下のエリアにCSVファイルをドラッグ&ドロップ、またはクリックして選択します</p>
                         <p>3. カラムマッピング画面で、CSVの各列がどのフィールドに対応するか確認・調整します</p>
                         <p>4. マッピングを確認し「このマッピングでインポート」をクリックします</p>
@@ -2026,7 +2050,7 @@ function CustomersTab({ customers, bookings, planKey, storeId, onRefresh }: { cu
                     </div>
                     <div className="flex gap-2 mb-3">
                         <button onClick={downloadTemplate} className="px-3 py-1.5 bg-accent/20 hover:bg-accent/30 text-foreground text-xs font-bold rounded-lg transition-all">
-                            テンプレートCSVをダウンロード
+                            テンプレートCSVを取得
                         </button>
                     </div>
                     <div

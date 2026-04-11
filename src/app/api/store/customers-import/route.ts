@@ -53,7 +53,16 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "ファイルとスタジオIDが必要です" }, { status: 400 });
         }
 
-        const text = await file.text();
+        // Shift-JIS自動検出
+        const buf = await file.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        const isUtf8Bom = bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF;
+        let sjisLike = 0;
+        for (let i = 0; i < Math.min(bytes.length, 500); i++) {
+            if ((bytes[i] >= 0x81 && bytes[i] <= 0x9F) || (bytes[i] >= 0xE0 && bytes[i] <= 0xEF)) sjisLike++;
+        }
+        const encoding = (!isUtf8Bom && sjisLike > 5) ? "shift_jis" : "utf-8";
+        const text = new TextDecoder(encoding).decode(buf);
         const lines = text.split(/\r?\n/).filter(l => l.trim());
 
         if (lines.length < 2) {
