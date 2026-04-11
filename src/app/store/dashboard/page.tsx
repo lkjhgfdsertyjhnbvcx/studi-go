@@ -4,6 +4,28 @@ import { uploadImageToStorage } from "@/lib/uploadImage";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PlanGate } from "@/components/PlanGate";
 import { canUseFeature, getPlanLimits, normalizePlanKey, type FeatureKey } from "@/lib/plan-features";
+import CsvColumnMapper, { type ColumnMapping, type TargetField } from "@/components/CsvColumnMapper";
+
+// ===== CSVマッピング用フィールド定義 =====
+const CUSTOMER_TARGET_FIELDS: TargetField[] = [
+    { key: "name", label: "顧客名", required: false, aliases: ["名前", "氏名", "name", "顧客名", "お名前", "ご利用者名", "利用者名", "氏名（漢字）", "フルネーム"] },
+    { key: "email", label: "メールアドレス", required: false, aliases: ["メール", "メールアドレス", "email", "e-mail", "mail", "Eメール"] },
+    { key: "phone", label: "電話番号", required: false, aliases: ["電話", "電話番号", "phone", "tel", "携帯", "携帯番号", "連絡先"] },
+    { key: "memo", label: "メモ/備考", required: false, aliases: ["メモ", "備考", "memo", "note", "notes", "コメント", "ノート", "特記事項"] },
+    { key: "lineUserId", label: "LINE ID", required: false, aliases: ["lineid", "line_id", "line id", "ラインid", "lineユーザーid", "line"] },
+];
+
+const BOOKING_TARGET_FIELDS: TargetField[] = [
+    { key: "date", label: "予約日", required: true, aliases: ["日付", "予約日", "date", "利用日", "ご利用日", "年月日", "使用日"] },
+    { key: "startTime", label: "開始時間", required: true, aliases: ["開始時間", "時間", "start", "starttime", "開始", "利用開始", "入室時間", "from", "開始時刻"] },
+    { key: "customerName", label: "顧客名", required: false, aliases: ["顧客名", "名前", "氏名", "name", "お名前", "ご利用者名", "利用者名", "予約者", "予約者名"] },
+    { key: "email", label: "メールアドレス", required: false, aliases: ["メール", "メールアドレス", "email", "Eメール"] },
+    { key: "durationHours", label: "利用時間(h)", required: false, aliases: ["時間数", "利用時間", "duration", "hours", "時間（h）", "ご利用時間"] },
+    { key: "roomName", label: "部屋/スタジオ名", required: false, aliases: ["部屋", "部屋名", "room", "スタジオ名", "ルーム", "スタジオ", "ブース", "ブース名"] },
+    { key: "totalPrice", label: "料金", required: false, aliases: ["料金", "金額", "price", "合計", "合計金額", "利用料金", "合計料金", "総額"] },
+    { key: "status", label: "ステータス", required: false, aliases: ["ステータス", "状態", "status", "予約状態"] },
+    { key: "memo", label: "メモ/備考", required: false, aliases: ["メモ", "備考", "memo", "ノート", "備考欄", "コメント"] },
+];
 
 // ===== 型定義 =====
 interface TimeSlot { start: string; end: string; price: number; }
@@ -994,34 +1016,43 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
     const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
     const [showBkImport, setShowBkImport] = useState(false);
     const [bkFile, setBkFile] = useState<File | null>(null);
-    const [bkPreview, setBkPreview] = useState<string[][]>([]);
+    const [bkHeaders, setBkHeaders] = useState<string[]>([]);
+    const [bkPreviewRows, setBkPreviewRows] = useState<string[][]>([]);
+    const [showBkMapper, setShowBkMapper] = useState(false);
     const [bkImporting, setBkImporting] = useState(false);
     const [bkResult, setBkResult] = useState<any>(null);
     const bkFileRef = React.useRef<HTMLInputElement>(null);
 
     const handleBkFile = (f: File) => {
-        setBkFile(f); setBkResult(null);
+        setBkFile(f); setBkResult(null); setShowBkMapper(false);
         const reader = new FileReader();
         reader.onload = (ev) => {
             const text = ev.target?.result as string;
             const lines = text.split(/\r?\n/).filter(l => l.trim());
-            setBkPreview(lines.slice(0, 6).map(l => l.split(",").map(c => c.replace(/^"|"$/g, "").trim())));
+            const parsed = lines.slice(0, 6).map(l => l.split(",").map(c => c.replace(/^"|"$/g, "").trim()));
+            if (parsed.length > 0) {
+                setBkHeaders(parsed[0]);
+                setBkPreviewRows(parsed.slice(1));
+                setShowBkMapper(true);
+            }
         };
         reader.readAsText(f);
     };
 
-    const handleBkImport = async () => {
+    const handleBkMappingConfirm = async (mapping: ColumnMapping) => {
         if (!bkFile || !storeId) return;
         setBkImporting(true); setBkResult(null);
         try {
             const fd = new FormData();
             fd.append("file", bkFile);
             fd.append("studioId", storeId);
+            fd.append("mapping", JSON.stringify(mapping));
             const res = await fetch("/api/store/bookings-import", { method: "POST", body: fd });
             const text = await res.text();
             let data;
             try { data = JSON.parse(text); } catch { data = { error: "サーバーエラー: " + text.substring(0, 300) }; }
             setBkResult(data);
+            setShowBkMapper(false);
             if (data.success && onRefreshBookings) onRefreshBookings();
         } catch (e: any) { setBkResult({ error: "インポートに失敗しました: " + (e?.message || String(e)) }); }
         finally { setBkImporting(false); }
@@ -1106,31 +1137,19 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
             {showBkImport && (
                 <div className="bg-card border border-border rounded-2xl p-5 mb-4">
                     <h3 className="font-black text-foreground text-sm mb-2">予約データCSVインポート</h3>
-                    <p className="text-xs text-muted-foreground mb-3">他社システムからの予約データを一括登録できます。過去の予約もインポート可能です。</p>
+                    <p className="text-xs text-muted-foreground mb-3">他社システムからの予約データを一括登録できます。CSVをアップロードすると、列の対応関係を設定できます。</p>
                     <div className="bg-accent/10 border border-border/50 rounded-xl p-4 mb-4 text-xs text-muted-foreground space-y-2">
                         <p className="font-black text-foreground text-xs mb-1">インポートの手順</p>
-                        <p>1. 下の「テンプレートCSVをダウンロード」ボタンからテンプレートを取得します</p>
-                        <p>2. Excel等でテンプレートを開き、既存の予約データを入力してCSV形式で保存します</p>
-                        <p>3. 下のエリアにCSVファイルをドラッグ&ドロップ、またはクリックして選択します</p>
-                        <p>4. プレビューを確認し、問題なければ「インポート実行」をクリックします</p>
-                        <div className="border-t border-border/50 pt-2 mt-2">
-                            <p className="font-black text-foreground mb-1">対応カラム（1行目はヘッダー行が必須です）</p>
-                            <p><span className="font-bold text-cyan-400">日付</span> — 予約日（必須）例: 2026-04-01 または 2026/4/1</p>
-                            <p><span className="font-bold text-cyan-400">開始時間</span> — 開始時間（必須）例: 10:00 または 9:00</p>
-                            <p><span className="font-bold text-cyan-400">顧客名</span> — 予約者名</p>
-                            <p><span className="font-bold text-cyan-400">メール</span> — 予約者メールアドレス（既存ユーザーとの照合に使用）</p>
-                            <p><span className="font-bold text-cyan-400">時間数</span> — 利用時間（例: 2）デフォルト: 1時間</p>
-                            <p><span className="font-bold text-cyan-400">部屋名</span> — スタジオ/部屋名（登録済みの部屋名と一致させてください）</p>
-                            <p><span className="font-bold text-cyan-400">料金</span> — 合計金額（数値のみ、¥やカンマは自動除去されます）</p>
-                            <p><span className="font-bold text-cyan-400">ステータス</span> — confirmed / pending / cancelled（デフォルト: confirmed）</p>
-                            <p><span className="font-bold text-cyan-400">メモ</span> — 備考（任意）</p>
-                        </div>
+                        <p>1. テンプレートCSVをダウンロード、または他社システムからエクスポートしたCSVを用意します</p>
+                        <p>2. 下のエリアにCSVファイルをドラッグ&ドロップ、またはクリックして選択します</p>
+                        <p>3. カラムマッピング画面で、CSVの各列がどのフィールドに対応するか確認・調整します</p>
+                        <p>4. マッピングを確認し「このマッピングでインポート」をクリックします</p>
                         <div className="border-t border-border/50 pt-2 mt-2">
                             <p className="font-black text-foreground mb-1">注意事項</p>
+                            <p>・「予約日」と「開始時間」は必須です（マッピング画面で * マーク）</p>
                             <p>・同じ日付・開始時間・部屋名の予約が既に存在する場合、重複としてスキップされます</p>
-                            <p>・メールアドレスが既存ユーザーと一致する場合はそのユーザーに紐付け、一致しない場合は仮ユーザーが自動作成されます</p>
                             <p>・過去の予約もインポート可能です（売上実績・利用履歴として記録されます）</p>
-                            <p>・ファイルはCSV形式（.csv）で、文字コードはUTF-8を推奨します</p>
+                            <p>・スタジオル等の他社CSVも、マッピング画面で列の対応を指定すればインポートできます</p>
                         </div>
                     </div>
                     <div className="flex gap-2 mb-3">
@@ -1148,19 +1167,23 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
                         <input ref={bkFileRef} type="file" accept=".csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleBkFile(f); }} />
                         <p className="text-muted-foreground text-sm font-bold">{bkFile ? bkFile.name : "CSVファイルをドラッグ&ドロップ または クリックして選択"}</p>
                     </div>
-                    {bkPreview.length > 0 && (
-                        <div className="mt-3 overflow-x-auto">
-                            <p className="text-xs font-black text-muted-foreground mb-2">プレビュー（最大5行）</p>
-                            <table className="w-full text-xs">
-                                <thead><tr>{bkPreview[0].map((h, i) => <th key={i} className="text-left p-1.5 bg-accent/10 font-black text-muted-foreground border-b border-border">{h}</th>)}</tr></thead>
-                                <tbody>{bkPreview.slice(1).map((row, ri) => <tr key={ri}>{row.map((c, ci) => <td key={ci} className="p-1.5 border-b border-border/50 text-foreground">{c}</td>)}</tr>)}</tbody>
-                            </table>
+                    {showBkMapper && bkHeaders.length > 0 && (
+                        <div className="mt-4">
+                            <CsvColumnMapper
+                                csvHeaders={bkHeaders}
+                                previewRows={bkPreviewRows}
+                                targetFields={BOOKING_TARGET_FIELDS}
+                                onConfirm={handleBkMappingConfirm}
+                                onCancel={() => { setShowBkMapper(false); setBkFile(null); setBkHeaders([]); setBkPreviewRows([]); }}
+                                accentColor="cyan"
+                            />
                         </div>
                     )}
-                    {bkFile && (
-                        <button onClick={handleBkImport} disabled={bkImporting} className="mt-3 px-5 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white text-xs font-black rounded-lg transition-all">
-                            {bkImporting ? "インポート中..." : "インポート実行"}
-                        </button>
+                    {bkImporting && (
+                        <div className="mt-3 flex items-center gap-2 text-xs font-bold text-cyan-300">
+                            <div className="animate-spin h-4 w-4 border-2 border-cyan-400 border-t-transparent rounded-full"></div>
+                            インポート中...
+                        </div>
                     )}
                     {bkResult && (
                         <div className={`mt-3 p-3 rounded-xl text-xs font-bold ${bkResult.success ? "bg-emerald-900/30 text-emerald-300" : "bg-red-900/30 text-red-300"}`}>
@@ -1912,34 +1935,43 @@ function AnalyticsTab({ bookings, store, setStore, planKey }: any) {
 function CustomersTab({ customers, bookings, planKey, storeId, onRefresh }: { customers: any[]; bookings: Booking[]; planKey?: string; storeId?: string; onRefresh?: () => void }) {
     const [showImport, setShowImport] = React.useState(false);
     const [csvFile, setCsvFile] = React.useState<File | null>(null);
-    const [csvPreview, setCsvPreview] = React.useState<string[][]>([]);
+    const [csvHeaders, setCsvHeaders] = React.useState<string[]>([]);
+    const [csvPreviewRows, setCsvPreviewRows] = React.useState<string[][]>([]);
+    const [showMapper, setShowMapper] = React.useState(false);
     const [importing, setImporting] = React.useState(false);
     const [importResult, setImportResult] = React.useState<any>(null);
     const fileRef = React.useRef<HTMLInputElement>(null);
 
     const handleFile = (f: File) => {
-        setCsvFile(f); setImportResult(null);
+        setCsvFile(f); setImportResult(null); setShowMapper(false);
         const reader = new FileReader();
         reader.onload = (ev) => {
             const text = ev.target?.result as string;
             const lines = text.split(/\r?\n/).filter(l => l.trim());
-            setCsvPreview(lines.slice(0, 6).map(l => l.split(",").map(c => c.replace(/^"|"$/g, "").trim())));
+            const parsed = lines.slice(0, 6).map(l => l.split(",").map(c => c.replace(/^"|"$/g, "").trim()));
+            if (parsed.length > 0) {
+                setCsvHeaders(parsed[0]);
+                setCsvPreviewRows(parsed.slice(1));
+                setShowMapper(true);
+            }
         };
         reader.readAsText(f);
     };
 
-    const handleImport = async () => {
+    const handleMappingConfirm = async (mapping: ColumnMapping) => {
         if (!csvFile || !storeId) return;
         setImporting(true); setImportResult(null);
         try {
             const fd = new FormData();
             fd.append("file", csvFile);
             fd.append("studioId", storeId);
+            fd.append("mapping", JSON.stringify(mapping));
             const res = await fetch("/api/store/customers-import", { method: "POST", body: fd });
             const text = await res.text();
             let data;
             try { data = JSON.parse(text); } catch { data = { error: "サーバーエラー: " + text.substring(0, 300) }; }
             setImportResult(data);
+            setShowMapper(false);
             if (data.success && onRefresh) onRefresh();
         } catch (e: any) { setImportResult({ error: "インポートに失敗しました: " + (e?.message || String(e)) }); }
         finally { setImporting(false); }
@@ -1978,26 +2010,18 @@ function CustomersTab({ customers, bookings, planKey, storeId, onRefresh }: { cu
             {showImport && (
                 <div className="bg-card border border-border rounded-2xl p-5 mb-6">
                     <h3 className="font-black text-foreground text-sm mb-2">顧客データCSVインポート</h3>
-                    <p className="text-xs text-muted-foreground mb-3">他社予約システムからの乗り換え時に、顧客データを一括登録できます</p>
+                    <p className="text-xs text-muted-foreground mb-3">他社予約システムからの乗り換え時に、顧客データを一括登録できます。CSVをアップロードすると、列の対応関係を設定できます。</p>
                     <div className="bg-accent/10 border border-border/50 rounded-xl p-4 mb-4 text-xs text-muted-foreground space-y-2">
                         <p className="font-black text-foreground text-xs mb-1">インポートの手順</p>
-                        <p>1. 下の「テンプレートCSVをダウンロード」ボタンからテンプレートを取得します</p>
-                        <p>2. Excel等でテンプレートを開き、既存の顧客データを入力してCSV形式で保存します</p>
-                        <p>3. 下のエリアにCSVファイルをドラッグ&ドロップ、またはクリックして選択します</p>
-                        <p>4. プレビューを確認し、問題なければ「インポート実行」をクリックします</p>
-                        <div className="border-t border-border/50 pt-2 mt-2">
-                            <p className="font-black text-foreground mb-1">対応カラム（1行目はヘッダー行が必須です）</p>
-                            <p><span className="font-bold text-purple-400">名前</span> — 顧客名（必須※メールがない場合）</p>
-                            <p><span className="font-bold text-purple-400">メール</span> — メールアドレス（既存ユーザーとの照合に使用）</p>
-                            <p><span className="font-bold text-purple-400">電話番号</span> — 任意</p>
-                            <p><span className="font-bold text-purple-400">LINE ID</span> — LINEユーザーID（将来のLINEログイン連携用、任意）</p>
-                            <p><span className="font-bold text-purple-400">メモ</span> — 備考や顧客情報など（任意）</p>
-                        </div>
+                        <p>1. テンプレートCSVをダウンロード、または他社システムからエクスポートしたCSVを用意します</p>
+                        <p>2. 下のエリアにCSVファイルをドラッグ&ドロップ、またはクリックして選択します</p>
+                        <p>3. カラムマッピング画面で、CSVの各列がどのフィールドに対応するか確認・調整します</p>
+                        <p>4. マッピングを確認し「このマッピングでインポート」をクリックします</p>
                         <div className="border-t border-border/50 pt-2 mt-2">
                             <p className="font-black text-foreground mb-1">注意事項</p>
                             <p>・メールアドレスが既存のユーザーと一致する場合、新規作成せず既存データに紐付けします</p>
                             <p>・ファイルはCSV形式（.csv）で、文字コードはUTF-8を推奨します</p>
-                            <p>・一度にインポートできる件数に制限はありませんが、大量の場合は処理に時間がかかります</p>
+                            <p>・スタジオル等の他社CSVも、マッピング画面で列の対応を指定すればインポートできます</p>
                         </div>
                     </div>
                     <div className="flex gap-2 mb-3">
@@ -2015,19 +2039,23 @@ function CustomersTab({ customers, bookings, planKey, storeId, onRefresh }: { cu
                         <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
                         <p className="text-muted-foreground text-sm font-bold">{csvFile ? csvFile.name : "CSVファイルをドラッグ&ドロップ または クリックして選択"}</p>
                     </div>
-                    {csvPreview.length > 0 && (
-                        <div className="mt-3 overflow-x-auto">
-                            <p className="text-xs font-black text-muted-foreground mb-2">プレビュー（最大5行）</p>
-                            <table className="w-full text-xs">
-                                <thead><tr>{csvPreview[0].map((h, i) => <th key={i} className="text-left p-1.5 bg-accent/10 font-black text-muted-foreground border-b border-border">{h}</th>)}</tr></thead>
-                                <tbody>{csvPreview.slice(1).map((row, ri) => <tr key={ri}>{row.map((c, ci) => <td key={ci} className="p-1.5 border-b border-border/50 text-foreground">{c}</td>)}</tr>)}</tbody>
-                            </table>
+                    {showMapper && csvHeaders.length > 0 && (
+                        <div className="mt-4">
+                            <CsvColumnMapper
+                                csvHeaders={csvHeaders}
+                                previewRows={csvPreviewRows}
+                                targetFields={CUSTOMER_TARGET_FIELDS}
+                                onConfirm={handleMappingConfirm}
+                                onCancel={() => { setShowMapper(false); setCsvFile(null); setCsvHeaders([]); setCsvPreviewRows([]); }}
+                                accentColor="purple"
+                            />
                         </div>
                     )}
-                    {csvFile && (
-                        <button onClick={handleImport} disabled={importing} className="mt-3 px-5 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-black rounded-lg transition-all">
-                            {importing ? "インポート中..." : "インポート実行"}
-                        </button>
+                    {importing && (
+                        <div className="mt-3 flex items-center gap-2 text-xs font-bold text-purple-300">
+                            <div className="animate-spin h-4 w-4 border-2 border-purple-400 border-t-transparent rounded-full"></div>
+                            インポート中...
+                        </div>
                     )}
                     {importResult && (
                         <div className={`mt-3 p-3 rounded-xl text-xs font-bold ${importResult.success ? "bg-emerald-900/30 text-emerald-300" : "bg-red-900/30 text-red-300"}`}>

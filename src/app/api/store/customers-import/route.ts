@@ -25,7 +25,7 @@ function parseCSVLine(line: string): string[] {
     return result;
 }
 
-// ヘッダー名の正規化マッピング
+// ヘッダー名の正規化マッピング（自動検出用 — フォールバック）
 const HEADER_MAP: Record<string, string> = {
     "名前": "name", "氏名": "name", "name": "name", "顧客名": "name", "お名前": "name",
     "メール": "email", "メールアドレス": "email", "email": "email", "e-mail": "email", "mail": "email",
@@ -47,6 +47,7 @@ export async function POST(request: Request) {
         const formData = await request.formData();
         const file = formData.get("file") as File | null;
         const studioId = formData.get("studioId") as string | null;
+        const mappingJson = formData.get("mapping") as string | null;
 
         if (!file || !studioId) {
             return NextResponse.json({ error: "ファイルとスタジオIDが必要です" }, { status: 400 });
@@ -61,14 +62,24 @@ export async function POST(request: Request) {
 
         // ヘッダー解析
         const rawHeaders = parseCSVLine(lines[0]);
-        const headers = rawHeaders.map(h => normalizeHeader(h));
+
+        // マッピング決定：手動マッピングが送られてきた場合はそれを使用
+        let headers: string[];
+        if (mappingJson) {
+            const manualMapping: Record<string, string> = JSON.parse(mappingJson);
+            // CSVヘッダー → ターゲットキーのマッピングを適用
+            headers = rawHeaders.map(h => manualMapping[h] || "");
+        } else {
+            // フォールバック：従来の自動検出
+            headers = rawHeaders.map(h => normalizeHeader(h));
+        }
 
         const nameIdx = headers.indexOf("name");
         const emailIdx = headers.indexOf("email");
 
         if (nameIdx === -1 && emailIdx === -1) {
             return NextResponse.json({
-                error: "「名前」または「メール」のカラムが見つかりません",
+                error: "「名前」または「メール」のカラムが見つかりません。カラムマッピングを確認してください。",
                 detectedHeaders: rawHeaders,
             }, { status: 400 });
         }

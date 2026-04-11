@@ -63,6 +63,7 @@ export async function POST(request: Request) {
         const formData = await request.formData();
         const file = formData.get("file") as File | null;
         const studioId = formData.get("studioId") as string | null;
+        const mappingJson = formData.get("mapping") as string | null;
 
         if (!file || !studioId) {
             return NextResponse.json({ error: "ファイルとスタジオIDが必要です" }, { status: 400 });
@@ -76,7 +77,15 @@ export async function POST(request: Request) {
         }
 
         const rawHeaders = parseCSVLine(lines[0]);
-        const headers = rawHeaders.map(h => normalizeHeader(h));
+
+        // マッピング決定：手動マッピングが送られてきた場合はそれを使用
+        let headers: string[];
+        if (mappingJson) {
+            const manualMapping: Record<string, string> = JSON.parse(mappingJson);
+            headers = rawHeaders.map(h => manualMapping[h] || "");
+        } else {
+            headers = rawHeaders.map(h => normalizeHeader(h));
+        }
 
         const dateIdx = headers.indexOf("date");
         const startIdx = headers.indexOf("startTime");
@@ -84,7 +93,7 @@ export async function POST(request: Request) {
 
         if (dateIdx === -1 || startIdx === -1) {
             return NextResponse.json({
-                error: "「日付」と「開始時間」のカラムが必要です",
+                error: "「日付」と「開始時間」のカラムが必要です。カラムマッピングを確認してください。",
                 detectedHeaders: rawHeaders,
             }, { status: 400 });
         }
