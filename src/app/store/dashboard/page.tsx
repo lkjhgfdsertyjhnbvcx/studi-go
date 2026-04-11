@@ -39,8 +39,8 @@ const CUSTOMER_TARGET_FIELDS: TargetField[] = [
 ];
 
 const BOOKING_TARGET_FIELDS: TargetField[] = [
-    { key: "date", label: "予約日", required: true, aliases: ["日付", "予約日", "date", "利用日", "ご利用日", "年月日", "使用日", "予約開始時刻"] },
-    { key: "startTime", label: "開始時間", required: true, aliases: ["開始時間", "時間", "start", "starttime", "開始", "利用開始", "入室時間", "from", "開始時刻", "予約開始時刻"] },
+    { key: "date", label: "予約日（※時刻込みでもOK）", required: true, aliases: ["日付", "予約日", "date", "利用日", "ご利用日", "年月日", "使用日", "予約開始時刻"] },
+    { key: "startTime", label: "開始時間（日付列に時刻があれば不要）", required: false, aliases: ["開始時間", "時間", "start", "starttime", "開始", "利用開始", "入室時間", "from", "開始時刻"] },
     { key: "endTime", label: "終了時間", required: false, aliases: ["終了時間", "終了", "退室時間", "end", "endtime", "to", "終了時刻", "予約終了時刻", "予約終了時間"] },
     { key: "customerName", label: "顧客名", required: false, aliases: ["顧客名", "名前", "氏名", "name", "お名前", "ご利用者名", "利用者名", "予約者", "予約者名"] },
     { key: "email", label: "メールアドレス", required: false, aliases: ["メール", "メールアドレス", "email", "Eメール", "連絡先メール"] },

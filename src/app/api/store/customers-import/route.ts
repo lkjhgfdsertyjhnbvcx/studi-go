@@ -63,7 +63,7 @@ export async function POST(request: Request) {
         }
         const encoding = (!isUtf8Bom && sjisLike > 5) ? "shift_jis" : "utf-8";
         const text = new TextDecoder(encoding).decode(buf);
-        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        const lines = text.split(/\r?\n/).filter(l => l.trim() && !l.trim().match(/^[,\s]*$/));
 
         if (lines.length < 2) {
             return NextResponse.json({ error: "ヘッダー行とデータ行が必要です" }, { status: 400 });

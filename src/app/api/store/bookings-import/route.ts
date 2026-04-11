@@ -100,7 +100,8 @@ export async function POST(request: Request) {
         }
 
         const text = await readFileAsText(file);
-        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        // 空行・カンマのみの行を除外
+        const lines = text.split(/\r?\n/).filter(l => l.trim() && !l.trim().match(/^[,\s]*$/));
 
         if (lines.length < 2) {
             return NextResponse.json({ error: "ヘッダー行とデータ行が必要です" }, { status: 400 });
@@ -145,7 +146,8 @@ export async function POST(request: Request) {
 
         for (let i = 1; i < lines.length; i++) {
             const cols = parseCSVLine(lines[i]);
-            if (cols.length === 0 || cols.every(c => !c)) continue;
+            // 空行・カンマのみの行をスキップ
+            if (cols.length === 0 || cols.every(c => !c || !c.trim())) continue;
 
             const customerName = headers.indexOf("customerName") >= 0 ? cols[headers.indexOf("customerName")] || "" : "";
             const email = headers.indexOf("email") >= 0 ? cols[headers.indexOf("email")] || "" : "";
@@ -164,6 +166,9 @@ export async function POST(request: Request) {
                 if (parsed.time) startTime = parsed.time;
                 if (parsed.date && !date) date = parsed.date; // start列に日付がある場合
             }
+
+            // dateもstartTimeも空 → データがない行なのでスキップ
+            if (!date && !startTime) continue;
 
             // endTime → duration計算
             let durationHours = durationIdx >= 0 ? parseFloat(cols[durationIdx]) || 0 : 0;
@@ -195,8 +200,14 @@ export async function POST(request: Request) {
                 skipped++;
                 continue;
             }
+            // startTime: 日付列から抽出できた場合はOK、なければエラー
+            if (!startTime) {
+                errors.push(`行${i + 1}: 開始時間が取得できません。「予約日」列に時刻が含まれているか確認してください`);
+                skipped++;
+                continue;
+            }
             if (!startTime.match(/^\d{2}:\d{2}$/)) {
-                errors.push(`行${i + 1}: 開始時間の形式が不正です (${startIdx >= 0 ? cols[startIdx] : "なし"})`);
+                errors.push(`行${i + 1}: 開始時間の形式が不正です (${startTime})`);
                 skipped++;
                 continue;
             }
