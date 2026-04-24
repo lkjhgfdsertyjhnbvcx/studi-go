@@ -1033,12 +1033,19 @@ function ContactTab({ store, notify }: any) {
 type CalendarView = "month" | "week" | "day";
 
 function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots = [], equipmentOptions = [], equipmentRentals = [], storeId, onRefreshBookings }: { bookings: Booking[]; rooms: Room[]; setBookings: any; allBookings: Booking[]; blockedSlots?: BlockedSlot[]; equipmentOptions?: EquipmentOption[]; equipmentRentals?: EquipmentRental[]; storeId?: string; onRefreshBookings?: () => void }) {
+    const PAYMENT_METHOD_LABELS: Record<string, string> = {
+        cash: "現金", paypay: "PayPay", rakuten_pay: "楽天ペイ", d_pay: "d払い",
+        au_pay: "au PAY", ic_card: "交通系IC", credit_card: "クレジットカード",
+        onsite: "店頭払い", other: "その他",
+    };
     const [view, setView] = useState<CalendarView>("day");
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedRoom, setSelectedRoom] = useState("all");
     const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+    const [showPaymentForm, setShowPaymentForm] = useState(false);
+    const [selectedPayMethod, setSelectedPayMethod] = useState("cash");
     const [showBkImport, setShowBkImport] = useState(false);
     const [bkFile, setBkFile] = useState<File | null>(null);
     const [bkHeaders, setBkHeaders] = useState<string[]>([]);
@@ -1106,6 +1113,27 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
             return `${s.toLocaleDateString("ja-JP", { month: "long", day: "numeric" })} 〜 ${e.toLocaleDateString("ja-JP", { month: "long", day: "numeric" })}`;
         }
         return currentDate.toLocaleDateString("ja-JP", { year: "numeric", month: "long" });
+    };
+
+    const handlePaymentConfirm = async (bookingId: string) => {
+        setActionLoading(true);
+        setActionMsg(null);
+        try {
+            const res = await fetch("/api/store/booking-payment", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ bookingId, paymentMethod: selectedPayMethod }),
+            });
+            if (res.ok) {
+                setBookings(allBookings.map((b: Booking) => b.id === bookingId ? { ...b, paymentStatus: "paid", paymentMethod: selectedPayMethod } as any : b));
+                setSelectedBooking({ ...selectedBooking!, paymentStatus: "paid", paymentMethod: selectedPayMethod } as any);
+                setActionMsg({ type: "success", text: `入金を確認しました（${PAYMENT_METHOD_LABELS[selectedPayMethod] || selectedPayMethod}）` });
+                setShowPaymentForm(false);
+            } else {
+                setActionMsg({ type: "error", text: "消し込みに失敗しました" });
+            }
+        } catch { setActionMsg({ type: "error", text: "エラーが発生しました" }); }
+        finally { setActionLoading(false); }
     };
 
     const updateBookingStatus = async (id: string, status: string) => {
@@ -1266,6 +1294,16 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
                                         {selectedBooking.status === "confirmed" ? "✓ 確定済" : selectedBooking.status === "pending" ? "⚠ 未確定" : selectedBooking.status}
                                     </span>
                                 </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">支払い</span>
+                                    <span className={`text-xs font-black px-2 py-1 rounded-full ${(selectedBooking as any).paymentStatus === "paid" ? "bg-emerald-600/20 text-emerald-400" : (selectedBooking as any).paymentMethod === "onsite" ? "bg-red-600/20 text-red-400" : "bg-emerald-600/20 text-emerald-400"}`}>
+                                        {(selectedBooking as any).paymentStatus === "paid"
+                                            ? `入金済（${PAYMENT_METHOD_LABELS[(selectedBooking as any).paymentMethod] || (selectedBooking as any).paymentMethod || "オンライン"}）`
+                                            : (selectedBooking as any).paymentMethod === "onsite"
+                                            ? "未払い（店頭払い）"
+                                            : "オンライン決済済"}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -1290,6 +1328,56 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
                                     ✓ 確定済み
                                 </div>
                             )}
+
+                            {/* 消し込み（店頭払いの入金確認） */}
+                            {(selectedBooking as any).paymentMethod === "onsite" && (selectedBooking as any).paymentStatus !== "paid" && (
+                                <>
+                                    {!showPaymentForm ? (
+                                        <button
+                                            onClick={() => setShowPaymentForm(true)}
+                                            className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-black text-white transition-all"
+                                        >
+                                            入金を確認する（消し込み）
+                                        </button>
+                                    ) : (
+                                        <div className="bg-accent/10 rounded-xl p-3 space-y-2">
+                                            <p className="text-xs font-black text-muted-foreground">支払い方法を選択：</p>
+                                            <div className="grid grid-cols-3 gap-1">
+                                                {Object.entries(PAYMENT_METHOD_LABELS).filter(([k]) => k !== "onsite").map(([key, label]) => (
+                                                    <button
+                                                        key={key}
+                                                        onClick={() => setSelectedPayMethod(key)}
+                                                        className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all ${selectedPayMethod === key ? "bg-emerald-600 text-white" : "bg-accent/20 text-muted-foreground hover:bg-accent/30"}`}
+                                                    >
+                                                        {label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="flex gap-2 mt-2">
+                                                <button
+                                                    onClick={() => handlePaymentConfirm(selectedBooking.id)}
+                                                    disabled={actionLoading}
+                                                    className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-lg text-xs font-black text-white"
+                                                >
+                                                    {actionLoading ? "処理中..." : "確定"}
+                                                </button>
+                                                <button
+                                                    onClick={() => setShowPaymentForm(false)}
+                                                    className="px-3 py-2 bg-accent/20 hover:bg-accent/30 rounded-lg text-xs font-bold text-muted-foreground"
+                                                >
+                                                    戻る
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                            {(selectedBooking as any).paymentStatus === "paid" && (selectedBooking as any).paymentMethod !== "stripe" && (
+                                <div className="w-full py-2 bg-emerald-600/10 rounded-xl text-xs font-black text-emerald-400 text-center">
+                                    入金済（{PAYMENT_METHOD_LABELS[(selectedBooking as any).paymentMethod] || (selectedBooking as any).paymentMethod}）
+                                </div>
+                            )}
+
                             <button
                                 onClick={() => {
                                     if (!confirm("この予約をキャンセルしますか？")) return;
@@ -1413,6 +1501,8 @@ function DayView({ date, bookings, onBookingClick, blockedSlots = [], selectedRo
                                     <div className="flex items-center justify-between mt-0.5">
                                         <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full inline-block" style={{background: "rgba(255,255,255,0.25)"}}>
                                             {b.status === "confirmed" ? "✓ 確定" : b.status === "pending" ? "⚠ 未確定" : b.status}
+                                            {(b as any).paymentMethod === "onsite" && (b as any).paymentStatus !== "paid" && " / 未払い"}
+                                            {(b as any).paymentStatus === "paid" && (b as any).paymentMethod !== "stripe" && " / 入金済"}
                                         </span>
                                         {onBookingClick && <span className="text-[9px] opacity-70">詳細▸</span>}
                                     </div>

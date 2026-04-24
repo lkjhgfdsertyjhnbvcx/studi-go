@@ -198,6 +198,39 @@ export default function StudioDetailPage() {
     window.location.href = `/pay?${p.toString()}`;
   };
 
+  const [onsiteLoading, setOnsiteLoading] = useState(false);
+  const handleOnsiteBooking = async () => {
+    if (!selectedDate || selectedStart === null || !selectedRoom) return;
+    setOnsiteLoading(true);
+    try {
+      const dateStr = selectedDate.toISOString().split("T")[0];
+      const res = await fetch("/api/store/booking-onsite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studioId: studio.id,
+          studioName: studio.storeName,
+          roomName: selectedRoom.name,
+          date: dateStr,
+          startTime: formatTime(selectedStart),
+          durationHours: selectedDuration,
+          totalPrice,
+          userId: "guest",
+          userName: "",
+          userEmail: "",
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("予約が完了しました。お支払いは当日店頭にてお願いいたします。");
+        window.location.reload();
+      } else {
+        alert(data.error || "予約に失敗しました");
+      }
+    } catch { alert("エラーが発生しました"); }
+    finally { setOnsiteLoading(false); }
+  };
+
   const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
 
   const renderMonthCal = () => {
@@ -610,8 +643,12 @@ export default function StudioDetailPage() {
                       </div>
                     </div>
                     <button onClick={handleProceedToPayment} className="w-full py-3 bg-purple-600 hover:bg-purple-500 rounded-2xl text-sm font-black transition-all">
-                      決済に進む →
+                      オンライン決済で予約 →
                     </button>
+                    <button onClick={handleOnsiteBooking} disabled={onsiteLoading} className="w-full py-3 bg-accent/20 hover:bg-accent/30 disabled:opacity-50 rounded-2xl text-sm font-bold text-foreground transition-all border border-border">
+                      {onsiteLoading ? "処理中..." : "店頭払いで予約する"}
+                    </button>
+                    <p className="text-[10px] text-muted-foreground text-center">店頭払いの場合、当日現金・PayPay等でお支払いください</p>
                     <button onClick={() => setBookingStep("calendar")} className="w-full py-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-all">
                       ← 時間を変更する
                     </button>
