@@ -46,7 +46,7 @@ export async function createSplitPayments(reservationId: string, studioStripeAcc
             let sessionId = `mock_session_${Math.random()}`;
             if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !== 'dummy_test_key') {
                 const session = await stripe.checkout.sessions.create({
-                    payment_method_types: ['card'],
+                    // Stripeダッシュボードで有効にした決済方法が自動表示
                     line_items: [
                         {
                             price_data: {

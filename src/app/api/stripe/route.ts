@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { saveBookingToFirestore, getAllBookingsFromFirestore, getStudioByIdFromFirestore } from "@/lib/db-firestore";
+import { getPlanLimits, normalizePlanKey } from "@/lib/plan-features";
 
 export async function POST(request: Request) {
     try {
@@ -69,14 +70,23 @@ export async function POST(request: Request) {
         // Stripe Checkout Session作成
         const studioData = studioId ? await getStudioByIdFromFirestore(studioId) : null;
         const connectedAccountId = studioData?.stripeAccountId || null;
-        // プラットフォーム手数料: 総額の10%（最低1円）
+
+        // プラットフォーム手数料の計算
+        // ベース: Stripe決済手数料 5%（全プラン共通）
+        // フリープランのみ追加: 予約手数料 5%（合計10%）
+        const planKey = normalizePlanKey(studioData?.planKey);
+        const planLimits = getPlanLimits(planKey);
+        const baseFeeRate = 0.05; // Stripe決済手数料 5%
+        const bookingFeeRate = planLimits.bookingFeeRate; // フリー: 0.05, 他: 0
+        const totalFeeRate = baseFeeRate + bookingFeeRate;
         const applicationFeeAmount = connectedAccountId && studioData?.stripeAccountStatus === "active"
-            ? Math.max(1, Math.round(totalPrice * 0.1))
+            ? Math.max(1, Math.round(totalPrice * totalFeeRate))
             : 0;
 
         const personLabel = splitPerson ? ` (${splitPerson}人目)` : "";
         const session = await stripe.checkout.sessions.create({
-            payment_method_types: ["card"],
+            // payment_method_types を省略 → Stripeダッシュボードで有効にした決済方法が自動表示
+            // （カード、コンビニ払い、Apple Pay、Google Pay など）
             line_items: [
                 {
                     price_data: {
