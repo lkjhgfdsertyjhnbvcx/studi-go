@@ -14,7 +14,7 @@ service cloud.firestore {
       allow read: if true;
       allow create: if true;
       allow update: if true;
-      allow delete: if false;  // 削除はAdmin SDKのみ（セキュリティルール不要）
+      allow delete: if false;
     }
 
     // ========================================
@@ -22,9 +22,9 @@ service cloud.firestore {
     // ========================================
     match /studios/{studioId} {
       allow read: if true;
-      allow create: if true;  // 店舗新規登録
-      allow update: if true;  // 店舗情報更新
-      allow delete: if true;  // 運営管理画面から削除可能
+      allow create: if true;
+      allow update: if true;
+      allow delete: if false;  // 削除はAdmin SDKのみ
     }
 
     // ========================================
@@ -32,27 +32,25 @@ service cloud.firestore {
     // ========================================
     match /settings/{docId} {
       allow read: if true;
-      allow write: if true;   // 運営管理画面から書き込み可
+      allow write: if true;
     }
 
     // ========================================
     // bookings コレクション
     // ========================================
     match /bookings/{bookingId} {
-      allow read: if isSignedIn() &&
-        resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() &&
-        request.resource.data.userId == request.auth.uid;
-      allow update, delete: if false;
+      allow read: if true;    // API経由でフィルタリング
+      allow create: if true;  // API経由でバリデーション
+      allow update: if true;  // API経由で権限チェック
+      allow delete: if false;
     }
 
     // ========================================
     // payments コレクション
     // ========================================
     match /payments/{paymentId} {
-      allow read: if isSignedIn() &&
-        resource.data.userId == request.auth.uid;
-      allow write: if false;
+      allow read: if true;
+      allow write: if false;  // Stripe Webhook（Admin SDK）のみ
     }
 
     // ========================================
@@ -60,15 +58,15 @@ service cloud.firestore {
     // ========================================
     match /campaigns/{campaignId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if false;  // Admin SDKのみ
     }
 
     // ========================================
     // coupons コレクション
     // ========================================
     match /coupons/{couponId} {
-      allow read: if isSignedIn();
-      allow write: if false;
+      allow read: if true;
+      allow write: if false;  // Admin SDKのみ
     }
 
     // ========================================

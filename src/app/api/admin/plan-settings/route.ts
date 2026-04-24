@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { requirePlatformAdmin } from "@/lib/api-auth";
 
 const SETTINGS_DOC_PATH = "settings/planConfig";
 
@@ -61,6 +62,8 @@ export async function GET() {
 
 export async function PUT(request: Request) {
     try {
+        const denied = await requirePlatformAdmin();
+        if (denied) return denied;
         const body = await request.json();
         const ref = doc(db, "settings", "planConfig");
 

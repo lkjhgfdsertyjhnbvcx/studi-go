@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { collection, doc, setDoc, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { v4 as uuidv4 } from "uuid";
+import { requirePlatformAdmin } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,8 @@ function normalizeHeader(header: string): string {
 
 export async function POST(request: Request) {
     try {
+        const denied = await requirePlatformAdmin();
+        if (denied) return denied;
         const formData = await request.formData();
         const file = formData.get("file") as File | null;
 

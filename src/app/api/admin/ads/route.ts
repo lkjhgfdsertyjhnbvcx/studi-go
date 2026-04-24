@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { requirePlatformAdmin } from "@/lib/api-auth";
 
 const DOC_REF = "platform/adSettings";
 
 export async function GET() {
     try {
+        const denied = await requirePlatformAdmin();
+        if (denied) return denied;
         const snap = await getDoc(doc(db, "platform", "adSettings"));
         if (!snap.exists()) return NextResponse.json({ error: "not found" });
         return NextResponse.json(snap.data());
@@ -16,6 +19,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
     try {
+        const denied = await requirePlatformAdmin();
+        if (denied) return denied;
         const data = await request.json();
         await setDoc(doc(db, "platform", "adSettings"), data);
         return NextResponse.json({ success: true });

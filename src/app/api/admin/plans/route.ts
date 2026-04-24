@@ -2,9 +2,12 @@
 import { NextResponse } from "next/server";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { requirePlatformAdmin } from "@/lib/api-auth";
 
 export async function PUT(request: Request) {
     try {
+        const denied = await requirePlatformAdmin();
+        if (denied) return denied;
         const { studioId, planKey, planOptions, planPayMethod, planTrialDays, planSetupFeePaid, trialEndDate } = await request.json();
 
         if (!studioId) {

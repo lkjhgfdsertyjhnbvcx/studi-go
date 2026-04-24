@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { requirePlatformAdmin } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,8 @@ const FROM_EMAIL = process.env.EMAIL_FROM ?? "Studi-Go <noreply@studi-go.com>";
 
 export async function POST(request: Request) {
     try {
+        const denied = await requirePlatformAdmin();
+        if (denied) return denied;
         const { recipientType, recipientIds, subject, body, fromName } = await request.json();
 
         if (!subject || !body) {
