@@ -71,6 +71,7 @@ export default function StudioDetailPage() {
   const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [bookingStep, setBookingStep] = useState<"calendar" | "confirm">("calendar");
   const [bookedSlots, setBookedSlots] = useState<{start:number,duration:number}[]>([]);
+  const [onsiteLoading, setOnsiteLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
@@ -211,7 +212,6 @@ export default function StudioDetailPage() {
     window.location.href = `/pay?${p.toString()}`;
   };
 
-  const [onsiteLoading, setOnsiteLoading] = useState(false);
   const handleOnsiteBooking = async () => {
     if (!selectedDate || selectedStart === null || !selectedRoom) return;
     setOnsiteLoading(true);
