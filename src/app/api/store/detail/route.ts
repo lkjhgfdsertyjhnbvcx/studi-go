@@ -16,7 +16,7 @@ export async function GET(request: Request) {
             .filter((b) => b.studioId === id && b.status !== "cancelled")
             .map((b) => ({
                 id: b.id,
-                studioName: studio.rooms.find((r) => r.id === b.roomName)?.name ?? b.roomName ?? "",
+                studioName: (studio.rooms ?? []).find((r: any) => r.id === b.roomName)?.name ?? b.roomName ?? "",
                 date: b.date,
                 startTime: b.startTime,
                 totalPrice: b.totalPrice,

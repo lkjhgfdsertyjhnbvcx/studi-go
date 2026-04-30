@@ -71,6 +71,14 @@ export default function StudioDetailPage() {
   const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [bookingStep, setBookingStep] = useState<"calendar" | "confirm">("calendar");
   const [bookedSlots, setBookedSlots] = useState<{start:number,duration:number}[]>([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    try {
+      const uid = localStorage.getItem("userId");
+      setIsLoggedIn(!!uid && uid !== "guest");
+    } catch { /* SSR or localStorage unavailable */ }
+  }, []);
 
   useEffect(() => {
     if (!studioId) return;
@@ -81,6 +89,11 @@ export default function StudioDetailPage() {
           console.log("📦 Studio data:", data);
           console.log("🎁 Promotions:", data.promotions);
           console.log("🖼️ Custom list:", data.promotions?.customList);
+          // rooms が配列でなければ空配列に正規化
+          if (data.rooms && !Array.isArray(data.rooms)) {
+            console.warn("⚠️ studio.rooms is not an array, normalizing:", typeof data.rooms);
+            data.rooms = [];
+          }
           setStudio(data);
           setActiveRoom(data.rooms?.[0]?.id || null);
           // タイトルとファビコンを店舗用に変更
@@ -95,7 +108,7 @@ export default function StudioDetailPage() {
         }
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((err) => { console.error("Studio fetch error:", err); setLoading(false); });
   }, [studioId]);
 
   // 日付・部屋が変わったら予約済みスロットを取得
@@ -124,7 +137,7 @@ export default function StudioDetailPage() {
     </div>
   );
 
-  const allImages = [...(studio.images || []), ...(studio.rooms?.flatMap((r) => r.images || []) || [])];
+  const allImages = [...(Array.isArray(studio.images) ? studio.images : []), ...(Array.isArray(studio.rooms) ? studio.rooms.flatMap((r) => Array.isArray(r.images) ? r.images : []) : [])];
   const selectedRoom = studio.rooms?.find((r) => r.id === activeRoom);
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -328,12 +341,15 @@ export default function StudioDetailPage() {
   };
 
   // 背景色の輝度を計算して文字色を自動判定
-  const bgHex = studio.designSettings?.backgroundColor || studio.bgColor || "#ffffff";
+  const rawBg = studio.designSettings?.backgroundColor || studio.bgColor || "#ffffff";
+  const bgHex = typeof rawBg === "string" ? rawBg : "#ffffff";
   const isDarkBg = (() => {
-    const hex = bgHex.replace("#", "");
-    if (hex.length < 6) return false;
-    const r = parseInt(hex.slice(0,2),16), g = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
-    return (r*0.299 + g*0.587 + b*0.114) < 128;
+    try {
+      const hex = bgHex.replace("#", "");
+      if (hex.length < 6) return false;
+      const r = parseInt(hex.slice(0,2),16), g = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
+      return (r*0.299 + g*0.587 + b*0.114) < 128;
+    } catch { return false; }
   })();
   // 背景画像がある場合も暗いとみなす
   const effectiveDark = isDarkBg || !!studio.bgImageUrl;
@@ -422,10 +438,9 @@ export default function StudioDetailPage() {
           if (!promotions) return null;
           const vowcha = promotions.vowcha;
           const customList: any[] = promotions.customList || [];
-          const isLoggedIn = typeof window !== "undefined" && !!localStorage.getItem("userId") && localStorage.getItem("userId") !== "guest";
-          const today = new Date().toISOString().split("T")[0];
+          const todayStr = new Date().toISOString().split("T")[0];
           const validCustomList = customList.filter((item: any) => {
-            if (item.validUntil && item.validUntil < today) return false;
+            if (item.validUntil && item.validUntil < todayStr) return false;
             if (!item.title || !item.description) return false;
             return true;
           });
@@ -533,7 +548,7 @@ export default function StudioDetailPage() {
           <section className="mb-8">
             <h2 className="text-xs font-black text-purple-400 uppercase tracking-widest mb-4">部屋を選ぶ</h2>
             <div className="flex gap-3 overflow-x-auto pb-2">
-              {studio.rooms!.map((room) => (
+              {(studio.rooms || []).map((room) => (
                 <button key={room.id}
                   onClick={() => { setActiveRoom(room.id); setSelectedDate(null); setSelectedStart(null); setBookingStep("calendar"); setSelectedOptions([]); }}
                   className={`shrink-0 px-5 py-3 rounded-2xl text-sm font-black transition-all border ${activeRoom === room.id ? "bg-purple-600 border-purple-500 text-white" : "bg-card border-gray-700 text-muted-foreground hover:text-foreground hover:border-gray-500"}`}>
@@ -695,7 +710,7 @@ export default function StudioDetailPage() {
           <section className="mb-12">
             <h2 className="text-xs font-black text-purple-400 uppercase tracking-widest mb-5">オプションを追加する</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {studio.equipmentOptions!.map((opt, i) => {
+              {(studio.equipmentOptions || []).map((opt, i) => {
                 const isSelected = selectedOptions.includes(i);
                 const price = opt.priceType === "per_hour" ? opt.pricePerHour * selectedDuration : opt.pricePerHour;
                 return (
