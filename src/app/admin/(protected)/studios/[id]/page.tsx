@@ -124,6 +124,19 @@ export default function StudioAdminPage() {
                             {saveMsg}
                         </span>
                     )}
+                    <a
+                        href={`/studio/${studioId}?preview=true`}
+                        target="_blank"
+                        className="px-4 py-2.5 rounded-xl font-bold text-sm bg-blue-600 hover:bg-blue-700 text-white transition-all"
+                    >
+                        👁 プレビュー
+                    </a>
+                    <a
+                        href={`/admin/studios/${studioId}/edit`}
+                        className="px-4 py-2.5 rounded-xl font-bold text-sm bg-orange-500 hover:bg-orange-600 text-white transition-all"
+                    >
+                        ✏️ 代理編集
+                    </a>
                     <button
                         onClick={handleSave}
                         disabled={isSaving}

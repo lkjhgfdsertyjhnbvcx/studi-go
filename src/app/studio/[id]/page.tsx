@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 
 interface TimeSlot { start: string; end: string; price: number; }
 interface RoomPricingDay { slots?: TimeSlot[] }
@@ -55,7 +55,9 @@ type CalView = "month" | "week" | "day";
 
 export default function StudioDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const studioId = params?.id as string;
+  const isPreview = searchParams?.get("preview") === "true";
   const [studio, setStudio] = useState<Studio | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
@@ -360,6 +362,12 @@ export default function StudioDetailPage() {
     <div className="min-h-screen relative" style={{ backgroundColor: bgHex, color: effectiveTextColor, backgroundImage: studio.bgImageUrl ? `url(${studio.bgImageUrl})` : undefined, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
       {studio.bgImageUrl && <div className="fixed inset-0 pointer-events-none z-0" style={{ backgroundColor: `rgba(0,0,0,${studio.bgOpacity ?? 0.15})` }} />}
       <div className="relative z-10" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      {isPreview && (
+        <div className="bg-blue-600 text-white text-center py-2 text-xs font-black tracking-wide sticky top-0 z-50">
+          👁 プレビューモード — ユーザーに見える画面です
+          <a href={`/admin/studios/${studioId}/edit`} className="ml-4 underline hover:no-underline">← 代理編集に戻る</a>
+        </div>
+      )}
       <header className="border-b border-border/60 bg-background/80 backdrop-blur-xl sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">

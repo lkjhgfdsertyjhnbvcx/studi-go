@@ -256,7 +256,13 @@ export default function StudiosAdminPage() {
                                                     className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1"
                                                 >
                                                     <ExternalLink className="w-3 h-3" />
-                                                    編集
+                                                    詳細
+                                                </Link>
+                                                <Link
+                                                    href={`/admin/studios/${s.id}/edit`}
+                                                    className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg transition-all"
+                                                >
+                                                    代理編集
                                                 </Link>
                                                 <button
                                                     onClick={() => handleDelete(s.id, s.storeName || s.email)}
