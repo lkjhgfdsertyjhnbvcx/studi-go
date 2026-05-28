@@ -37,6 +37,17 @@ yarn-error.log*
 service-account.json
 *service-account*.json
 
+# lock files (LibreOffice / Excel)
+.~lock.*
+
+# document assets (managed outside repo)
+Studi-Go (1)/
+*.xlsx
+*.pptx
+*.docx
+*.csv
+!src/**/*.csv
+
 # vercel
 .vercel
 
