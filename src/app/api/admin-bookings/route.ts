@@ -14,7 +14,11 @@ export async function GET() {
             return tb.getTime() - ta.getTime();
         }));
     } catch (error: any) {
-        console.error("bookings GET error:", error.message, error.stack);
+        console.error("bookings GET error:", error.message);
+        // Firestore権限エラーの場合は空配列を返す（ダッシュボードがクラッシュしないように）
+        if (error.message?.includes("permission")) {
+            return NextResponse.json([]);
+        }
         return NextResponse.json({ error: `取得失敗: ${error.message}` }, { status: 500 });
     }
 }

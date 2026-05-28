@@ -169,8 +169,8 @@ export default function TopPage() {
           <SiteLogo size="sm" />
           <p className="text-xs" style={{ color: "var(--sg-text-muted)" }}>© 2026 Studi-Go. All rights reserved.</p>
           <div className="flex gap-6">
-            {[["利用規約", "/terms"], ["プライバシー", "/privacy"], ["お問い合わせ", "#"]].map(([l, href]) => (
-              <a key={l} href={href} className="text-xs hover:underline" style={{ color: "var(--sg-text-muted)" }}>{l}</a>
+            {[["利用規約", "/terms"], ["プライバシー", "/privacy"], ["運営会社", "http://jocolla.co.jp"]].map(([l, href]) => (
+              <a key={l} href={href} className="text-xs hover:underline" style={{ color: "var(--sg-text-muted)" }} {...(href.startsWith("http") ? { target: "_blank", rel: "noopener" } : {})}>{l}</a>
             ))}
           </div>
         </div>

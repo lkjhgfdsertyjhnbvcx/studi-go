@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { useTheme } from "@/lib/theme-context";
+import { getPlanLimits } from "@/lib/plan-features";
 
 export default function RoomSchedulePage() {
     const params = useParams();
@@ -105,6 +106,16 @@ export default function RoomSchedulePage() {
                         initialTime={selectedSlot?.time}
                         initialDuration={selectedSlot?.duration}
                     />
+                )}
+
+                {/* フリープランのスタジオにはStudi-Goロゴを強制表示 */}
+                {studio && getPlanLimits(studio.planKey).showLogo && (
+                    <div className="mt-8 py-6 border-t border-border text-center">
+                        <a href="https://studi-go.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
+                            <img src="/logo-new.png" alt="Studi-Go" className="h-5 dark:invert" />
+                            <span className="text-xs text-muted-foreground font-medium tracking-wide">Powered by Studi-Go</span>
+                        </a>
+                    </div>
                 )}
             </div>
         </div>

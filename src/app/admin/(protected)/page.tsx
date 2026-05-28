@@ -2,17 +2,9 @@ import { fetchBookings } from '@/actions/admin';
 import { Booking } from '@/lib/db-local';
 import { getAuthInfo } from '@/actions/admin-auth';
 import { redirect } from 'next/navigation';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge";
 import { DollarSign, BarChart3, Users, Store, Globe, TrendingUp, CreditCard } from "lucide-react";
 import { BackupButton } from '@/components/admin/BackupButton';
+import { TransactionTable } from '@/components/admin/TransactionTable';
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -179,48 +171,7 @@ export default async function AdminPage() {
                     <h2 className="text-lg font-bold tracking-tight">最近の取引履歴</h2>
                 </div>
 
-                <div className="border border-border rounded-2xl overflow-hidden bg-card/50 dark:bg-card/20 backdrop-blur-3xl shadow-inner text-foreground">
-                    <Table>
-                        <TableHeader className="bg-accent/5 border-b border-border">
-                            <TableRow className="hover:bg-transparent border-none">
-                                <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5 px-8">ID</TableHead>
-                                <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5">日付</TableHead>
-                                <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5">時間</TableHead>
-                                <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5">金額</TableHead>
-                                <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5 px-8 text-right underline underline-offset-4 decoration-cyan-500/50">ステータス</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {bookings.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-24 text-muted-foreground italic font-mono uppercase tracking-[0.2em]">
-                                        データなし
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                typedBookings.map((booking: Booking) => (
-                                    <TableRow key={booking.id} className={`border-border hover:bg-accent/5 transition-colors group ${booking.status === 'cancelled' ? 'opacity-50 grayscale' : ''}`}>
-                                        <TableCell className="font-mono text-xs text-muted-foreground py-4 px-8 group-hover:text-cyan-400 transition-colors">#{booking.id.toUpperCase()}</TableCell>
-                                        <TableCell className="text-sm font-medium">{booking.date}</TableCell>
-                                        <TableCell className="text-sm text-muted-foreground">{booking.startTime}</TableCell>
-                                        <TableCell className="font-mono text-sm font-bold text-foreground">¥{(booking.totalPrice || 0).toLocaleString()}</TableCell>
-                                        <TableCell className="py-4 px-8 text-right">
-                                            {booking.status === 'cancelled' ? (
-                                                <Badge variant="outline" className="text-[9px] border-red-500/50 text-red-500 bg-red-500/10 px-3 py-0">キャンセル</Badge>
-                                            ) : booking.status === 'no_show' ? (
-                                                <Badge variant="outline" className="text-[9px] border-purple-500/50 text-purple-400 bg-purple-500/10 px-3 py-0">無断キャンセル</Badge>
-                                            ) : booking.status === 'modified' ? (
-                                                <Badge variant="outline" className="text-[9px] border-yellow-500/50 text-yellow-500 bg-yellow-500/10 px-3 py-0">変更済み</Badge>
-                                            ) : (
-                                                <Badge variant="outline" className="text-[9px] border-cyan-500/50 text-cyan-400 bg-cyan-500/10 px-3 py-0">予約確定</Badge>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
+                <TransactionTable bookings={JSON.parse(JSON.stringify(typedBookings))} />
             </div>
 
             <footer className="mt-12 flex justify-between items-center text-[10px] text-muted-foreground font-mono tracking-widest uppercase pb-10 border-t border-border pt-8">

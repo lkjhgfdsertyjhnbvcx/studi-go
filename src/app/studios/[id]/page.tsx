@@ -12,6 +12,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { UserDisplay } from "@/components/UserDisplay";
 import { StudioMap } from "@/components/studio/StudioMap";
+import { getPlanLimits, normalizePlanKey } from "@/lib/plan-features";
 
 export default function StudioPageContent() {
     const params = useParams();
@@ -149,8 +150,17 @@ export default function StudioPageContent() {
                 )}
             </section>
 
-            <footer className="border-t border-border py-10 text-center text-muted-foreground text-sm bg-card/20 italic font-mono uppercase tracking-widest">
-                © 2026 {studio.storeName} // POWERED_BY_STUDI_GO
+            <footer className="border-t border-border py-10 text-center text-muted-foreground text-sm bg-card/20">
+                {/* フリープランのスタジオにはStudi-Goロゴを強制表示 */}
+                {getPlanLimits(studio.planKey).showLogo && (
+                    <div className="mb-4 flex items-center justify-center gap-2">
+                        <a href="https://studi-go.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 opacity-80 hover:opacity-100 transition-opacity">
+                            <img src="/logo-new.png" alt="Studi-Go" className="h-6 dark:invert" />
+                            <span className="text-xs font-medium tracking-wide">Powered by Studi-Go</span>
+                        </a>
+                    </div>
+                )}
+                <span className="italic font-mono uppercase tracking-widest">© 2026 {studio.storeName}</span>
             </footer>
         </main >
     );
