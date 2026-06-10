@@ -56,3 +56,7 @@ Studi-Go (1)/
 next-env.d.ts
 .firebase/
 .env*.local
+
+# leaked env dump (never commit)
+vercel-env-import.txt
+*env-import*

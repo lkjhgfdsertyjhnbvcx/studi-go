@@ -5,13 +5,13 @@ import { redirect } from 'next/navigation';
 import { getAllStudios } from '@/lib/db-studio';
 
 const ADMIN_CREDENTIALS = {
-    email: (process.env.ADMIN_EMAIL ?? "support@studi-go.com").trim(),
-    password: (process.env.ADMIN_PASSWORD ?? "spt001@stg").trim()
+    email: (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase(),
+    password: (process.env.ADMIN_PASSWORD ?? "").trim()
 };
 
-// 本番環境で環境変数が未設定の場合、警告を出す
-if (process.env.NODE_ENV === 'production' && (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD)) {
-    console.warn("[SECURITY] ADMIN_EMAIL / ADMIN_PASSWORD が環境変数に設定されていません。デフォルト値が使われます。");
+// 環境変数が未設定の場合は運営管理者ログインを無効化（デフォルト資格情報での突破を防止）
+if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
+    console.warn("[SECURITY] ADMIN_EMAIL / ADMIN_PASSWORD が未設定です。運営管理者ログインは無効化されます。");
 }
 
 export async function adminLogin(formData: FormData, isPlatformLogin: boolean = false) {
@@ -22,6 +22,10 @@ export async function adminLogin(formData: FormData, isPlatformLogin: boolean = 
 
     // 1. Platform Admin Login (Strict Mode)
     if (isPlatformLogin) {
+        // 資格情報が未設定なら拒否（fail-closed）
+        if (!ADMIN_CREDENTIALS.email || !ADMIN_CREDENTIALS.password) {
+            return { success: false, message: "運営管理者ログインは現在無効です。管理者にお問い合わせください。" };
+        }
         if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
             const cookieStore = await cookies();
             cookieStore.set('__session', JSON.stringify({ type: 'admin', token: 'platform_auth' }), {

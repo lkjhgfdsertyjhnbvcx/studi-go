@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { saveBookingToFirestore, getAllBookingsFromFirestore, getStudioByIdFromFirestore } from "@/lib/db-firestore";
+import { getStudioByIdFromFirestore } from "@/lib/db-firestore";
 import { getPlanLimits, normalizePlanKey } from "@/lib/plan-features";
+import { validateBookingAmount, createBookingAtomic } from "@/lib/booking-server";
 
 export async function POST(request: Request) {
     try {
@@ -19,47 +20,43 @@ export async function POST(request: Request) {
 
         let bookingId = existingBookingId || "";
 
-        if (!skipBooking) {
-            // ダブルブッキングチェック（分単位で正確に計算）
-            const toMinutes = (t: string) => {
-                const [h, m] = t.split(":").map(Number);
-                return h * 60 + (m || 0);
-            };
-            const allBookings = await getAllBookingsFromFirestore();
-            const conflict = allBookings.find(b => {
-                if (b.studioId !== studioId) return false;
-                if (b.roomName !== roomName) return false;
-                if (b.date !== date) return false;
-                if (b.status === "confirmed" || b.status === "pending") {
-                    const bStart = toMinutes(b.startTime);
-                    const bEnd = bStart + (b.durationHours || 1) * 60;
-                    const newStart = toMinutes(startTime);
-                    const newEnd = newStart + (durationHours || 1) * 60;
-                    return newStart < bEnd && newEnd > bStart;
-                }
-                return false;
-            });
-            if (conflict) {
-                return NextResponse.json({ error: "この時間帯はすでに予約が入っています。別の時間帯を選択してください。" }, { status: 409 });
-            }
+        // 価格改ざん対策: クライアント申告額がスタジオ設定の正規料金を下回らないか検証。
+        // 割り勘の場合は全体額(splitTotal)を、通常は totalPrice を検証対象にする。
+        const intendedTotal = Number(splitTotal ?? totalPrice);
+        const amountCheck = await validateBookingAmount({
+            studioId, roomId, roomName, date, startTime,
+            durationHours: durationHours || 1,
+            claimedTotal: intendedTotal,
+        });
+        if (!amountCheck.ok) {
+            return NextResponse.json({ error: amountCheck.message ?? "金額が正しくありません。" }, { status: 400 });
+        }
 
-            // 仮予約をFirestoreに保存
+        if (!skipBooking) {
+            // 仮予約を作成（空き確認 → 作成をトランザクションで原子化しダブルブッキングを防止）
             bookingId = crypto.randomUUID();
-            await saveBookingToFirestore({
-                id: bookingId,
-                userId: userId ?? "guest",
-                userEmail: userEmail ?? "",
-                studioId,
-                studioName,
-                roomName,
-                date,
-                startTime,
-                durationHours,
-                totalPrice: splitTotal || totalPrice,
-                status: "pending",
-                createdAt: new Date().toISOString(),
-                ...(splitMemberCount ? { splitMemberCount, splitPaidCount: 1 } : {}),
-            });
+            try {
+                await createBookingAtomic({
+                    id: bookingId,
+                    userId: userId ?? "guest",
+                    userEmail: userEmail ?? "",
+                    studioId,
+                    studioName,
+                    roomName,
+                    date,
+                    startTime,
+                    durationHours,
+                    totalPrice: splitTotal || totalPrice,
+                    status: "pending",
+                    createdAt: new Date().toISOString(),
+                    ...(splitMemberCount ? { splitMemberCount, splitPaidCount: 1 } : {}),
+                });
+            } catch (e: any) {
+                if (e?.message === "SLOT_TAKEN") {
+                    return NextResponse.json({ error: "この時間帯はすでに予約が入っています。別の時間帯を選択してください。" }, { status: 409 });
+                }
+                throw e;
+            }
         } else {
             // 割り勘2人目以降：ログイン必須チェック
             if (!userId || userId === "guest") {
@@ -115,6 +112,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ sessionId: session.id, sessionUrl: session.url, bookingId });
     } catch (error: any) {
         console.error("Stripe error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: "決済処理中にエラーが発生しました。時間をおいて再度お試しください。" }, { status: 500 });
     }
 }

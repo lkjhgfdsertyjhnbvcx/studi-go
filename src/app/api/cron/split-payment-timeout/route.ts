@@ -2,7 +2,14 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { stripe } from '@/lib/stripe'
 
-export async function GET() {
+export async function GET(request: Request) {
+    // セキュリティチェック（Vercel Cron / 許可された呼び出しのみ）
+    const CRON_SECRET = process.env.CRON_SECRET
+    const secret = request.headers.get("authorization")
+    if (!CRON_SECRET || secret !== `Bearer ${CRON_SECRET}`) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const expiredTime = new Date(Date.now() - 30 * 60 * 1000)
 
     try {
