@@ -1,17 +1,33 @@
 // 店舗セットアップ（招待リンク方式）の共通型・変換ロジック
 import { v4 as uuidv4 } from "uuid";
-import type { StudioProfile, Room, EquipmentOption } from "./db-studio";
+import type { StudioProfile } from "./db-studio";
 
 export type IntakeStatus = "pending" | "in_progress" | "submitted" | "approved";
+
+// 既存ダッシュボード（StoreDashboardContent）と同じ料金形式
+export interface IntakeTimeSlot {
+    start: string; // "10:00"
+    end: string;   // "18:00"
+    price: number;
+}
+
+export interface IntakeRoomPricing {
+    weekday: IntakeTimeSlot[];
+    saturday: IntakeTimeSlot[];
+    sundayHoliday: IntakeTimeSlot[];
+}
 
 export interface IntakeRoom {
     id: string;
     name: string;
     description?: string;
-    basePrice: number;        // 平日 1時間あたり料金
-    saturdayPrice?: number;   // 未入力なら basePrice
-    sundayPrice?: number;     // 未入力なら basePrice
+    basePrice: number;                    // 基本料金（1時間・時間帯別未設定の時間に適用）
+    startType?: "0min" | "30min";         // 予約開始タイミング
+    pricing: IntakeRoomPricing;           // 時間帯別料金（任意）
     images: string[];
+    // 旧形式（互換用・新規入力では未使用）
+    saturdayPrice?: number;
+    sundayPrice?: number;
 }
 
 export interface IntakeEquipment {
@@ -20,6 +36,21 @@ export interface IntakeEquipment {
     priceType: "per_use" | "per_hour";
     quantity?: number;
     category?: "amp" | "drums" | "mic" | "pa" | "guitar" | "bass" | "keys" | "other";
+}
+
+export interface IntakeDiscount {
+    name: string;
+    enabled: boolean;
+    discountType: "amount" | "percentage";
+    value: number;
+}
+
+export interface IntakePersonalPractice {
+    enabled: boolean;
+    maxPeople: number;
+    pricePerHour?: number;   // 未設定なら通常料金
+    advanceDays?: number;    // 何日前から予約可
+    advanceHours?: number;   // 何時間前から予約可
 }
 
 export interface IntakeData {
@@ -32,13 +63,19 @@ export interface IntakeData {
     phone: string;
     email: string;
     url?: string;
+    invoiceNumber?: string;  // インボイス登録番号（T番号）
     businessHours: { weekday: string; saturday: string; sundayHoliday: string };
+    closedDays?: string;     // 定休日
+    parkingInfo?: string;    // 駐車場情報
     appealPoint?: string;
     logoUrl?: string;
     bgImageUrl?: string;
     images: string[];
     rooms: IntakeRoom[];
     equipmentOptions: IntakeEquipment[];
+    personalPracticeSettings: IntakePersonalPractice;
+    studentDiscount: { enabled: boolean; discountType: "amount" | "percentage"; value: number };
+    otherDiscounts: IntakeDiscount[];
 }
 
 export interface StoreIntake {
@@ -56,6 +93,10 @@ export interface StoreIntake {
 
 export const INTAKE_COLLECTION = "storeIntakes";
 
+export function emptyPricing(): IntakeRoomPricing {
+    return { weekday: [], saturday: [], sundayHoliday: [] };
+}
+
 export function emptyIntakeData(label: string): IntakeData {
     return {
         storeName: label,
@@ -66,29 +107,57 @@ export function emptyIntakeData(label: string): IntakeData {
         images: [],
         rooms: [],
         equipmentOptions: [],
+        personalPracticeSettings: { enabled: true, maxPeople: 2, advanceDays: 1, advanceHours: 2 },
+        studentDiscount: { enabled: false, discountType: "amount", value: 0 },
+        otherDiscounts: [],
     };
 }
 
-function daySchedule(price: number) {
-    return { slots: [{ start: "00:00", end: "24:00", price, pricingType: "fixed" as const }] };
+/** 旧形式の下書きデータを最新形式に補完（フォーム表示用） */
+export function normalizeIntakeData(data: Partial<IntakeData> | null, label: string): IntakeData {
+    const base = emptyIntakeData(label);
+    if (!data) return base;
+    return {
+        ...base,
+        ...data,
+        businessHours: { ...base.businessHours, ...(data.businessHours || {}) },
+        images: data.images || [],
+        rooms: (data.rooms || []).map((r) => ({
+            ...r,
+            pricing: {
+                weekday: r.pricing?.weekday || [],
+                saturday: r.pricing?.saturday || (r.saturdayPrice != null ? [{ start: "00:00", end: "24:00", price: r.saturdayPrice }] : []),
+                sundayHoliday: r.pricing?.sundayHoliday || (r.sundayPrice != null ? [{ start: "00:00", end: "24:00", price: r.sundayPrice }] : []),
+            },
+            images: r.images || [],
+        })),
+        equipmentOptions: data.equipmentOptions || [],
+        personalPracticeSettings: { ...base.personalPracticeSettings, ...(data.personalPracticeSettings || {}) },
+        studentDiscount: { ...base.studentDiscount, ...(data.studentDiscount || {}) },
+        otherDiscounts: data.otherDiscounts || [],
+    };
 }
 
 /** 提出された入力内容から StudioProfile を生成（承認時に使用） */
-export function intakeToStudioProfile(data: IntakeData): StudioProfile & { isPublished: boolean } {
-    const rooms: Room[] = (data.rooms || []).map((r) => ({
+export function intakeToStudioProfile(raw: IntakeData): StudioProfile & { isPublished: boolean } {
+    const data = normalizeIntakeData(raw, raw.storeName || "");
+
+    const rooms = data.rooms.map((r) => ({
         id: r.id || uuidv4(),
         name: r.name,
         description: r.description || "",
         images: r.images || [],
         basePrice: r.basePrice || 0,
+        startType: r.startType || "0min",
+        // 既存ダッシュボード・予約画面と同じ TimeSlot[] 形式
         pricing: {
-            weekday: daySchedule(r.basePrice || 0),
-            saturday: daySchedule(r.saturdayPrice ?? r.basePrice ?? 0),
-            sundayHoliday: daySchedule(r.sundayPrice ?? r.basePrice ?? 0),
+            weekday: r.pricing.weekday,
+            saturday: r.pricing.saturday,
+            sundayHoliday: r.pricing.sundayHoliday,
         },
     }));
 
-    const equipmentOptions: EquipmentOption[] = (data.equipmentOptions || []).map((e) => ({
+    const equipmentOptions = data.equipmentOptions.map((e) => ({
         name: e.name,
         pricePerHour: e.pricePerHour || 0,
         priceType: e.priceType || "per_hour",
@@ -97,7 +166,7 @@ export function intakeToStudioProfile(data: IntakeData): StudioProfile & { isPub
         status: "active",
     }));
 
-    return {
+    const profile = {
         id: uuidv4(),
         storeName: data.storeName,
         companyName: data.companyName || "",
@@ -109,18 +178,21 @@ export function intakeToStudioProfile(data: IntakeData): StudioProfile & { isPub
         address: data.address,
         phone: data.phone,
         email: data.email,
+        invoiceNumber: data.invoiceNumber || "",
         businessHours: data.businessHours,
+        closedDays: data.closedDays || "",
+        parkingInfo: data.parkingInfo || "",
         url: data.url || "",
         appealPoint: data.appealPoint || "",
         logoUrl: data.logoUrl || "",
         bgImageUrl: data.bgImageUrl || "",
-        images: data.images || [],
+        images: data.images,
         studioCount: rooms.length,
         rooms,
         equipmentOptions,
-        studentDiscount: { enabled: false, discountType: "amount", value: 0 },
-        otherDiscounts: [],
-        personalPracticeSettings: { enabled: true, reservationWindowType: "days", reservationWindowValue: 1, maxPeople: 2 },
+        personalPracticeSettings: data.personalPracticeSettings,
+        studentDiscount: data.studentDiscount,
+        otherDiscounts: data.otherDiscounts,
         designSettings: {
             logoSize: 100,
             backgroundColor: "#000000",
@@ -130,4 +202,6 @@ export function intakeToStudioProfile(data: IntakeData): StudioProfile & { isPub
         isPublished: true, // 運営が確認・承認した時点で公開
         createdAt: new Date().toISOString(),
     };
+
+    return profile as unknown as StudioProfile & { isPublished: boolean };
 }

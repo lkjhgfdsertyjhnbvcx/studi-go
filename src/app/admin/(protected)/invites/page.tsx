@@ -183,6 +183,27 @@ export default function InvitesPage() {
                                                 <div><span className="text-muted-foreground">メール:</span> {inv.data.email || "—"}</div>
                                                 <div><span className="text-muted-foreground">URL:</span> {inv.data.url || "—"}</div>
                                                 <div><span className="text-muted-foreground">営業時間:</span> 平日 {inv.data.businessHours?.weekday} / 土 {inv.data.businessHours?.saturday} / 日祝 {inv.data.businessHours?.sundayHoliday}</div>
+                                                <div><span className="text-muted-foreground">定休日:</span> {inv.data.closedDays || "—"}</div>
+                                                <div><span className="text-muted-foreground">インボイス:</span> {inv.data.invoiceNumber || "—"}</div>
+                                                <div><span className="text-muted-foreground">駐車場:</span> {inv.data.parkingInfo || "—"}</div>
+                                                <div>
+                                                    <span className="text-muted-foreground">個人練習:</span>{" "}
+                                                    {inv.data.personalPracticeSettings?.enabled
+                                                        ? `受付（最大${inv.data.personalPracticeSettings.maxPeople}名${inv.data.personalPracticeSettings.pricePerHour ? ` / ¥${inv.data.personalPracticeSettings.pricePerHour}/h` : ""}）`
+                                                        : "なし"}
+                                                </div>
+                                                <div>
+                                                    <span className="text-muted-foreground">学割:</span>{" "}
+                                                    {inv.data.studentDiscount?.enabled
+                                                        ? (inv.data.studentDiscount.discountType === "amount" ? `¥${inv.data.studentDiscount.value}引き` : `${inv.data.studentDiscount.value}%引き`)
+                                                        : "なし"}
+                                                </div>
+                                                {(inv.data.otherDiscounts || []).length > 0 && (
+                                                    <div className="sm:col-span-2">
+                                                        <span className="text-muted-foreground">その他割引:</span>{" "}
+                                                        {inv.data.otherDiscounts.map((d) => `${d.name}（${d.discountType === "amount" ? `¥${d.value}引き` : `${d.value}%引き`}）`).join("、")}
+                                                    </div>
+                                                )}
                                                 {inv.data.appealPoint && <div className="sm:col-span-2"><span className="text-muted-foreground">アピール:</span> {inv.data.appealPoint}</div>}
                                             </div>
                                             <div className="flex gap-3 flex-wrap">
@@ -193,12 +214,23 @@ export default function InvitesPage() {
                                             <div>
                                                 <div className="font-bold text-xs mb-1">部屋（{inv.data.rooms?.length || 0}件）</div>
                                                 {(inv.data.rooms || []).map((r, i) => (
-                                                    <div key={r.id || i} className="flex flex-wrap items-center gap-2 text-xs py-1 border-t border-border/50">
-                                                        <span className="font-bold">{r.name || `部屋${i + 1}`}</span>
-                                                        <span>平日 ¥{(r.basePrice || 0).toLocaleString()}/h</span>
-                                                        {r.saturdayPrice != null && <span>土 ¥{r.saturdayPrice.toLocaleString()}/h</span>}
-                                                        {r.sundayPrice != null && <span>日祝 ¥{r.sundayPrice.toLocaleString()}/h</span>}
-                                                        {(r.images || []).map((u, j) => <img key={j} src={u} className="w-8 h-8 object-cover rounded border border-border" alt="" />)}
+                                                    <div key={r.id || i} className="text-xs py-1 border-t border-border/50 space-y-1">
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span className="font-bold">{r.name || `部屋${i + 1}`}</span>
+                                                            <span>基本 ¥{(r.basePrice || 0).toLocaleString()}/h</span>
+                                                            {r.startType === "30min" && <span className="text-muted-foreground">毎時30分開始</span>}
+                                                            {(r.images || []).map((u, j) => <img key={j} src={u} className="w-8 h-8 object-cover rounded border border-border" alt="" />)}
+                                                        </div>
+                                                        {(["weekday", "saturday", "sundayHoliday"] as const).map((dk) => {
+                                                            const slots = r.pricing?.[dk] || [];
+                                                            if (slots.length === 0) return null;
+                                                            const dl = dk === "weekday" ? "平日" : dk === "saturday" ? "土曜" : "日祝";
+                                                            return (
+                                                                <div key={dk} className="text-muted-foreground pl-2">
+                                                                    {dl}: {slots.map((s) => `${s.start}〜${s.end} ¥${(s.price || 0).toLocaleString()}/h`).join("、")}
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 ))}
                                             </div>

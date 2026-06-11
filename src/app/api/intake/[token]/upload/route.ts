@@ -1,10 +1,8 @@
 // 店舗側：招待トークンで画像アップロード（ログイン不要、トークンが鍵）
-// /api/upload と同じ検証ロジック（MIME・サイズ・UUIDファイル名）
+// Firebase Storage に保存（Vercelのローカルファイルは永続化されないため）
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 import { v4 as uuidv4 } from "uuid";
-import { initializeAdmin } from "@/lib/firebase-admin";
+import { initializeAdmin, adminStorage } from "@/lib/firebase-admin";
 import { INTAKE_COLLECTION, type StoreIntake } from "@/lib/intake";
 
 export const dynamic = "force-dynamic";
@@ -53,12 +51,19 @@ export async function POST(
         }
 
         const buffer = Buffer.from(await file.arrayBuffer());
-        const filename = `${uuidv4()}${safeExt}`;
-        const uploadDir = path.join(process.cwd(), "public", "uploads");
-        await mkdir(uploadDir, { recursive: true });
-        await writeFile(path.join(uploadDir, filename), buffer);
+        const filePath = `intakes/${token}/${uuidv4()}${safeExt}`;
+        const downloadToken = uuidv4();
 
-        return NextResponse.json({ success: true, url: `/uploads/${filename}` });
+        const bucket = adminStorage.bucket();
+        await bucket.file(filePath).save(buffer, {
+            metadata: {
+                contentType: file.type,
+                metadata: { firebaseStorageDownloadTokens: downloadToken },
+            },
+        });
+
+        const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${downloadToken}`;
+        return NextResponse.json({ success: true, url });
     } catch (error: any) {
         console.error("【招待アップロードAPIエラー】:", error.message);
         return NextResponse.json({ error: "アップロードに失敗しました。" }, { status: 500 });

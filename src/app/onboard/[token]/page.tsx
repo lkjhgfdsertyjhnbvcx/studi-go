@@ -3,7 +3,11 @@
 // 店舗セットアップ入力ページ（招待リンクからアクセス・ログイン不要）
 import React, { useEffect, useState, useCallback, use } from "react";
 import { v4 as uuidv4 } from "uuid";
-import type { IntakeData, IntakeRoom, IntakeEquipment, IntakeStatus } from "@/lib/intake";
+import {
+    normalizeIntakeData, emptyPricing,
+    type IntakeData, type IntakeRoom, type IntakeEquipment, type IntakeStatus,
+    type IntakeTimeSlot, type IntakeDiscount,
+} from "@/lib/intake";
 
 const CATEGORIES: { value: NonNullable<IntakeEquipment["category"]>; label: string }[] = [
     { value: "amp", label: "アンプ" },
@@ -15,6 +19,17 @@ const CATEGORIES: { value: NonNullable<IntakeEquipment["category"]>; label: stri
     { value: "keys", label: "鍵盤" },
     { value: "other", label: "その他" },
 ];
+
+const HOURS = Array.from({ length: 25 }, (_, i) => `${String(i).padStart(2, "0")}:00`);
+
+const DAY_TYPES: { key: keyof IntakeRoom["pricing"]; label: string }[] = [
+    { key: "weekday", label: "平日" },
+    { key: "saturday", label: "土曜" },
+    { key: "sundayHoliday", label: "日祝" },
+];
+
+const inputCls = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-60";
+const labelCls = "block text-xs font-bold text-muted-foreground mb-1";
 
 export default function OnboardPage({ params }: { params: Promise<{ token: string }> }) {
     const { token } = use(params);
@@ -31,7 +46,7 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
             .then((r) => (r.ok ? r.json() : Promise.reject()))
             .then((res) => {
                 setStatus(res.status);
-                setData(res.data);
+                setData(normalizeIntakeData(res.data, res.label || ""));
             })
             .catch(() => setNotFound(true))
             .finally(() => setLoading(false));
@@ -55,7 +70,7 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
         return json.url as string;
     };
 
-    const saveDraft = async (silent = false) => {
+    const saveDraft = async () => {
         if (!data || locked) return;
         setSaving(true);
         try {
@@ -66,7 +81,7 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
             });
             const json = await res.json();
             if (!res.ok) throw new Error(json.error);
-            if (!silent) setMessage({ type: "ok", text: "下書きを保存しました" });
+            setMessage({ type: "ok", text: "下書きを保存しました" });
             if (status === "pending") setStatus("in_progress");
         } catch (e: any) {
             setMessage({ type: "error", text: e.message || "保存に失敗しました" });
@@ -100,7 +115,7 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
     // --- 部屋操作 ---
     const addRoom = () => {
         if (!data) return;
-        update("rooms", [...data.rooms, { id: uuidv4(), name: "", basePrice: 0, images: [] }]);
+        update("rooms", [...data.rooms, { id: uuidv4(), name: "", basePrice: 0, startType: "0min", pricing: emptyPricing(), images: [] }]);
     };
     const updateRoom = (idx: number, patch: Partial<IntakeRoom>) => {
         if (!data) return;
@@ -126,6 +141,20 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
         update("equipmentOptions", data.equipmentOptions.filter((_, i) => i !== idx));
     };
 
+    // --- その他割引操作 ---
+    const addDiscount = () => {
+        if (!data) return;
+        update("otherDiscounts", [...data.otherDiscounts, { name: "", enabled: true, discountType: "amount", value: 0 }]);
+    };
+    const updateDiscount = (idx: number, patch: Partial<IntakeDiscount>) => {
+        if (!data) return;
+        update("otherDiscounts", data.otherDiscounts.map((d, i) => (i === idx ? { ...d, ...patch } : d)));
+    };
+    const removeDiscount = (idx: number) => {
+        if (!data) return;
+        update("otherDiscounts", data.otherDiscounts.filter((_, i) => i !== idx));
+    };
+
     if (loading) {
         return <div className="min-h-screen flex items-center justify-center text-muted-foreground">読み込み中...</div>;
     }
@@ -140,8 +169,8 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
         );
     }
 
-    const inputCls = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-60";
-    const labelCls = "block text-xs font-bold text-muted-foreground mb-1";
+    const pp = data.personalPracticeSettings;
+    const sd = data.studentDiscount;
 
     return (
         <div className="min-h-screen bg-background text-foreground">
@@ -213,6 +242,14 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
                             <label className={labelCls}>WebサイトURL</label>
                             <input className={inputCls} disabled={locked} value={data.url || ""} onChange={(e) => update("url", e.target.value)} placeholder="https://..." />
                         </div>
+                        <div>
+                            <label className={labelCls}>インボイス登録番号（T番号）</label>
+                            <input className={inputCls} disabled={locked} value={data.invoiceNumber || ""} onChange={(e) => update("invoiceNumber", e.target.value)} placeholder="T1234567890123" />
+                        </div>
+                        <div>
+                            <label className={labelCls}>定休日</label>
+                            <input className={inputCls} disabled={locked} value={data.closedDays || ""} onChange={(e) => update("closedDays", e.target.value)} placeholder="例: 毎週水曜・年末年始" />
+                        </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
@@ -227,6 +264,10 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
                             <label className={labelCls}>営業時間（日祝）</label>
                             <input className={inputCls} disabled={locked} value={data.businessHours.sundayHoliday} onChange={(e) => update("businessHours", { ...data.businessHours, sundayHoliday: e.target.value })} placeholder="10:00-22:00" />
                         </div>
+                    </div>
+                    <div>
+                        <label className={labelCls}>駐車場情報</label>
+                        <input className={inputCls} disabled={locked} value={data.parkingInfo || ""} onChange={(e) => update("parkingInfo", e.target.value)} placeholder="例: 専用駐車場2台あり / 近隣コインパーキングをご利用ください" />
                     </div>
                     <div>
                         <label className={labelCls}>アピールポイント（お客様向け紹介文）</label>
@@ -261,28 +302,74 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
                                     <button onClick={() => removeRoom(idx)} className="text-xs text-red-500 hover:underline">削除</button>
                                 )}
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div>
                                     <label className={labelCls}>部屋名 <span className="text-red-500">*</span></label>
                                     <input className={inputCls} disabled={locked} value={room.name} onChange={(e) => updateRoom(idx, { name: e.target.value })} placeholder="例: Aスタジオ（12畳）" />
                                 </div>
                                 <div>
-                                    <label className={labelCls}>基本料金（平日・1時間） <span className="text-red-500">*</span></label>
+                                    <label className={labelCls}>基本料金（1時間） <span className="text-red-500">*</span></label>
                                     <input className={inputCls} disabled={locked} type="number" min={0} value={room.basePrice || ""} onChange={(e) => updateRoom(idx, { basePrice: Number(e.target.value) })} placeholder="2000" />
                                 </div>
                                 <div>
-                                    <label className={labelCls}>土曜料金（1時間・空欄なら平日と同じ）</label>
-                                    <input className={inputCls} disabled={locked} type="number" min={0} value={room.saturdayPrice ?? ""} onChange={(e) => updateRoom(idx, { saturdayPrice: e.target.value === "" ? undefined : Number(e.target.value) })} />
-                                </div>
-                                <div>
-                                    <label className={labelCls}>日祝料金（1時間・空欄なら平日と同じ）</label>
-                                    <input className={inputCls} disabled={locked} type="number" min={0} value={room.sundayPrice ?? ""} onChange={(e) => updateRoom(idx, { sundayPrice: e.target.value === "" ? undefined : Number(e.target.value) })} />
+                                    <label className={labelCls}>予約開始タイミング</label>
+                                    <select className={inputCls} disabled={locked} value={room.startType || "0min"} onChange={(e) => updateRoom(idx, { startType: e.target.value as "0min" | "30min" })}>
+                                        <option value="0min">毎時00分から</option>
+                                        <option value="30min">毎時30分から</option>
+                                    </select>
                                 </div>
                             </div>
                             <div>
                                 <label className={labelCls}>部屋の説明（広さ・常設機材など）</label>
                                 <textarea className={`${inputCls} min-h-16`} disabled={locked} value={room.description || ""} onChange={(e) => updateRoom(idx, { description: e.target.value })} placeholder="12畳 / ドラムセット・ギターアンプ2台・ベースアンプ常設" />
                             </div>
+
+                            {/* 時間帯別料金 */}
+                            <div className="rounded-lg border border-border/60 p-3 space-y-3">
+                                <div className="text-xs font-bold">時間帯別料金（任意）</div>
+                                <p className="text-[11px] text-muted-foreground">
+                                    時間帯によって料金が変わる場合に設定してください。設定していない時間帯には基本料金が適用されます。
+                                </p>
+                                {DAY_TYPES.map(({ key, label }) => (
+                                    <div key={key} className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-bold text-muted-foreground">{label}</span>
+                                            {!locked && (
+                                                <button
+                                                    onClick={() => updateRoom(idx, { pricing: { ...room.pricing, [key]: [...room.pricing[key], { start: "10:00", end: "18:00", price: room.basePrice || 0 }] } })}
+                                                    className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline"
+                                                >＋ 時間帯を追加</button>
+                                            )}
+                                        </div>
+                                        {room.pricing[key].length === 0 && (
+                                            <div className="text-[11px] text-muted-foreground pl-2">終日 基本料金 ¥{(room.basePrice || 0).toLocaleString()}/h</div>
+                                        )}
+                                        {room.pricing[key].map((slot, si) => (
+                                            <div key={si} className="flex flex-wrap items-center gap-2 pl-2">
+                                                <select className={`${inputCls} !w-24`} disabled={locked} value={slot.start}
+                                                    onChange={(e) => updateRoom(idx, { pricing: { ...room.pricing, [key]: room.pricing[key].map((s, j) => j === si ? { ...s, start: e.target.value } : s) } })}>
+                                                    {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
+                                                </select>
+                                                <span className="text-xs text-muted-foreground">〜</span>
+                                                <select className={`${inputCls} !w-24`} disabled={locked} value={slot.end}
+                                                    onChange={(e) => updateRoom(idx, { pricing: { ...room.pricing, [key]: room.pricing[key].map((s, j) => j === si ? { ...s, end: e.target.value } : s) } })}>
+                                                    {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
+                                                </select>
+                                                <input className={`${inputCls} !w-28`} disabled={locked} type="number" min={0} placeholder="料金/h" value={slot.price || ""}
+                                                    onChange={(e) => updateRoom(idx, { pricing: { ...room.pricing, [key]: room.pricing[key].map((s, j) => j === si ? { ...s, price: Number(e.target.value) } : s) } })} />
+                                                <span className="text-xs text-muted-foreground">円/h</span>
+                                                {!locked && (
+                                                    <button
+                                                        onClick={() => updateRoom(idx, { pricing: { ...room.pricing, [key]: room.pricing[key].filter((_, j) => j !== si) } })}
+                                                        className="text-xs text-red-500 hover:underline"
+                                                    >削除</button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ))}
+                            </div>
+
                             <MultiImageField label="部屋の写真（複数可）" values={room.images} disabled={locked} onUpload={uploadImage} onChange={(urls) => updateRoom(idx, { images: urls })} />
                         </div>
                     ))}
@@ -335,11 +422,110 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
                     ))}
                 </section>
 
+                {/* 5. 個人練習 */}
+                <section className="rounded-xl border border-border bg-card p-6 space-y-4">
+                    <h2 className="font-bold text-lg">5. 個人練習</h2>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" className="w-4 h-4 accent-purple-600" disabled={locked} checked={pp.enabled}
+                            onChange={(e) => update("personalPracticeSettings", { ...pp, enabled: e.target.checked })} />
+                        <span className="text-sm font-bold">個人練習を受け付ける</span>
+                    </label>
+                    {pp.enabled && (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div>
+                                <label className={labelCls}>最大人数</label>
+                                <input className={inputCls} disabled={locked} type="number" min={1} value={pp.maxPeople || 2}
+                                    onChange={(e) => update("personalPracticeSettings", { ...pp, maxPeople: Number(e.target.value) })} />
+                            </div>
+                            <div>
+                                <label className={labelCls}>料金（円/h・空欄なら通常料金）</label>
+                                <input className={inputCls} disabled={locked} type="number" min={0} value={pp.pricePerHour || ""}
+                                    onChange={(e) => update("personalPracticeSettings", { ...pp, pricePerHour: Number(e.target.value) || 0 })} placeholder="通常料金" />
+                            </div>
+                            <div>
+                                <label className={labelCls}>何日前から予約可</label>
+                                <input className={inputCls} disabled={locked} type="number" min={0} value={pp.advanceDays ?? 1}
+                                    onChange={(e) => update("personalPracticeSettings", { ...pp, advanceDays: Number(e.target.value) })} />
+                            </div>
+                            <div>
+                                <label className={labelCls}>何時間前から予約可</label>
+                                <input className={inputCls} disabled={locked} type="number" min={0} max={48} value={pp.advanceHours ?? 2}
+                                    onChange={(e) => update("personalPracticeSettings", { ...pp, advanceHours: Number(e.target.value) })} />
+                            </div>
+                        </div>
+                    )}
+                </section>
+
+                {/* 6. 割引 */}
+                <section className="rounded-xl border border-border bg-card p-6 space-y-4">
+                    <h2 className="font-bold text-lg">6. 割引設定</h2>
+
+                    {/* 学割 */}
+                    <div className="rounded-lg border border-border p-4 space-y-3 bg-background/50">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" className="w-4 h-4 accent-purple-600" disabled={locked} checked={sd.enabled}
+                                onChange={(e) => update("studentDiscount", { ...sd, enabled: e.target.checked })} />
+                            <span className="text-sm font-bold">学割を設定する</span>
+                        </label>
+                        {sd.enabled && (
+                            <div className="flex flex-wrap items-end gap-3">
+                                <div>
+                                    <label className={labelCls}>割引方法</label>
+                                    <select className={`${inputCls} !w-36`} disabled={locked} value={sd.discountType}
+                                        onChange={(e) => update("studentDiscount", { ...sd, discountType: e.target.value as "amount" | "percentage" })}>
+                                        <option value="amount">金額引き（円）</option>
+                                        <option value="percentage">割合引き（%）</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className={labelCls}>{sd.discountType === "amount" ? "割引額（円/h）" : "割引率（%）"}</label>
+                                    <input className={`${inputCls} !w-28`} disabled={locked} type="number" min={0} value={sd.value || ""}
+                                        onChange={(e) => update("studentDiscount", { ...sd, value: Number(e.target.value) })} />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* その他割引 */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm font-bold">その他の割引（深夜割・早朝割など）</span>
+                            {!locked && (
+                                <button onClick={addDiscount} className="text-sm font-bold text-purple-600 dark:text-purple-400 hover:underline">＋ 割引を追加</button>
+                            )}
+                        </div>
+                        {data.otherDiscounts.map((d, idx) => (
+                            <div key={idx} className="flex flex-wrap items-end gap-3 rounded-lg border border-border p-3 bg-background/50">
+                                <div className="flex-1 min-w-36">
+                                    <label className={labelCls}>割引名</label>
+                                    <input className={inputCls} disabled={locked} value={d.name} onChange={(e) => updateDiscount(idx, { name: e.target.value })} placeholder="例: 深夜割" />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>割引方法</label>
+                                    <select className={`${inputCls} !w-36`} disabled={locked} value={d.discountType}
+                                        onChange={(e) => updateDiscount(idx, { discountType: e.target.value as "amount" | "percentage" })}>
+                                        <option value="amount">金額引き（円）</option>
+                                        <option value="percentage">割合引き（%）</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className={labelCls}>{d.discountType === "amount" ? "割引額（円）" : "割引率（%）"}</label>
+                                    <input className={`${inputCls} !w-28`} disabled={locked} type="number" min={0} value={d.value || ""}
+                                        onChange={(e) => updateDiscount(idx, { value: Number(e.target.value) })} />
+                                </div>
+                                {!locked && (
+                                    <button onClick={() => removeDiscount(idx)} className="text-xs text-red-500 hover:underline pb-2">削除</button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
                 {/* アクション */}
                 {!locked && (
                     <div className="sticky bottom-4 rounded-xl border border-border bg-card/95 backdrop-blur p-4 flex flex-col sm:flex-row gap-3 shadow-lg">
                         <button
-                            onClick={() => saveDraft()}
+                            onClick={saveDraft}
                             disabled={saving}
                             className="flex-1 rounded-lg border border-border px-4 py-3 text-sm font-bold hover:bg-accent/10 disabled:opacity-50"
                         >
