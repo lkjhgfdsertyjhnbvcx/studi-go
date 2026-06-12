@@ -57,6 +57,7 @@ export function AdminSidebar() {
         { name: '決済管理', href: '/admin/payments', icon: CreditCard },
         { name: 'キャンペーン管理', href: '/admin/campaigns', icon: Megaphone },
         { name: 'クーポン (Activa)', href: '/admin/coupons', icon: Ticket },
+        { name: 'VOWCHA連携', href: '/admin/vowcha', icon: Ticket },
         { name: '売上分析', href: '/admin/analytics', icon: BarChart3 },
         { name: 'プラン管理', href: '/admin/plans', icon: Package },
         { name: '会計帳簿', href: '/admin/ledger', icon: BookOpen },

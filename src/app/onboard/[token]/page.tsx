@@ -521,6 +521,27 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
                     </div>
                 </section>
 
+                {/* 7. VOWCHAクーポン */}
+                <section className="rounded-xl border border-border bg-card p-6 space-y-3">
+                    <h2 className="font-bold text-lg">7. VOWCHAクーポン</h2>
+                    <p className="text-sm text-muted-foreground">
+                        VOWCHA（バウチャ）は、お客様の来店促進につながるクーポン・ポイントサービスです。
+                        <span className="font-bold text-foreground">追加費用なし</span>でご利用いただけます。
+                    </p>
+                    <label className="flex items-start gap-3 cursor-pointer rounded-lg border border-purple-500/30 bg-purple-500/5 p-4">
+                        <input type="checkbox" className="w-4 h-4 mt-0.5 accent-purple-600" disabled={locked} checked={data.useActivaCoupon}
+                            onChange={(e) => update("useActivaCoupon", e.target.checked)} />
+                        <span className="text-sm">
+                            <span className="font-bold">VOWCHAクーポンを利用する</span>
+                            <span className="block text-xs text-muted-foreground mt-1">
+                                チェックすることで、VOWCHAの運営会社である株式会社ACTIVAに、サービス提供に必要な店舗情報
+                                （店舗名・住所・電話番号・メールアドレス・担当者名）を提供することに同意したものとします。
+                                利用しない場合はチェックを外してください。
+                            </span>
+                        </span>
+                    </label>
+                </section>
+
                 {/* アクション */}
                 {!locked && (
                     <div className="sticky bottom-4 rounded-xl border border-border bg-card/95 backdrop-blur p-4 flex flex-col sm:flex-row gap-3 shadow-lg">

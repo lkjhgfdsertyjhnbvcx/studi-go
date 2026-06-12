@@ -76,6 +76,8 @@ export interface IntakeData {
     personalPracticeSettings: IntakePersonalPractice;
     studentDiscount: { enabled: boolean; discountType: "amount" | "percentage"; value: number };
     otherDiscounts: IntakeDiscount[];
+    // VOWCHAクーポン（ACTIVA社への店舗情報提供に同意）。デフォルトON・任意で外せる
+    useActivaCoupon: boolean;
 }
 
 export interface StoreIntake {
@@ -110,6 +112,7 @@ export function emptyIntakeData(label: string): IntakeData {
         personalPracticeSettings: { enabled: true, maxPeople: 2, advanceDays: 1, advanceHours: 2 },
         studentDiscount: { enabled: false, discountType: "amount", value: 0 },
         otherDiscounts: [],
+        useActivaCoupon: true,
     };
 }
 
@@ -135,6 +138,7 @@ export function normalizeIntakeData(data: Partial<IntakeData> | null, label: str
         personalPracticeSettings: { ...base.personalPracticeSettings, ...(data.personalPracticeSettings || {}) },
         studentDiscount: { ...base.studentDiscount, ...(data.studentDiscount || {}) },
         otherDiscounts: data.otherDiscounts || [],
+        useActivaCoupon: data.useActivaCoupon !== false, // 未設定はON扱い
     };
 }
 
@@ -193,6 +197,7 @@ export function intakeToStudioProfile(raw: IntakeData): StudioProfile & { isPubl
         personalPracticeSettings: data.personalPracticeSettings,
         studentDiscount: data.studentDiscount,
         otherDiscounts: data.otherDiscounts,
+        useActivaCoupon: data.useActivaCoupon !== false,
         designSettings: {
             logoSize: 100,
             backgroundColor: "#000000",

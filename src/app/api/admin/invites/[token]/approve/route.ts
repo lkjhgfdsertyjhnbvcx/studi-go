@@ -2,7 +2,9 @@
 import { NextResponse } from "next/server";
 import { initializeAdmin } from "@/lib/firebase-admin";
 import { requirePlatformAdmin } from "@/lib/api-auth";
+import { v4 as uuidv4 } from "uuid";
 import { INTAKE_COLLECTION, intakeToStudioProfile, type StoreIntake } from "@/lib/intake";
+import { VOWCHA_REFERRALS, type VowchaReferral } from "@/lib/vowcha";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +37,28 @@ export async function POST(
         const now = new Date().toISOString();
 
         await db.collection("studios").doc(studio.id).set(studio);
+
+        // VOWCHA同意済みなら紹介料管理（vowchaReferrals）に登録
+        if ((studio as any).useActivaCoupon === true) {
+            const referralId = uuidv4();
+            const referral: VowchaReferral = {
+                id: referralId,
+                studioId: studio.id,
+                storeName: studio.storeName,
+                postalCode: studio.postalCode || "",
+                address: studio.address || "",
+                phone: studio.phone || "",
+                email: studio.email || "",
+                contactPerson: studio.contactPerson || "",
+                consentAt: intake.submittedAt || now,
+                source: "intake",
+                createdAt: now,
+                exportedAt: null,
+                invoiceId: null,
+            };
+            await db.collection(VOWCHA_REFERRALS).doc(referralId).set(referral);
+        }
+
         await ref.update({
             status: "approved",
             approvedAt: now,
