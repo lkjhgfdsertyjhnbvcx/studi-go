@@ -15,6 +15,8 @@ interface Studio {
   bgColor?: string; bgImageUrl?: string; bgOpacity?: number; textColor?: string; logoSize?: number; appealPoint?: string; images?: string[];
   businessHours?: { weekday: string; saturday: string; sundayHoliday: string };
   rooms?: Room[]; closedDays?: string; parkingInfo?: string; reservationLeadDays?: number;
+  holidayPeriods?: Array<{ name: string; start: string; end: string }>;
+  nightPacks?: Array<{ name: string; enabled: boolean; startHour: number; endHour: number; price: number; availableDays: string[] }>;
   equipmentOptions?: EquipmentOption[];
   designSettings?: { backgroundColor?: string; backgroundType?: string; backgroundImageUrl?: string; logoSize?: number; showMap?: boolean };
   personalPracticeSettings?: { enabled: boolean; maxPeople: number; pricePerHour?: number };
@@ -47,6 +49,23 @@ function parseHours(hoursStr?: string): { open: number; close: number } {
   const match = hoursStr.match(/(\d{1,2}):?(\d{0,2})\s*[-~〜]\s*(\d{1,2}):?(\d{0,2})/);
   if (!match) return { open: 10, close: 22 };
   return { open: parseInt(match[1]), close: parseInt(match[3]) };
+}
+
+function isHolidayDate(date: Date, holidayPeriods?: Array<{ name: string; start: string; end: string }>): string | null {
+  if (!holidayPeriods) return null;
+  const ds = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  for (const hp of holidayPeriods) {
+    if (hp.start && hp.end && ds >= hp.start && ds <= hp.end) return hp.name || "休業日";
+  }
+  return null;
+}
+
+function isDiscountAvailable(discount: any, date: Date | null, startHour: number | null): boolean {
+  if (!discount?.timeRestriction?.enabled || !date || startHour === null) return true;
+  const dayType = getDayType(date);
+  const dayRule = discount.timeRestriction[dayType];
+  if (!dayRule) return false; // day not enabled = not available
+  return startHour >= dayRule.start && startHour < dayRule.end;
 }
 
 function formatTime(t: number) {
@@ -83,6 +102,7 @@ export default function StudioDetailPage() {
   const [selectedOtherDiscounts, setSelectedOtherDiscounts] = useState<number[]>([]);
   const [isPersonalPractice, setIsPersonalPractice] = useState(false);
   const [selectedPPDiscounts, setSelectedPPDiscounts] = useState<number[]>([]);
+  const [selectedNightPack, setSelectedNightPack] = useState<number | null>(null);
 
   useEffect(() => {
     try {
@@ -185,7 +205,9 @@ export default function StudioDetailPage() {
     }, 0);
   };
 
-  const subtotal = calcRoomPrice() + calcOptionPrice();
+  const activeNightPack = selectedNightPack !== null ? studio?.nightPacks?.[selectedNightPack] : null;
+  const roomPrice = activeNightPack?.enabled ? activeNightPack.price : calcRoomPrice();
+  const subtotal = roomPrice + calcOptionPrice();
   const calcDiscount = (value: number, discountType: string, billingUnit?: string) => {
     const multiplier = billingUnit === "per_hour" ? selectedDuration : 1;
     return discountType === "amount" ? value * multiplier : Math.round(subtotal * value / 100);
@@ -291,7 +313,8 @@ export default function StudioDetailPage() {
             const date = new Date(year, month, day);
             const isPast = date < today;
             const isTooFar = date > maxDate;
-            const isDisabled = isPast || isTooFar;
+            const holidayName = isHolidayDate(date, studio?.holidayPeriods);
+            const isDisabled = isPast || isTooFar || !!holidayName;
             const isSelected = selectedDate?.toDateString() === date.toDateString();
             const isToday = date.toDateString() === today.toDateString();
             const dow = date.getDay();
@@ -321,7 +344,8 @@ export default function StudioDetailPage() {
           const isSelected = selectedDate?.toDateString() === d.toDateString();
           const isPast = d < today;
           const isTooFar = d > maxDate;
-          const isDisabled = isPast || isTooFar;
+          const weekHoliday = isHolidayDate(d, studio?.holidayPeriods);
+          const isDisabled = isPast || isTooFar || !!weekHoliday;
           const isToday = d.toDateString() === today.toDateString();
           return (
             <button key={i} disabled={isDisabled}
@@ -686,6 +710,36 @@ export default function StudioDetailPage() {
                           </div>
                         );
                       })}
+                      {studio.nightPacks && studio.nightPacks.filter(np => np.enabled).length > 0 && selectedDate && (
+                        <div className="border-t border-gray-700 pt-2 mt-2 space-y-2">
+                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">パック料金</p>
+                          {studio.nightPacks.map((np, i) => {
+                            if (!np.enabled) return null;
+                            const dayType = getDayType(selectedDate);
+                            if (!np.availableDays?.includes(dayType)) return null;
+                            const normalPrice = calcRoomPrice();
+                            const saving = normalPrice - np.price;
+                            return (
+                              <label key={i} className="flex items-center justify-between cursor-pointer">
+                                <div className="flex items-center gap-2">
+                                  <input type="radio" name="nightPack" checked={selectedNightPack === i} onChange={() => setSelectedNightPack(selectedNightPack === i ? null : i)} className="w-4 h-4 accent-purple-600" />
+                                  <div>
+                                    <span className="text-sm font-bold text-foreground">{np.name}</span>
+                                    <span className="text-[10px] text-muted-foreground ml-2">{np.startHour}:00〜{np.endHour}:00</span>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-xs font-bold text-purple-300">¥{np.price.toLocaleString()}</span>
+                                  {saving > 0 && <span className="text-[10px] text-green-400 ml-1">(¥{saving.toLocaleString()}お得)</span>}
+                                </div>
+                              </label>
+                            );
+                          })}
+                          {selectedNightPack !== null && (
+                            <button onClick={() => setSelectedNightPack(null)} className="text-[10px] text-muted-foreground underline">パックを解除</button>
+                          )}
+                        </div>
+                      )}
                       {studio.personalPracticeSettings?.enabled && (
                         <div className="border-t border-gray-700 pt-2 mt-2">
                           <label className="flex items-center gap-2 cursor-pointer">
@@ -729,12 +783,16 @@ export default function StudioDetailPage() {
                               </span>
                             </label>
                           )}
-                          {studio.otherDiscounts?.map((d, i) => d.enabled && (
-                            <label key={i} className="flex items-center justify-between cursor-pointer">
+                          {studio.otherDiscounts?.map((d, i) => {
+                            if (!d.enabled) return null;
+                            const available = isDiscountAvailable(d, selectedDate, selectedStart);
+                            return (
+                            <label key={i} className={`flex items-center justify-between ${available ? "cursor-pointer" : "opacity-40 cursor-not-allowed"}`}>
                               <div className="flex items-center gap-2">
                                 <input
                                   type="checkbox"
-                                  checked={selectedOtherDiscounts.includes(i)}
+                                  disabled={!available}
+                                  checked={selectedOtherDiscounts.includes(i) && available}
                                   onChange={e => setSelectedOtherDiscounts(prev => e.target.checked ? [...prev, i] : prev.filter(x => x !== i))}
                                   className="w-4 h-4 accent-purple-600 rounded"
                                 />
@@ -744,7 +802,8 @@ export default function StudioDetailPage() {
                                 -{d.value}{d.discountType === "percentage" ? "%" : "円"}{d.billingUnit === "per_hour" ? "/h" : "/回"}
                               </span>
                             </label>
-                          ))}
+                            );
+                          })}
                           {isStudentDiscount && (
                             <p className="text-[10px] text-muted-foreground ml-6">※当日、学生証の提示をお願いする場合があります</p>
                           )}

@@ -62,7 +62,8 @@ interface Room {
 interface StaffMember { id: string; name: string; email: string; password?: string; role: "admin" | "staff"; createdAt: string; }
 interface BlacklistEntry { userId: string; userName: string; email?: string; reason: string; createdAt: string; }
 interface EquipmentOption { name: string; pricePerHour: number; priceType?: "per_use" | "per_hour"; imageUrl?: string; quantity?: number; category?: "amp" | "drums" | "mic" | "pa" | "guitar" | "bass" | "keys" | "other"; status?: "active" | "maintenance" | "broken"; assignedRoom?: string; }
-interface Discount { name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: "per_use" | "per_hour"; }
+interface TimeRestriction { enabled: boolean; weekday?: { start: number; end: number }; saturday?: { start: number; end: number }; sundayHoliday?: { start: number; end: number }; }
+interface Discount { name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: "per_use" | "per_hour"; timeRestriction?: TimeRestriction; }
 interface Store {
     id: string; storeName: string; companyName?: string; representative?: string; email?: string;
     postalCode?: string; address?: string; phone?: string; invoiceNumber?: string; closedDays?: string;
@@ -74,6 +75,8 @@ interface Store {
     studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: "per_use" | "per_hour" };
     otherDiscounts?: Discount[];
     personalPracticeDiscounts?: Discount[];
+    holidayPeriods?: Array<{ name: string; start: string; end: string }>;
+    nightPacks?: Array<{ name: string; enabled: boolean; startHour: number; endHour: number; price: number; availableDays: string[] }>;
     rooms?: Room[]; equipmentOptions?: EquipmentOption[];
     staff?: StaffMember[]; blacklist?: BlacklistEntry[]; monthlyRevenueTarget?: number;
     isPublished?: boolean;
@@ -162,7 +165,7 @@ export default function StoreDashboard({ studioId: propStudioId, isAdmin = false
             })
             .then(r => r?.json())
             .then(b => { if (b && !b.error) setBookings(b); });
-        fetch("/api/users").then(r => r.json()).then(u => { if (!u.error) setCustomers(u); });
+        fetch(`/api/users?storeId=${storeId}`).then(r => r.json()).then(u => { if (!u.error) setCustomers(u); });
     }, []);
 
     const notify = (msg: string) => {
@@ -315,7 +318,7 @@ export default function StoreDashboard({ studioId: propStudioId, isAdmin = false
                         {centerTab === "blocked" && <BlockedSlotsTab storeId={store.id} rooms={store.rooms || []} blockedSlots={blockedSlots} setBlockedSlots={setBlockedSlots} />}
                         {centerTab === "rentals" && <EquipmentRentalsTab storeId={store.id} rooms={store.rooms || []} equipmentOptions={store.equipmentOptions || []} rentals={equipmentRentals} setRentals={setEquipmentRentals} />}
                         {centerTab === "analytics" && <AnalyticsTab bookings={storeBookings} store={store} setStore={setStore} planKey={store.planKey} />}
-                        {centerTab === "customers" && <CustomersTab customers={customers} bookings={storeBookings} planKey={store.planKey} storeId={store.id} onRefresh={() => fetch("/api/users").then(r => r.json()).then(u => { if (!u.error) setCustomers(u); })} />}
+                        {centerTab === "customers" && <CustomersTab customers={customers} bookings={storeBookings} planKey={store.planKey} storeId={store.id} onRefresh={() => fetch(`/api/users?storeId=${store.id}`).then(r => r.json()).then(u => { if (!u.error) setCustomers(u); })} />}
                         {centerTab === "cancellations" && <CancellationsTab bookings={storeBookings} setBookings={setBookings} allBookings={bookings} />}
                     </div>
                 </div>
@@ -403,6 +406,24 @@ function ProfileTab({ store, setStore, notify }: any) {
                 <p className="text-sm font-bold text-muted-foreground">{store.email || "未設定"}</p>
             </div>
             <Field label="定休日" value={store.closedDays} onChange={v => u("closedDays", v)} placeholder="例：毎週月曜日" />
+            <div className="mt-4">
+                <p className="text-xs font-black text-foreground mb-2">臨時休業・長期休暇</p>
+                <p className="text-[10px] text-muted-foreground mb-3">年末年始・GW・お盆休みなどの期間を設定すると、予約カレンダーで選択不可になります</p>
+                <div className="space-y-2">
+                    {(store.holidayPeriods || []).map((hp: any, idx: number) => (
+                        <div key={idx} className="flex gap-2 items-center flex-wrap bg-accent/10 rounded-xl p-3">
+                            <input className="flex-1 min-w-[100px] p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none" placeholder="名称（年末年始など）" value={hp.name} onChange={e => { const arr = [...(store.holidayPeriods || [])]; arr[idx] = { ...arr[idx], name: e.target.value }; u("holidayPeriods", arr); }} />
+                            <input type="date" className="p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none" value={hp.start} onChange={e => { const arr = [...(store.holidayPeriods || [])]; arr[idx] = { ...arr[idx], start: e.target.value }; u("holidayPeriods", arr); }} />
+                            <span className="text-xs text-muted-foreground">〜</span>
+                            <input type="date" className="p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none" value={hp.end} onChange={e => { const arr = [...(store.holidayPeriods || [])]; arr[idx] = { ...arr[idx], end: e.target.value }; u("holidayPeriods", arr); }} />
+                            <button onClick={() => { const arr = [...(store.holidayPeriods || [])]; arr.splice(idx, 1); u("holidayPeriods", arr); }} className="text-red-400 px-2 text-sm">✕</button>
+                        </div>
+                    ))}
+                    <button onClick={() => u("holidayPeriods", [...(store.holidayPeriods || []), { name: "", start: "", end: "" }])} className="w-full py-2 border border-dashed border-border rounded-xl text-xs font-black text-muted-foreground hover:text-foreground transition-all">
+                        + 休業期間を追加
+                    </button>
+                </div>
+            </div>
             <Field label="インボイス番号（T-）" value={store.invoiceNumber} onChange={v => u("invoiceNumber", v)} placeholder="T1234567890123" />
         </Section>
     );
@@ -626,6 +647,7 @@ function SettingsTab({ store, setStore }: any) {
                                 </select>
                                 <Toggle label="有効" value={d.enabled} onChange={v => uDiscount(idx, "enabled", v)} />
                             </div>
+                            <TimeRestrictionEditor restriction={d.timeRestriction} onChange={tr => uDiscount(idx, "timeRestriction", tr)} />
                         </div>
                     ))}
                     <button onClick={() => setStore({ ...store, otherDiscounts: [...(store.otherDiscounts || []), { name: "", enabled: true, discountType: "amount", value: 0 }] })} className="w-full py-2 border border-dashed border-border rounded-xl text-xs font-black text-muted-foreground hover:text-foreground transition-all">
@@ -668,7 +690,98 @@ function SettingsTab({ store, setStore }: any) {
                     </button>
                 </div>
             </Subsection>
+            <Subsection title="パック料金設定">
+                <p className="text-[10px] text-muted-foreground mb-2">オールナイトパックなど、時間帯を一括料金で提供できます</p>
+                <div className="space-y-3">
+                    {(store.nightPacks || []).map((np: any, idx: number) => {
+                        const uNP = (key: string, val: any) => {
+                            const arr = [...(store.nightPacks || [])];
+                            arr[idx] = { ...arr[idx], [key]: val };
+                            u("nightPacks", arr);
+                        };
+                        const toggleDay = (day: string) => {
+                            const days = np.availableDays || ["weekday", "saturday", "sundayHoliday"];
+                            uNP("availableDays", days.includes(day) ? days.filter((d: string) => d !== day) : [...days, day]);
+                        };
+                        return (
+                            <div key={idx} className="bg-accent/10/50 rounded-xl p-3 space-y-2">
+                                <div className="flex gap-2">
+                                    <input className="flex-1 p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none" placeholder="パック名（オールナイトなど）" value={np.name} onChange={e => uNP("name", e.target.value)} />
+                                    <button onClick={() => { const arr = [...(store.nightPacks || [])]; arr.splice(idx, 1); u("nightPacks", arr); }} className="text-red-400 px-2">✕</button>
+                                </div>
+                                <div className="flex gap-2 items-center flex-wrap">
+                                    <input type="number" min={0} max={30} className="w-14 p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none text-center" value={np.startHour} onChange={e => uNP("startHour", parseInt(e.target.value))} />
+                                    <span className="text-xs text-muted-foreground">時 〜</span>
+                                    <input type="number" min={0} max={30} className="w-14 p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none text-center" value={np.endHour} onChange={e => uNP("endHour", parseInt(e.target.value))} />
+                                    <span className="text-xs text-muted-foreground">時</span>
+                                    <input type="number" min={0} step={500} className="w-24 p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none text-center" value={np.price} onChange={e => uNP("price", parseInt(e.target.value))} />
+                                    <span className="text-xs text-muted-foreground">円</span>
+                                    <Toggle label="有効" value={np.enabled} onChange={v => uNP("enabled", v)} />
+                                </div>
+                                <div className="flex gap-2 items-center">
+                                    <span className="text-[10px] text-muted-foreground">適用曜日:</span>
+                                    {[{ key: "weekday", label: "平日" }, { key: "saturday", label: "土曜" }, { key: "sundayHoliday", label: "日祝" }].map(({ key, label }) => (
+                                        <label key={key} className="flex items-center gap-1 cursor-pointer">
+                                            <input type="checkbox" checked={(np.availableDays || ["weekday", "saturday", "sundayHoliday"]).includes(key)} onChange={() => toggleDay(key)} className="w-3 h-3 accent-purple-600" />
+                                            <span className="text-[10px] font-bold text-muted-foreground">{label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
+                    <button onClick={() => u("nightPacks", [...(store.nightPacks || []), { name: "オールナイトパック", enabled: true, startHour: 23, endHour: 6, price: 8000, availableDays: ["weekday", "saturday", "sundayHoliday"] }])} className="w-full py-2 border border-dashed border-border rounded-xl text-xs font-black text-muted-foreground hover:text-foreground transition-all">
+                        + パック料金を追加
+                    </button>
+                </div>
+            </Subsection>
         </Section>
+    );
+}
+
+// ===== 時間帯制限エディタ =====
+function TimeRestrictionEditor({ restriction, onChange }: { restriction?: TimeRestriction; onChange: (tr: TimeRestriction) => void }) {
+    const enabled = restriction?.enabled ?? false;
+    const toggle = () => onChange({ ...restriction, enabled: !enabled } as TimeRestriction);
+    const setDay = (day: "weekday" | "saturday" | "sundayHoliday", field: "start" | "end", val: number) => {
+        const current = restriction?.[day] || { start: 10, end: 22 };
+        onChange({ ...restriction, enabled: true, [day]: { ...current, [field]: val } });
+    };
+    const dayLabels = [
+        { key: "weekday" as const, label: "平日" },
+        { key: "saturday" as const, label: "土曜" },
+        { key: "sundayHoliday" as const, label: "日祝" },
+    ];
+    return (
+        <div className="mt-1">
+            <Toggle label="時間帯制限" value={enabled} onChange={toggle} />
+            {enabled && (
+                <div className="ml-4 mt-2 space-y-1">
+                    {dayLabels.map(({ key, label }) => {
+                        const dayEnabled = !!restriction?.[key];
+                        return (
+                            <div key={key} className="flex items-center gap-2 flex-wrap">
+                                <label className="flex items-center gap-1 cursor-pointer">
+                                    <input type="checkbox" checked={dayEnabled} onChange={e => {
+                                        if (e.target.checked) setDay(key, "start", 10);
+                                        else { const { [key]: _, ...rest } = restriction || {}; onChange({ ...rest, enabled: true } as TimeRestriction); }
+                                    }} className="w-3 h-3 accent-purple-600" />
+                                    <span className="text-[10px] font-bold text-muted-foreground w-6">{label}</span>
+                                </label>
+                                {dayEnabled && (
+                                    <>
+                                        <input type="number" min={0} max={23} className="w-12 p-1 bg-accent/10 border border-border rounded text-[10px] font-bold text-foreground outline-none text-center" value={restriction?.[key]?.start ?? 10} onChange={e => setDay(key, "start", parseInt(e.target.value))} />
+                                        <span className="text-[10px] text-muted-foreground">〜</span>
+                                        <input type="number" min={1} max={30} className="w-12 p-1 bg-accent/10 border border-border rounded text-[10px] font-bold text-foreground outline-none text-center" value={restriction?.[key]?.end ?? 22} onChange={e => setDay(key, "end", parseInt(e.target.value))} />
+                                        <span className="text-[10px] text-muted-foreground">時</span>
+                                    </>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
     );
 }
 
