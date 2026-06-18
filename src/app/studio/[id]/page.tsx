@@ -17,6 +17,10 @@ interface Studio {
   rooms?: Room[]; closedDays?: string; parkingInfo?: string; reservationLeadDays?: number;
   equipmentOptions?: EquipmentOption[];
   designSettings?: { backgroundColor?: string; backgroundType?: string; backgroundImageUrl?: string; logoSize?: number; showMap?: boolean };
+  personalPracticeSettings?: { enabled: boolean; maxPeople: number; pricePerHour?: number };
+  studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string };
+  otherDiscounts?: Array<{ name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string }>;
+  personalPracticeDiscounts?: Array<{ name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string }>;
 }
 
 function getDayType(date: Date): "weekday" | "saturday" | "sundayHoliday" {
@@ -77,6 +81,8 @@ export default function StudioDetailPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isStudentDiscount, setIsStudentDiscount] = useState(false);
   const [selectedOtherDiscounts, setSelectedOtherDiscounts] = useState<number[]>([]);
+  const [isPersonalPractice, setIsPersonalPractice] = useState(false);
+  const [selectedPPDiscounts, setSelectedPPDiscounts] = useState<number[]>([]);
 
   useEffect(() => {
     try {
@@ -180,17 +186,24 @@ export default function StudioDetailPage() {
   };
 
   const subtotal = calcRoomPrice() + calcOptionPrice();
+  const calcDiscount = (value: number, discountType: string, billingUnit?: string) => {
+    const multiplier = billingUnit === "per_hour" ? selectedDuration : 1;
+    return discountType === "amount" ? value * multiplier : Math.round(subtotal * value / 100);
+  };
   const studentDiscountAmount = (isStudentDiscount && studio?.studentDiscount?.enabled)
-    ? (studio.studentDiscount.discountType === "amount"
-        ? studio.studentDiscount.value
-        : Math.round(subtotal * studio.studentDiscount.value / 100))
+    ? calcDiscount(studio.studentDiscount.value, studio.studentDiscount.discountType, studio.studentDiscount.billingUnit)
     : 0;
   const otherDiscountAmount = selectedOtherDiscounts.reduce((sum, idx) => {
     const d = studio?.otherDiscounts?.[idx];
     if (!d || !d.enabled) return sum;
-    return sum + (d.discountType === "amount" ? d.value : Math.round(subtotal * d.value / 100));
+    return sum + calcDiscount(d.value, d.discountType, d.billingUnit);
   }, 0);
-  const totalPrice = Math.max(0, subtotal - studentDiscountAmount - otherDiscountAmount);
+  const ppDiscountAmount = isPersonalPractice ? selectedPPDiscounts.reduce((sum, idx) => {
+    const d = studio?.personalPracticeDiscounts?.[idx];
+    if (!d || !d.enabled) return sum;
+    return sum + calcDiscount(d.value, d.discountType, d.billingUnit);
+  }, 0) : 0;
+  const totalPrice = Math.max(0, subtotal - studentDiscountAmount - otherDiscountAmount - ppDiscountAmount);
 
   const toggleOption = (idx: number) => {
     setSelectedOptions(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]);
@@ -673,6 +686,30 @@ export default function StudioDetailPage() {
                           </div>
                         );
                       })}
+                      {studio.personalPracticeSettings?.enabled && (
+                        <div className="border-t border-gray-700 pt-2 mt-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" checked={isPersonalPractice} onChange={e => { setIsPersonalPractice(e.target.checked); if (!e.target.checked) setSelectedPPDiscounts([]); }} className="w-4 h-4 accent-purple-600 rounded" />
+                            <span className="text-sm font-bold text-foreground">個人練習で利用する</span>
+                          </label>
+                          {isPersonalPractice && (studio as any).personalPracticeDiscounts?.filter((d: any) => d.enabled).length > 0 && (
+                            <div className="mt-2 ml-6 space-y-1">
+                              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">個人練習割引</p>
+                              {(studio as any).personalPracticeDiscounts?.map((d: any, i: number) => d.enabled && (
+                                <label key={i} className="flex items-center justify-between cursor-pointer">
+                                  <div className="flex items-center gap-2">
+                                    <input type="checkbox" checked={selectedPPDiscounts.includes(i)} onChange={e => setSelectedPPDiscounts(prev => e.target.checked ? [...prev, i] : prev.filter(x => x !== i))} className="w-4 h-4 accent-purple-600 rounded" />
+                                    <span className="text-sm font-bold text-foreground">{d.name}</span>
+                                  </div>
+                                  <span className="text-xs font-bold text-purple-300">
+                                    -{d.value}{d.discountType === "percentage" ? "%" : "円"}{d.billingUnit === "per_hour" ? "/h" : "/回"}
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {(studio.studentDiscount?.enabled || (studio.otherDiscounts && studio.otherDiscounts.filter(d => d.enabled).length > 0)) && (
                         <div className="border-t border-gray-700 pt-2 mt-2 space-y-2">
                           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">割引</p>
@@ -687,8 +724,8 @@ export default function StudioDetailPage() {
                                 />
                                 <span className="text-sm font-bold text-foreground">学割</span>
                               </div>
-                              <span className="text-xs font-bold text-green-400">
-                                -{studio.studentDiscount.value}{studio.studentDiscount.discountType === "percentage" ? "%" : "円"}
+                              <span className="text-xs font-bold text-purple-300">
+                                -{studio.studentDiscount.value}{studio.studentDiscount.discountType === "percentage" ? "%" : "円"}{studio.studentDiscount.billingUnit === "per_hour" ? "/h" : "/回"}
                               </span>
                             </label>
                           )}
@@ -703,8 +740,8 @@ export default function StudioDetailPage() {
                                 />
                                 <span className="text-sm font-bold text-foreground">{d.name}</span>
                               </div>
-                              <span className="text-xs font-bold text-green-400">
-                                -{d.value}{d.discountType === "percentage" ? "%" : "円"}
+                              <span className="text-xs font-bold text-purple-300">
+                                -{d.value}{d.discountType === "percentage" ? "%" : "円"}{d.billingUnit === "per_hour" ? "/h" : "/回"}
                               </span>
                             </label>
                           ))}

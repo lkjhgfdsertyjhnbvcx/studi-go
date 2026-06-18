@@ -62,7 +62,7 @@ interface Room {
 interface StaffMember { id: string; name: string; email: string; password?: string; role: "admin" | "staff"; createdAt: string; }
 interface BlacklistEntry { userId: string; userName: string; email?: string; reason: string; createdAt: string; }
 interface EquipmentOption { name: string; pricePerHour: number; priceType?: "per_use" | "per_hour"; imageUrl?: string; quantity?: number; category?: "amp" | "drums" | "mic" | "pa" | "guitar" | "bass" | "keys" | "other"; status?: "active" | "maintenance" | "broken"; assignedRoom?: string; }
-interface Discount { name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; }
+interface Discount { name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: "per_use" | "per_hour"; }
 interface Store {
     id: string; storeName: string; companyName?: string; representative?: string; email?: string;
     postalCode?: string; address?: string; phone?: string; invoiceNumber?: string; closedDays?: string;
@@ -71,8 +71,10 @@ interface Store {
     businessHours?: { weekday: string; saturday: string; sundayHoliday: string };
     reservationLeadDays?: number;
     personalPracticeSettings?: { enabled: boolean; maxPeople: number; advanceDays?: number; advanceHours?: number; pricePerHour?: number; };
-    studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number };
-    otherDiscounts?: Discount[]; rooms?: Room[]; equipmentOptions?: EquipmentOption[];
+    studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: "per_use" | "per_hour" };
+    otherDiscounts?: Discount[];
+    personalPracticeDiscounts?: Discount[];
+    rooms?: Room[]; equipmentOptions?: EquipmentOption[];
     staff?: StaffMember[]; blacklist?: BlacklistEntry[]; monthlyRevenueTarget?: number;
     isPublished?: boolean;
     updatedAt?: string;
@@ -149,6 +151,7 @@ export default function StoreDashboard({ studioId: propStudioId, isAdmin = false
                     blacklist: data.blacklist || [],
                     equipmentOptions: data.equipmentOptions || [],
                     otherDiscounts: data.otherDiscounts || [],
+                    personalPracticeDiscounts: data.personalPracticeDiscounts || [],
                     images: data.images || [],
                 });
                 // ブロック枠を取得
@@ -592,11 +595,15 @@ function SettingsTab({ store, setStore }: any) {
             <Subsection title="割引設定">
                 <Toggle label="学割" value={store.studentDiscount?.enabled ?? false} onChange={v => u("studentDiscount", { ...store.studentDiscount, enabled: v })} />
                 {store.studentDiscount?.enabled && (
-                    <div className="ml-4 flex gap-2 items-center mt-2">
+                    <div className="ml-4 flex gap-2 items-center mt-2 flex-wrap">
                         <input type="number" className="w-20 p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none text-center" value={store.studentDiscount?.value || 0} onChange={e => u("studentDiscount", { ...store.studentDiscount, value: parseInt(e.target.value) })} />
                         <select className="p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none" value={store.studentDiscount?.discountType || "amount"} onChange={e => u("studentDiscount", { ...store.studentDiscount, discountType: e.target.value })}>
                             <option value="amount">円引き</option>
                             <option value="percentage">%割引</option>
+                        </select>
+                        <select className="p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none" value={(store.studentDiscount as any)?.billingUnit || "per_use"} onChange={e => u("studentDiscount", { ...store.studentDiscount, billingUnit: e.target.value })}>
+                            <option value="per_use">1回あたり</option>
+                            <option value="per_hour">1時間あたり</option>
                         </select>
                     </div>
                 )}
@@ -607,11 +614,15 @@ function SettingsTab({ store, setStore }: any) {
                                 <input className="flex-1 p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none" placeholder="割引名（早割など）" value={d.name} onChange={e => uDiscount(idx, "name", e.target.value)} />
                                 <button onClick={() => { const arr = [...(store.otherDiscounts || [])]; arr.splice(idx, 1); setStore({ ...store, otherDiscounts: arr }); }} className="text-red-400 px-2">✕</button>
                             </div>
-                            <div className="flex gap-2 items-center">
+                            <div className="flex gap-2 items-center flex-wrap">
                                 <input type="number" className="w-20 p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none text-center" value={d.value} onChange={e => uDiscount(idx, "value", parseInt(e.target.value))} />
-                                <select className="flex-1 p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none" value={d.discountType} onChange={e => uDiscount(idx, "discountType", e.target.value)}>
+                                <select className="p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none" value={d.discountType} onChange={e => uDiscount(idx, "discountType", e.target.value)}>
                                     <option value="amount">円引き</option>
                                     <option value="percentage">%割引</option>
+                                </select>
+                                <select className="p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none" value={d.billingUnit || "per_use"} onChange={e => uDiscount(idx, "billingUnit", e.target.value)}>
+                                    <option value="per_use">1回あたり</option>
+                                    <option value="per_hour">1時間あたり</option>
                                 </select>
                                 <Toggle label="有効" value={d.enabled} onChange={v => uDiscount(idx, "enabled", v)} />
                             </div>
@@ -619,6 +630,41 @@ function SettingsTab({ store, setStore }: any) {
                     ))}
                     <button onClick={() => setStore({ ...store, otherDiscounts: [...(store.otherDiscounts || []), { name: "", enabled: true, discountType: "amount", value: 0 }] })} className="w-full py-2 border border-dashed border-border rounded-xl text-xs font-black text-muted-foreground hover:text-foreground transition-all">
                         + 割引を追加
+                    </button>
+                </div>
+            </Subsection>
+            <Subsection title="個人練習割引設定">
+                <p className="text-[10px] text-muted-foreground mb-2">個人練習利用時に適用される割引を設定できます</p>
+                <div className="space-y-3">
+                    {(store.personalPracticeDiscounts || []).map((d: Discount, idx: number) => {
+                        const uPPD = (key: string, val: any) => {
+                            const arr = [...(store.personalPracticeDiscounts || [])];
+                            arr[idx] = { ...arr[idx], [key]: val };
+                            setStore({ ...store, personalPracticeDiscounts: arr });
+                        };
+                        return (
+                            <div key={idx} className="bg-accent/10/50 rounded-xl p-3 space-y-2">
+                                <div className="flex gap-2">
+                                    <input className="flex-1 p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none" placeholder="割引名（個人練習学割など）" value={d.name} onChange={e => uPPD("name", e.target.value)} />
+                                    <button onClick={() => { const arr = [...(store.personalPracticeDiscounts || [])]; arr.splice(idx, 1); setStore({ ...store, personalPracticeDiscounts: arr }); }} className="text-red-400 px-2">✕</button>
+                                </div>
+                                <div className="flex gap-2 items-center flex-wrap">
+                                    <input type="number" className="w-20 p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none text-center" value={d.value} onChange={e => uPPD("value", parseInt(e.target.value))} />
+                                    <select className="p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none" value={d.discountType} onChange={e => uPPD("discountType", e.target.value)}>
+                                        <option value="amount">円引き</option>
+                                        <option value="percentage">%割引</option>
+                                    </select>
+                                    <select className="p-2 bg-accent/10 border border-border rounded-lg text-xs font-bold text-foreground outline-none" value={d.billingUnit || "per_use"} onChange={e => uPPD("billingUnit", e.target.value)}>
+                                        <option value="per_use">1回あたり</option>
+                                        <option value="per_hour">1時間あたり</option>
+                                    </select>
+                                    <Toggle label="有効" value={d.enabled} onChange={v => uPPD("enabled", v)} />
+                                </div>
+                            </div>
+                        );
+                    })}
+                    <button onClick={() => setStore({ ...store, personalPracticeDiscounts: [...(store.personalPracticeDiscounts || []), { name: "", enabled: true, discountType: "amount", value: 0 }] })} className="w-full py-2 border border-dashed border-border rounded-xl text-xs font-black text-muted-foreground hover:text-foreground transition-all">
+                        + 個人練習割引を追加
                     </button>
                 </div>
             </Subsection>
