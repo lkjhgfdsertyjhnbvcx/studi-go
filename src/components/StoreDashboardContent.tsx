@@ -2865,6 +2865,27 @@ function PlanTab({ store, setStore, notify }: any) {
             const { saveStudioToFirestore } = await import("@/lib/db-firestore");
             await saveStudioToFirestore(updated);
             setStore(updated);
+
+            // 申込書メールを自動送信
+            try {
+                await fetch("/api/store/subscribe-notify", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        storeName: store.name || "",
+                        companyName: store.companyName || "",
+                        representative: store.representative || store.ownerName || "",
+                        email: store.email || "",
+                        phone: store.phone || "",
+                        address: store.address || "",
+                        planKey: selectedPlan,
+                        options: selectedOptions,
+                    }),
+                });
+            } catch (e) {
+                console.error("申込書送信エラー:", e);
+            }
+
             if (payMethod === "stripe") {
                 const res = await fetch("/api/store/subscribe", {
                     method: "POST",
