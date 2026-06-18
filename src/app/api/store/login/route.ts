@@ -38,13 +38,21 @@ export async function POST(request: Request) {
                     if (passwordMatch) {
                         // ログイン成功 → 試行カウントをクリア
                         clearAttempts(rateLimitKey);
-                        return NextResponse.json({
+                        const res = NextResponse.json({
                             success: true,
                             storeId: s.id,
                             staffId: sm.id,
                             name: s.storeName,
                             role: sm.role,
                         });
+                        // __session クッキーをセットして API 認証に使えるようにする
+                        res.cookies.set("__session", JSON.stringify({ type: "studio", id: s.id }), {
+                            httpOnly: true,
+                            secure: process.env.NODE_ENV === "production",
+                            path: "/",
+                            maxAge: 60 * 60 * 24, // 1 day
+                        });
+                        return res;
                     }
                 }
             }
