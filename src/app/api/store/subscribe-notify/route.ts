@@ -156,27 +156,34 @@ export async function POST(request: Request) {
         const subject = `【Studi-Go】サービス利用申込書 - ${storeName}様（${PLAN_NAMES[planKey] || planKey}）`;
 
         // 店舗へ送信
-        if (process.env.RESEND_API_KEY) {
-            await resend.emails.send({
-                from: FROM_EMAIL,
-                to: email,
-                subject,
-                html,
-            });
-
-            // 運営者へ送信
-            await resend.emails.send({
-                from: FROM_EMAIL,
-                to: ADMIN_EMAIL,
-                subject: `[運営控] ${subject}`,
-                html,
-            });
+        if (!process.env.RESEND_API_KEY) {
+            return NextResponse.json({
+                success: false,
+                applicationId,
+                error: "RESEND_API_KEY が設定されていません",
+            }, { status: 500 });
         }
+
+        const storeResult = await resend.emails.send({
+            from: FROM_EMAIL,
+            to: email,
+            subject,
+            html,
+        });
+
+        // 運営者へ送信
+        const adminResult = await resend.emails.send({
+            from: FROM_EMAIL,
+            to: ADMIN_EMAIL,
+            subject: `[運営控] ${subject}`,
+            html,
+        });
 
         return NextResponse.json({
             success: true,
             applicationId,
             message: "申込書を送信しました",
+            debug: { storeResult, adminResult },
         });
     } catch (error: any) {
         console.error("申込書送信エラー:", error);
