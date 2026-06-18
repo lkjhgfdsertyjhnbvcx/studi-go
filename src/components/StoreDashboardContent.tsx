@@ -2361,6 +2361,12 @@ function StorageImageUpload({ label, image, storagePath, onUpload }: { label: st
             <div className="relative mt-1 bg-accent/10 border border-border h-32 rounded-xl overflow-hidden flex items-center justify-center cursor-pointer hover:border-purple-500 transition-all group">
                 {uploading ? <span className="text-purple-400 font-black text-xs animate-pulse">アップロード中...</span> : image ? <img src={image} className="w-full h-full object-cover" alt={label} /> : <span className="text-muted-foreground font-black text-xs group-hover:text-muted-foreground">クリックしてアップロード</span>}
                 {!uploading && <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFile} />}
+                {image && !uploading && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); if (confirm("この画像を削除しますか？")) onUpload(""); }}
+                        className="absolute top-1 right-1 bg-black/70 hover:bg-black/90 rounded-full w-6 h-6 text-red-400 text-xs flex items-center justify-center z-10"
+                    >✕</button>
+                )}
             </div>
         </div>
     );
