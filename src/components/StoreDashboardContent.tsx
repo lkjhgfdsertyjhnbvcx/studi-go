@@ -176,8 +176,18 @@ export default function StoreDashboard({ studioId: propStudioId, isAdmin = false
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(store),
         });
-        if (res.ok) notify("✅ 保存しました！");
-        else notify("❌ 保存に失敗しました");
+        if (res.ok) {
+            notify("✅ 保存しました！");
+        } else if (res.status === 403 || res.status === 401) {
+            notify("❌ セッションが切れました。再ログインしてください。");
+            setTimeout(() => {
+                localStorage.removeItem("storeId");
+                document.cookie = "__session=;path=/;max-age=0";
+                window.location.href = "/store/login";
+            }, 2000);
+        } else {
+            notify("❌ 保存に失敗しました");
+        }
     };
 
     if (!store) return (
@@ -214,9 +224,22 @@ export default function StoreDashboard({ studioId: propStudioId, isAdmin = false
                 <div className="flex items-center gap-3">
                     <ThemeToggle />
                     {!isAdmin && (
-                        <button onClick={() => window.location.href = "/"} className="px-4 py-2 text-xs font-bold text-muted-foreground hover:text-foreground border border-border rounded-lg transition-all">
-                            トップへ
-                        </button>
+                        <>
+                            <button onClick={() => window.location.href = "/"} className="px-4 py-2 text-xs font-bold text-muted-foreground hover:text-foreground border border-border rounded-lg transition-all">
+                                トップへ
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (!confirm("ログアウトしますか？")) return;
+                                    localStorage.removeItem("storeId");
+                                    document.cookie = "__session=;path=/;max-age=0";
+                                    window.location.href = "/store/login";
+                                }}
+                                className="px-4 py-2 text-xs font-bold text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 rounded-lg transition-all"
+                            >
+                                ログアウト
+                            </button>
+                        </>
                     )}
                     <button onClick={saveAll} className="px-6 py-2 text-xs font-black bg-purple-600 hover:bg-purple-500 rounded-lg transition-all">
                         SAVE ALL

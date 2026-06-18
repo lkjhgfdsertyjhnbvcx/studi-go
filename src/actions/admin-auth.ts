@@ -32,7 +32,7 @@ export async function adminLogin(formData: FormData, isPlatformLogin: boolean = 
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 path: '/',
-                maxAge: 60 * 60 * 24 // 1 day
+                maxAge: 60 * 60 * 24 * 30 // 30 days
             });
             return { success: true };
         }
@@ -96,7 +96,7 @@ export async function storeLogin(studioId: string) {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         path: '/',
-        maxAge: 60 * 60 * 24 // 1 day
+        maxAge: 60 * 60 * 24 * 30 // 30 days
     });
     return { success: true };
 }
