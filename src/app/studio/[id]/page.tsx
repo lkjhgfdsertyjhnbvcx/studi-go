@@ -75,6 +75,8 @@ export default function StudioDetailPage() {
   const [bookedSlots, setBookedSlots] = useState<{start:number,duration:number}[]>([]);
   const [onsiteLoading, setOnsiteLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isStudentDiscount, setIsStudentDiscount] = useState(false);
+  const [selectedOtherDiscounts, setSelectedOtherDiscounts] = useState<number[]>([]);
 
   useEffect(() => {
     try {
@@ -177,7 +179,18 @@ export default function StudioDetailPage() {
     }, 0);
   };
 
-  const totalPrice = calcRoomPrice() + calcOptionPrice();
+  const subtotal = calcRoomPrice() + calcOptionPrice();
+  const studentDiscountAmount = (isStudentDiscount && studio?.studentDiscount?.enabled)
+    ? (studio.studentDiscount.discountType === "amount"
+        ? studio.studentDiscount.value
+        : Math.round(subtotal * studio.studentDiscount.value / 100))
+    : 0;
+  const otherDiscountAmount = selectedOtherDiscounts.reduce((sum, idx) => {
+    const d = studio?.otherDiscounts?.[idx];
+    if (!d || !d.enabled) return sum;
+    return sum + (d.discountType === "amount" ? d.value : Math.round(subtotal * d.value / 100));
+  }, 0);
+  const totalPrice = Math.max(0, subtotal - studentDiscountAmount - otherDiscountAmount);
 
   const toggleOption = (idx: number) => {
     setSelectedOptions(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]);
@@ -660,6 +673,46 @@ export default function StudioDetailPage() {
                           </div>
                         );
                       })}
+                      {(studio.studentDiscount?.enabled || (studio.otherDiscounts && studio.otherDiscounts.filter(d => d.enabled).length > 0)) && (
+                        <div className="border-t border-gray-700 pt-2 mt-2 space-y-2">
+                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">割引</p>
+                          {studio.studentDiscount?.enabled && (
+                            <label className="flex items-center justify-between cursor-pointer">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={isStudentDiscount}
+                                  onChange={e => setIsStudentDiscount(e.target.checked)}
+                                  className="w-4 h-4 accent-purple-600 rounded"
+                                />
+                                <span className="text-sm font-bold text-foreground">学割</span>
+                              </div>
+                              <span className="text-xs font-bold text-green-400">
+                                -{studio.studentDiscount.value}{studio.studentDiscount.discountType === "percentage" ? "%" : "円"}
+                              </span>
+                            </label>
+                          )}
+                          {studio.otherDiscounts?.map((d, i) => d.enabled && (
+                            <label key={i} className="flex items-center justify-between cursor-pointer">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedOtherDiscounts.includes(i)}
+                                  onChange={e => setSelectedOtherDiscounts(prev => e.target.checked ? [...prev, i] : prev.filter(x => x !== i))}
+                                  className="w-4 h-4 accent-purple-600 rounded"
+                                />
+                                <span className="text-sm font-bold text-foreground">{d.name}</span>
+                              </div>
+                              <span className="text-xs font-bold text-green-400">
+                                -{d.value}{d.discountType === "percentage" ? "%" : "円"}
+                              </span>
+                            </label>
+                          ))}
+                          {isStudentDiscount && (
+                            <p className="text-[10px] text-muted-foreground ml-6">※当日、学生証の提示をお願いする場合があります</p>
+                          )}
+                        </div>
+                      )}
                       <div className="flex justify-between text-sm border-t border-gray-700 pt-2 mt-2">
                         <span className="text-muted-foreground font-bold">合計</span>
                         <span className="text-purple-400 font-black text-lg">¥{totalPrice.toLocaleString()}</span>
