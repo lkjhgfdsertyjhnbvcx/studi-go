@@ -135,7 +135,7 @@ const FEATURE_MAP: Record<FeatureKey, Record<PlanKey, boolean>> = {
     heatmap:                { free: false, light: false, standard: true,  pro: true  }, // Standard+
     kpi_analysis:           { free: false, light: true,  standard: true,  pro: true  }, // Light+
     // ── 外部連携 ──
-    line_login:             { free: false, light: false, standard: false, pro: true  }, // Pro（Light/Standardは近日実装）
+    line_login:             { free: false, light: false, standard: false, pro: true  }, // Pro標準。Light/Standardは買い切りオプション(line_booking_opt)で利用可
     api_access:             { free: false, light: false, standard: false, pro: true  }, // Pro
     // ── サポート ──
     basic_support:          { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
@@ -190,7 +190,11 @@ export const PLAN_OPTIONS: PlanOption[] = [
     { id: "custom_domain", name: "カスタムドメイン",   content: "独自ドメインで運用",       price: 1000,  billingType: "monthly" },
     { id: "setup_support",  name: "店舗設定サポート",   content: "初期設定・登録代行",       price: 12000, billingType: "once" },
     { id: "api_access_opt", name: "API連携オプション",  content: "外部システムとのAPI連携",   price: 3000,  billingType: "monthly", note: "Proプラン限定" },
+    { id: "line_booking_opt", name: "LINE予約・連携",  content: "お客様がLINEログインで予約", price: 9500,  billingType: "once", note: "ライト・スタンダード向け（プロは標準で込み）" },
 ];
+
+// LINE予約・連携 買い切りオプションのID（ゲーティング判定で参照）
+export const LINE_BOOKING_OPTION_ID = "line_booking_opt";
 
 // ===== 機能の表示名（比較表用） =====
 export const FEATURE_LABELS: Record<FeatureKey, string> = {
@@ -337,6 +341,22 @@ export function normalizePlanKey(key: string | null | undefined): PlanKey {
 export function canUseFeature(planKey: string | null | undefined, feature: FeatureKey): boolean {
     const plan = normalizePlanKey(planKey);
     return FEATURE_MAP[feature]?.[plan] ?? false;
+}
+
+/**
+ * 店舗がLINE予約・連携を利用できるか。
+ * - プロ: 標準で利用可（FEATURE_MAPのline_loginがpro=true）
+ * - ライト/スタンダード: 買い切りオプション(line_booking_opt)を購入していれば利用可
+ * - フリー: 利用不可
+ */
+export function canUseLineBooking(
+    planKey: string | null | undefined,
+    planOptions?: string[] | null
+): boolean {
+    const plan = normalizePlanKey(planKey);
+    if (canUseFeature(plan, "line_login")) return true; // プロ標準
+    if (plan === "free") return false;                  // フリーは購入不可
+    return Array.isArray(planOptions) && planOptions.includes(LINE_BOOKING_OPTION_ID);
 }
 
 /** 指定プランの制限値を取得 */

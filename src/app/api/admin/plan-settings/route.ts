@@ -9,13 +9,14 @@ const SETTINGS_DOC_PATH = "settings/planConfig";
 const DEFAULT_CONFIG = {
     plans: [
         { id: "free",     name: "フリー",       price: 0,     color: "#9ca3af", description: "お試し利用向け（1ルームまで）",          features: ["予約カレンダー・手動予約", "Stripe決済（手数料5%）", "顧客一覧・予約履歴", "クーポン発行（一部制限）", "VOUCHA連携", "予約確認メール", "ブラックリスト"] },
-        { id: "light",    name: "ライト",       price: 2980,  color: "#22c55e", description: "小規模スタジオ向け（5ルームまで）",      features: ["フリーの全機能（手数料なし）", "売上レポート・予実管理", "CSVエクスポート", "スタッフ管理", "機材管理", "学割・キャンペーン", "ページデザイン変更", "KPIダッシュボード"] },
-        { id: "standard", name: "スタンダード", price: 5980,  color: "#f97316", description: "中規模スタジオ向け（15ルーム / 2拠点）", features: ["ライトの全機能", "複数拠点管理（2拠点）", "ヒートマップ分析", "自動リマインドメール", "トップページ優先掲載"] },
-        { id: "pro",      name: "プロ",         price: 12800, color: "#eab308", description: "大規模・複数拠点向け（無制限）",         features: ["スタンダードの全機能", "LINE連携", "API連携", "顧客ランク", "キャンセル待ち", "定期予約", "直前割引", "優先サポート", "ルーム・拠点無制限"] },
+        { id: "light",    name: "ライト",       price: 2980,  color: "#22c55e", description: "小規模スタジオ向け（5ルームまで）",      features: ["フリーの全機能（手数料なし）", "売上レポート・予実管理", "CSVエクスポート", "スタッフ管理", "機材管理", "学割・キャンペーン", "ページデザイン変更", "KPIダッシュボード", "※LINE予約・連携はオプション"] },
+        { id: "standard", name: "スタンダード", price: 5980,  color: "#f97316", description: "中規模スタジオ向け（15ルーム / 2拠点）", features: ["ライトの全機能", "複数拠点管理（2拠点）", "ヒートマップ分析", "自動リマインドメール", "トップページ優先掲載", "※LINE予約・連携はオプション"] },
+        { id: "pro",      name: "プロ",         price: 12800, color: "#eab308", description: "大規模・複数拠点向け（無制限）",         features: ["スタンダードの全機能", "LINE予約・連携（標準で込み）", "API連携", "顧客ランク", "キャンセル待ち", "定期予約", "直前割引", "優先サポート", "ルーム・拠点無制限"] },
     ],
     options: [
-        { id: "custom_domain",  name: "カスタムドメイン",   price: 1000,  billingType: "monthly" },
-        { id: "setup_support",  name: "店舗設定サポート",   price: 12000, billingType: "once" },
+        { id: "custom_domain",    name: "カスタムドメイン",   price: 1000,  billingType: "monthly" },
+        { id: "setup_support",    name: "店舗設定サポート",   price: 12000, billingType: "once" },
+        { id: "line_booking_opt", name: "LINE予約・連携",     price: 9500,  billingType: "once" },
     ]
 };
 

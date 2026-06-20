@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { canUseLineBooking } from "@/lib/plan-features";
 
 interface TimeSlot { start: string; end: string; price: number; }
 interface RoomPricingDay { slots?: TimeSlot[] }
@@ -26,6 +27,8 @@ interface Studio {
   paymentMethod?: "store" | "studigo";
   stripeAccountId?: string;
   stripeAccountStatus?: "none" | "pending" | "active";
+  planKey?: string;
+  planOptions?: string[];
 }
 
 function getDayType(date: Date): "weekday" | "saturday" | "sundayHoliday" {
@@ -156,6 +159,33 @@ export default function StudioDetailPage() {
       .catch(() => setBookedSlots([]));
   }, [selectedDate, activeRoom, studio?.id]);
 
+  // LINEログインから戻ってきたとき（?resume=1）、ログイン前に選択していた予約内容を復元して確認画面へ。
+  useEffect(() => {
+    if (!studio) return;
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("resume") !== "1") return;
+      const raw = localStorage.getItem(`pendingBooking_${studioId}`);
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p.date) setSelectedDate(new Date(p.date));
+        if (typeof p.start === "number") setSelectedStart(p.start);
+        if (typeof p.duration === "number") setSelectedDuration(p.duration);
+        if (p.roomId) setActiveRoom(p.roomId);
+        if (Array.isArray(p.options)) setSelectedOptions(p.options);
+        if (typeof p.student === "boolean") setIsStudentDiscount(p.student);
+        if (Array.isArray(p.otherDiscounts)) setSelectedOtherDiscounts(p.otherDiscounts);
+        if (typeof p.pp === "boolean") setIsPersonalPractice(p.pp);
+        if (Array.isArray(p.ppDiscounts)) setSelectedPPDiscounts(p.ppDiscounts);
+        setBookingStep("confirm");
+      }
+      localStorage.removeItem(`pendingBooking_${studioId}`);
+      // リロードで再復元しないよう resume パラメータを除去
+      url.searchParams.delete("resume");
+      window.history.replaceState({}, "", url.toString());
+    } catch { /* noop */ }
+  }, [studio]);
+
   if (loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <div className="text-foreground font-black text-2xl animate-pulse tracking-widest">LOADING...</div>
@@ -240,6 +270,28 @@ export default function StudioDetailPage() {
     else if (calView === "week") d.setDate(d.getDate() + dir * 7);
     else d.setDate(d.getDate() + dir);
     setCalendarDate(d);
+  };
+
+  // LINEログイン開始（任意）。選択中の予約内容を一時保存し、戻り先を ?resume=1 付きで指定。
+  const startLineLogin = () => {
+    try {
+      if (selectedDate && selectedStart !== null) {
+        const pending = {
+          date: selectedDate.toISOString(),
+          start: selectedStart,
+          duration: selectedDuration,
+          roomId: activeRoom,
+          options: selectedOptions,
+          student: isStudentDiscount,
+          otherDiscounts: selectedOtherDiscounts,
+          pp: isPersonalPractice,
+          ppDiscounts: selectedPPDiscounts,
+        };
+        localStorage.setItem(`pendingBooking_${studioId}`, JSON.stringify(pending));
+      }
+    } catch { /* noop */ }
+    const back = `/studio/${studioId}?resume=1`;
+    window.location.href = `/api/auth/line?redirect=${encodeURIComponent(back)}`;
   };
 
   const handleProceedToPayment = () => {
@@ -817,6 +869,17 @@ export default function StudioDetailPage() {
                         <span className="text-purple-400 font-black text-lg">¥{totalPrice.toLocaleString()}</span>
                       </div>
                     </div>
+                    {/* 任意のLINEログイン。ログインすると予約がLINEアカウントに紐づき、予約履歴が残る。
+                        未ログインでもこの下のボタンからゲスト予約は可能。 */}
+                    {!isLoggedIn && canUseLineBooking(studio.planKey, studio.planOptions) && (
+                      <div className="mb-1">
+                        <button onClick={startLineLogin} className="w-full py-3 bg-[#06C755] hover:bg-[#05b34c] rounded-2xl text-sm font-black text-white transition-all flex items-center justify-center gap-2">
+                          <svg width="18" height="18" viewBox="0 0 48 48" fill="white" aria-hidden="true"><path d="M24 4C13 4 4 11.5 4 20.8c0 8 7.1 14.7 16.7 16.1l1.3 3.7c.3.9 1.5 1.1 2.1.4l3.8-3.8C38.1 35.5 44 28.6 44 20.8 44 11.5 35 4 24 4z"/></svg>
+                          LINEでログインして予約
+                        </button>
+                        <p className="text-[10px] text-muted-foreground text-center mt-1">ログインすると予約履歴が残ります（任意）</p>
+                      </div>
+                    )}
                     {/* オンライン事前決済は、店舗が「Studi-Goで事前決済」を選択し、かつStripe口座が有効(active)な場合のみ表示。
                         口座未登録のまま決済が走ると代金が店舗へ振り込まれないため。 */}
                     {studio.paymentMethod === "studigo" && studio.stripeAccountStatus === "active" && (

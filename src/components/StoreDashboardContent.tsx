@@ -2679,7 +2679,7 @@ const PLANS = [
         desc: "大規模・複数拠点向け（無制限）",
         features: [
             "スタンダードの全機能",
-            "LINE連携",
+            "LINE予約・連携（標準で込み）",
             "API連携",
             "顧客ランク",
             "キャンセル待ち",
@@ -2692,8 +2692,9 @@ const PLANS = [
 ];
 
 const PLAN_OPTIONS = [
-    { key: "custom_domain", name: "カスタムドメイン", price: 1000, desc: "独自ドメインでページ公開" },
-    { key: "setup_support", name: "店舗設定サポート", price: 12000, desc: "初期設定・登録代行（1回のみ）" },
+    { key: "custom_domain", name: "カスタムドメイン", price: 1000, billingType: "monthly", desc: "独自ドメインでページ公開" },
+    { key: "setup_support", name: "店舗設定サポート", price: 12000, billingType: "once", desc: "初期設定・登録代行（1回のみ）" },
+    { key: "line_booking_opt", name: "LINE予約・連携", price: 9500, billingType: "once", desc: "お客様がLINEログインで予約（1回のみ・ライト/スタンダード向け）" },
 ];
 
 function PromotionsTab({ store, setStore }: any) {
@@ -2900,11 +2901,20 @@ function PlanTab({ store, setStore, notify }: any) {
     const totalMonthly = () => {
         const plan = plans.find((p: any) => p.id === selectedPlan || p.key === selectedPlan);
         const planPrice = plan ? plan.price : 0;
+        // 月額オプションのみ合算（買い切り=onceは月額に含めない）
         const optPrice = selectedOptions.reduce((sum, k) => {
             const o = planOptions.find((o: any) => o.id === k || o.key === k);
-            return sum + (o ? o.price : 0);
+            return sum + (o && o.billingType !== "once" ? o.price : 0);
         }, 0);
         return planPrice + optPrice;
+    };
+
+    // 買い切り（初回のみ）オプションの合計
+    const totalOnce = () => {
+        return selectedOptions.reduce((sum, k) => {
+            const o = planOptions.find((o: any) => o.id === k || o.key === k);
+            return sum + (o && o.billingType === "once" ? o.price : 0);
+        }, 0);
     };
 
     const handleSave = async () => {
@@ -3140,6 +3150,12 @@ function PlanTab({ store, setStore, notify }: any) {
                     <span className="text-muted-foreground font-bold">月額合計</span>
                     <span className="text-3xl font-black text-purple-400">¥{totalMonthly().toLocaleString()}<span className="text-muted-foreground text-sm font-normal">/月</span></span>
                 </div>
+                {totalOnce() > 0 && (
+                    <div className="flex justify-between items-center mt-1">
+                        <span className="text-muted-foreground text-xs font-bold">初回のみ（買い切り）</span>
+                        <span className="text-sm font-black text-foreground">＋¥{totalOnce().toLocaleString()}</span>
+                    </div>
+                )}
                 {currentPlan && (
                     <p className="text-muted-foreground text-xs mt-1">現在: {plans.find((p:any)=>p.id===currentPlan||p.key===currentPlan)?.name} プラン</p>
                 )}

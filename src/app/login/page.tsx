@@ -92,6 +92,20 @@ export default function LoginPage() {
                     </button>
                 </form>
 
+                <div className="mt-6 flex items-center gap-3">
+                    <div className="flex-1 border-t border-gray-200"></div>
+                    <span className="text-xs text-gray-400">または</span>
+                    <div className="flex-1 border-t border-gray-200"></div>
+                </div>
+
+                <a
+                    href="/api/auth/line?redirect=/"
+                    className="mt-4 w-full flex items-center justify-center gap-2 py-3 bg-[#06C755] hover:bg-[#05b34c] text-white font-bold rounded-lg transition-all"
+                >
+                    <svg width="20" height="20" viewBox="0 0 48 48" fill="white" aria-hidden="true"><path d="M24 4C13 4 4 11.5 4 20.8c0 8 7.1 14.7 16.7 16.1l1.3 3.7c.3.9 1.5 1.1 2.1.4l3.8-3.8C38.1 35.5 44 28.6 44 20.8 44 11.5 35 4 24 4z"/></svg>
+                    LINEでログイン
+                </a>
+
                 <div className="mt-6 pt-6 border-t border-gray-100 text-center">
                     <p className="text-sm text-gray-500 mb-2">アカウントをお持ちでない方</p>
                     <a href="/register" className="text-purple-600 hover:underline text-sm font-bold">
