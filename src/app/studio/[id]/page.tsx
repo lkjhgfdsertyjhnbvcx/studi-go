@@ -23,6 +23,9 @@ interface Studio {
   studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string };
   otherDiscounts?: Array<{ name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string }>;
   personalPracticeDiscounts?: Array<{ name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string }>;
+  paymentMethod?: "store" | "studigo";
+  stripeAccountId?: string;
+  stripeAccountStatus?: "none" | "pending" | "active";
 }
 
 function getDayType(date: Date): "weekday" | "saturday" | "sundayHoliday" {
@@ -814,9 +817,13 @@ export default function StudioDetailPage() {
                         <span className="text-purple-400 font-black text-lg">¥{totalPrice.toLocaleString()}</span>
                       </div>
                     </div>
-                    <button onClick={handleProceedToPayment} className="w-full py-3 bg-purple-600 hover:bg-purple-500 rounded-2xl text-sm font-black transition-all">
-                      オンライン決済で予約 →
-                    </button>
+                    {/* オンライン事前決済は、店舗が「Studi-Goで事前決済」を選択し、かつStripe口座が有効(active)な場合のみ表示。
+                        口座未登録のまま決済が走ると代金が店舗へ振り込まれないため。 */}
+                    {studio.paymentMethod === "studigo" && studio.stripeAccountStatus === "active" && (
+                      <button onClick={handleProceedToPayment} className="w-full py-3 bg-purple-600 hover:bg-purple-500 rounded-2xl text-sm font-black transition-all">
+                        オンライン決済で予約 →
+                      </button>
+                    )}
                     <button onClick={handleOnsiteBooking} disabled={onsiteLoading} className="w-full py-3 bg-accent/20 hover:bg-accent/30 disabled:opacity-50 rounded-2xl text-sm font-bold text-foreground transition-all border border-border">
                       {onsiteLoading ? "処理中..." : "店頭払いで予約する"}
                     </button>

@@ -2913,8 +2913,16 @@ function PlanTab({ store, setStore, notify }: any) {
         try {
             const domainValue = selectedOptions.includes("custom_domain") ? customDomain.trim() : "";
             const updated = { ...store, planKey: selectedPlan, planOptions: selectedOptions, planPayMethod: payMethod, planUpdatedAt: new Date().toISOString(), customDomain: domainValue };
-            const { saveStudioToFirestore } = await import("@/lib/db-firestore");
-            await saveStudioToFirestore(updated);
+            // サーバー専用のfirebase-adminをクライアントから直接呼ばず、認証付きAPIルート経由で保存する。
+            // （クライアントへのfirebase-adminバンドル混入＝ビルドエラーを防ぐ）
+            const saveRes = await fetch("/api/store/update-full", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updated),
+            });
+            if (!saveRes.ok) {
+                throw new Error("店舗情報の保存に失敗しました");
+            }
             setStore(updated);
 
             // 申込書メールを自動送信

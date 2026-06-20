@@ -32,6 +32,21 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: amountCheck.message ?? "金額が正しくありません。" }, { status: 400 });
         }
 
+        // 事前決済ガード:
+        // 店舗のStripe Connect口座が「有効(active)」でなければオンライン決済を受け付けない。
+        // これを行わないと、決済額がプラットフォーム(Studi-Go)に着金したまま店舗へ振り込まれず、
+        // 店舗が代金を受け取れない状態になる。口座登録が完了するまで店頭払いへ誘導する。
+        const studioData = studioId ? await getStudioByIdFromFirestore(studioId) : null;
+        if (!studioData) {
+            return NextResponse.json({ error: "店舗が見つかりません。" }, { status: 404 });
+        }
+        if (!studioData.stripeAccountId || studioData.stripeAccountStatus !== "active") {
+            return NextResponse.json({
+                error: "この店舗はオンライン事前決済の準備が完了していません。店頭払いをご利用ください。",
+                code: "PREPAY_NOT_AVAILABLE",
+            }, { status: 400 });
+        }
+
         if (!skipBooking) {
             // 仮予約を作成（空き確認 → 作成をトランザクションで原子化しダブルブッキングを防止）
             bookingId = crypto.randomUUID();
@@ -65,8 +80,8 @@ export async function POST(request: Request) {
         }
 
         // Stripe Checkout Session作成
-        const studioData = studioId ? await getStudioByIdFromFirestore(studioId) : null;
-        const connectedAccountId = studioData?.stripeAccountId || null;
+        // studioData は上の事前決済ガードで取得・検証済み（口座active確定）
+        const connectedAccountId = studioData.stripeAccountId || null;
 
         // プラットフォーム手数料の計算
         // ベース: Stripe決済手数料 5%（全プラン共通）
