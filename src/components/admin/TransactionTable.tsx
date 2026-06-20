@@ -58,17 +58,17 @@ export function TransactionTable({ bookings }: { bookings: BookingData[] }) {
             <Table>
                 <TableHeader className="bg-accent/5 border-b border-border">
                     <TableRow className="hover:bg-transparent border-none">
-                        <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5 px-8">ID</TableHead>
-                        <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5">日付</TableHead>
-                        <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5">時間</TableHead>
-                        <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5">金額</TableHead>
-                        <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5 px-8 text-right underline underline-offset-4 decoration-cyan-500/50">ステータス</TableHead>
+                        <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5 px-8">ID</TableHead>
+                        <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5">日付</TableHead>
+                        <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5">時間</TableHead>
+                        <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5">金額</TableHead>
+                        <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5 px-8 text-right underline underline-offset-4 decoration-cyan-500/50">ステータス</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {bookings.length === 0 ? (
                         <TableRow>
-                            <TableCell colSpan={5} className="text-center py-24 text-muted-foreground italic font-mono uppercase tracking-[0.2em]">
+                            <TableCell colSpan={5} className="text-center py-24 text-muted-foreground font-mono uppercase tracking-[0.2em]">
                                 データなし
                             </TableCell>
                         </TableRow>

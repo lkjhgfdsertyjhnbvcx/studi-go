@@ -135,16 +135,16 @@ export default function PaymentsClient({ initialPayments }: PaymentsClientProps)
                     {!isSuccess ? (
                         <>
                             <Loader2 className="h-16 w-16 text-cyan-400 animate-spin mb-6" />
-                            <div className="text-2xl font-black text-cyan-400 animate-pulse tracking-widest uppercase">処理中...</div>
-                            <div className="text-gray-500 text-sm mt-3 uppercase font-mono tracking-tighter">データを同期しています</div>
+                            <div className="text-2xl font-bold text-cyan-400 animate-pulse tracking-widest">処理中...</div>
+                            <div className="text-gray-500 text-sm mt-3 font-mono tracking-normal">データを同期しています</div>
                         </>
                     ) : (
                         <div className="flex flex-col items-center animate-in zoom-in duration-300">
                             <div className="h-20 w-20 rounded-full bg-green-500/20 flex items-center justify-center mb-6">
                                 <CheckCircle2 className="h-12 w-12 text-green-400" />
                             </div>
-                            <div className="text-3xl font-black text-green-400 tracking-widest uppercase">入金処理完了</div>
-                            <div className="text-gray-400 text-sm mt-3 uppercase font-mono tracking-tighter">データが正常に保存されました</div>
+                            <div className="text-3xl font-bold text-green-400 tracking-widest">入金処理完了</div>
+                            <div className="text-gray-400 text-sm mt-3 font-mono tracking-normal">データが正常に保存されました</div>
                         </div>
                     )}
                 </div>
@@ -153,7 +153,7 @@ export default function PaymentsClient({ initialPayments }: PaymentsClientProps)
             <div className="max-w-7xl mx-auto space-y-8">
                 <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
                     <div>
-                        <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">決済管理パネル</h1>
+                        <h1 className="text-3xl font-bold text-foreground">決済管理パネル</h1>
                         <p className="text-gray-400 mt-1">入金状況の確認、手動消し込み、および未入金者への督促</p>
                     </div>
                     {/* Refresh Indicator */}
@@ -171,11 +171,11 @@ export default function PaymentsClient({ initialPayments }: PaymentsClientProps)
                 <div className="grid md:grid-cols-3 gap-6">
                     <Card className="bg-card border-border shadow-xl shadow-cyan-500/5">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-xs font-bold text-gray-500 uppercase tracking-widest">総売上 (確定済)</CardTitle>
+                            <CardTitle className="text-xs font-bold text-gray-500 tracking-widest">総売上 (確定済)</CardTitle>
                             <DollarSign className="h-4 w-4 text-green-400" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-black text-card-foreground">¥{totalRevenue.toLocaleString()}</div>
+                            <div className="text-3xl font-bold text-card-foreground">¥{totalRevenue.toLocaleString()}</div>
                             <div className="h-1 w-full bg-white/5 rounded-full mt-4 overflow-hidden">
                                 <div className="h-full bg-green-500" style={{ width: '100%' }}></div>
                             </div>
@@ -184,22 +184,22 @@ export default function PaymentsClient({ initialPayments }: PaymentsClientProps)
 
                     <Card className="bg-card border-border shadow-xl shadow-orange-500/5">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-xs font-bold text-gray-500 uppercase tracking-widest">売掛金 (未入金)</CardTitle>
+                            <CardTitle className="text-xs font-bold text-gray-500 tracking-widest">売掛金 (未入金)</CardTitle>
                             <AlertCircle className="h-4 w-4 text-orange-400" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-black text-orange-400">¥{pendingAmount.toLocaleString()}</div>
+                            <div className="text-3xl font-bold text-orange-400">¥{pendingAmount.toLocaleString()}</div>
                             <p className="text-xs text-orange-400/50 mt-2 font-mono">{pendingCount} 件の未完了トランザクション</p>
                         </CardContent>
                     </Card>
 
                     <Card className="bg-card border-border shadow-xl">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-xs font-bold text-gray-500 uppercase tracking-widest">入金完了率</CardTitle>
+                            <CardTitle className="text-xs font-bold text-gray-500 tracking-widest">入金完了率</CardTitle>
                             <CheckCircle className="h-4 w-4 text-cyan-400" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-black text-card-foreground">
+                            <div className="text-3xl font-bold text-card-foreground">
                                 {payments.length > 0 ? Math.round((payments.filter(p => p.status === 'paid').length / payments.length) * 100) : 0}%
                             </div>
                             <p className="text-xs text-gray-500 mt-2">全 {payments.length} トランザクション中</p>
@@ -235,18 +235,18 @@ export default function PaymentsClient({ initialPayments }: PaymentsClientProps)
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow className="border-border">
-                                <TableHead className="py-4 text-gray-400 font-bold uppercase text-[10px]">顧客情報</TableHead>
-                                <TableHead className="py-4 text-gray-400 font-bold uppercase text-[10px]">金額</TableHead>
-                                <TableHead className="py-4 text-gray-400 font-bold uppercase text-[10px]">支払い方法</TableHead>
-                                <TableHead className="py-4 text-gray-400 font-bold uppercase text-[10px]">ステータス</TableHead>
-                                <TableHead className="py-4 text-gray-400 font-bold uppercase text-[10px]">日付 / 期限</TableHead>
-                                <TableHead className="py-4 text-gray-400 font-bold uppercase text-[10px] text-right">アクション</TableHead>
+                                <TableHead className="py-4 text-gray-400 font-bold text-[10px]">顧客情報</TableHead>
+                                <TableHead className="py-4 text-gray-400 font-bold text-[10px]">金額</TableHead>
+                                <TableHead className="py-4 text-gray-400 font-bold text-[10px]">支払い方法</TableHead>
+                                <TableHead className="py-4 text-gray-400 font-bold text-[10px]">ステータス</TableHead>
+                                <TableHead className="py-4 text-gray-400 font-bold text-[10px]">日付 / 期限</TableHead>
+                                <TableHead className="py-4 text-gray-400 font-bold text-[10px] text-right">アクション</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredPayments.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-20 text-gray-600 italic">決済データが見当りません</TableCell>
+                                    <TableCell colSpan={6} className="text-center py-20 text-gray-600">決済データが見当りません</TableCell>
                                 </TableRow>
                             ) : (
                                 filteredPayments.map((payment) => (
@@ -260,7 +260,7 @@ export default function PaymentsClient({ initialPayments }: PaymentsClientProps)
                                             ¥{payment.amount.toLocaleString()}
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant="outline" className="bg-background border-border text-[10px] text-muted-foreground py-0 uppercase">
+                                            <Badge variant="outline" className="bg-background border-border text-[10px] text-muted-foreground py-0">
                                                 {payment.paymentMethod === 'stripe' ? 'クレジットカード (Stripe)' : 
                                                  payment.paymentMethod === 'credit' ? 'クレジットカード' : 
                                                  payment.paymentMethod === 'bank_transfer' ? '銀行振込' : 

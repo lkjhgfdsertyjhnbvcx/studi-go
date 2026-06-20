@@ -46,8 +46,82 @@ export async function POST(req: Request) {
                     confirmedAt: new Date().toISOString(),
                 })
                 console.log(`[Firestore] Booking ${metadata.bookingId} confirmed.`)
+
+                // paymentsコレクションにも売上レコードを作成
+                try {
+                    const bookingDoc = await adminDb.collection("bookings").doc(metadata.bookingId).get()
+                    const booking = bookingDoc.exists ? bookingDoc.data() : null
+                    if (booking) {
+                        let userName = 'ゲスト'
+                        let userEmail = booking.userEmail || ''
+                        if (booking.userId) {
+                            const userDoc = await adminDb.collection("users").doc(booking.userId).get()
+                            if (userDoc.exists) {
+                                const u = userDoc.data()
+                                userName = u?.name || 'ゲスト'
+                                userEmail = u?.email || userEmail
+                            }
+                        }
+                        let studioName = ''
+                        if (booking.studioId) {
+                            const studioDoc = await adminDb.collection("studios").doc(booking.studioId).get()
+                            if (studioDoc.exists) {
+                                studioName = studioDoc.data()?.storeName || ''
+                            }
+                        }
+                        const paymentId = `pay-${metadata.bookingId}-${Date.now()}`
+                        await adminDb.collection("payments").doc(paymentId).set({
+                            id: paymentId,
+                            bookingId: metadata.bookingId,
+                            studioId: booking.studioId || '',
+                            studioName,
+                            userName,
+                            userEmail,
+                            amount: session.amount_total ? Math.round(session.amount_total / 100) : (booking.totalPrice || 0),
+                            status: 'paid',
+                            paymentMethod: 'stripe',
+                            stripeSessionId: session.id,
+                            stripePaymentIntentId: session.payment_intent || null,
+                            date: new Date().toISOString().split('T')[0],
+                            createdAt: new Date().toISOString(),
+                        })
+                        console.log(`[Firestore] Payment record ${paymentId} created for booking ${metadata.bookingId}`)
+                    }
+                } catch (payErr) {
+                    console.error('[Firestore] Failed to create payment record:', payErr)
+                }
             } catch (err) {
                 console.error('[Firestore] Failed to confirm booking:', err)
+            }
+        }
+
+        // ── サブスクリプション（プラン契約）の売上レコード作成 ──
+        if (metadata?.studioId && metadata?.planKey && !metadata?.bookingId) {
+            try {
+                const studioDoc = await adminDb.collection("studios").doc(metadata.studioId).get()
+                const studioName = studioDoc.exists ? (studioDoc.data()?.storeName || '') : ''
+                const storeEmail = session.customer_email || studioDoc.data()?.email || ''
+                const paymentId = `sub-${metadata.studioId}-${Date.now()}`
+                await adminDb.collection("payments").doc(paymentId).set({
+                    id: paymentId,
+                    bookingId: '',
+                    studioId: metadata.studioId,
+                    studioName,
+                    userName: studioName,
+                    userEmail: storeEmail,
+                    amount: session.amount_total ? Math.round(session.amount_total / 100) : 0,
+                    status: 'paid',
+                    paymentMethod: 'stripe',
+                    paymentType: 'subscription',
+                    planKey: metadata.planKey,
+                    stripeSessionId: session.id,
+                    stripeSubscriptionId: session.subscription || null,
+                    date: new Date().toISOString().split('T')[0],
+                    createdAt: new Date().toISOString(),
+                })
+                console.log(`[Firestore] Subscription payment ${paymentId} created for studio ${metadata.studioId}`)
+            } catch (subErr) {
+                console.error('[Firestore] Failed to create subscription payment:', subErr)
             }
         }
 

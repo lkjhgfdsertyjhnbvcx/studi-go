@@ -68,7 +68,7 @@ export default function UsersImportPage() {
 
     return (
         <div className="max-w-4xl mx-auto">
-            <h1 className="text-2xl font-black mb-2">顧客データ インポート</h1>
+            <h1 className="text-2xl font-bold mb-2">顧客データ インポート</h1>
             <p className="text-sm text-gray-500 mb-8">他社システムからの乗り換え時に、CSVファイルで顧客データを一括登録できます。</p>
 
             {/* CSVフォーマット説明 */}
@@ -169,15 +169,15 @@ export default function UsersImportPage() {
                     <h3 className="font-bold text-green-900 text-lg mb-3">インポート完了</h3>
                     <div className="grid grid-cols-3 gap-4 mb-4">
                         <div className="bg-white rounded-lg p-4 text-center">
-                            <div className="text-2xl font-black text-green-600">{result.imported}</div>
+                            <div className="text-2xl font-bold text-green-600">{result.imported}</div>
                             <div className="text-xs text-gray-500 font-bold">登録成功</div>
                         </div>
                         <div className="bg-white rounded-lg p-4 text-center">
-                            <div className="text-2xl font-black text-yellow-600">{result.skipped}</div>
+                            <div className="text-2xl font-bold text-yellow-600">{result.skipped}</div>
                             <div className="text-xs text-gray-500 font-bold">スキップ</div>
                         </div>
                         <div className="bg-white rounded-lg p-4 text-center">
-                            <div className="text-2xl font-black text-gray-600">{result.total}</div>
+                            <div className="text-2xl font-bold text-gray-600">{result.total}</div>
                             <div className="text-xs text-gray-500 font-bold">合計行数</div>
                         </div>
                     </div>

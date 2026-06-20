@@ -112,7 +112,7 @@ export default function StudioAdminPage() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-black text-foreground flex items-center gap-3">
+                    <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
                         <span className="p-2 bg-cyan-500/10 text-cyan-500 rounded-lg text-base">🏢</span>
                         {formData.name}
                     </h1>
@@ -129,20 +129,20 @@ export default function StudioAdminPage() {
                         target="_blank"
                         className="px-4 py-2.5 rounded-xl font-bold text-sm bg-blue-600 hover:bg-blue-700 text-white transition-all"
                     >
-                        👁 プレビュー
+                        プレビュー
                     </a>
                     <a
                         href={`/admin/studios/${studioId}/edit`}
                         className="px-4 py-2.5 rounded-xl font-bold text-sm bg-orange-500 hover:bg-orange-600 text-white transition-all"
                     >
-                        ✏️ 代理編集
+                        代理編集
                     </a>
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
                         className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${isSaving ? 'bg-accent/20 text-muted-foreground' : 'bg-purple-600 hover:bg-purple-700 text-white'}`}
                     >
-                        {isSaving ? '保存中...' : '💾 保存する'}
+                        {isSaving ? '保存中...' : '保存する'}
                     </button>
                 </div>
             </div>
@@ -150,9 +150,9 @@ export default function StudioAdminPage() {
             {/* Tabs */}
             <div className="flex gap-1 border-b border-border">
                 {[
-                    { key: "settings", label: "⚙️ 決済設定" },
-                    { key: "display",  label: "👁 表示設定" },
-                    { key: "calendar", label: "📅 予約状況" },
+                    { key: "settings", label: "決済設定" },
+                    { key: "display",  label: "表示設定" },
+                    { key: "calendar", label: "予約状況" },
                 ].map(tab => (
                     <button
                         key={tab.key}
@@ -239,19 +239,19 @@ export default function StudioAdminPage() {
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="font-bold text-foreground border-l-4 border-purple-500 pl-3">今週の予約状況</h2>
                         <div className="flex items-center gap-4 px-4 py-1.5 rounded-lg bg-card border border-border">
-                            <button onClick={() => changeWeek(-1)} className="text-purple-500 font-black px-2 hover:text-foreground">←</button>
+                            <button onClick={() => changeWeek(-1)} className="text-purple-500 font-bold px-2 hover:text-foreground">←</button>
                             <p className="text-sm font-bold w-24 text-center">{days[0].label} 〜</p>
-                            <button onClick={() => changeWeek(1)} className="text-purple-500 font-black px-2 hover:text-foreground">→</button>
+                            <button onClick={() => changeWeek(1)} className="text-purple-500 font-bold px-2 hover:text-foreground">→</button>
                         </div>
                     </div>
 
                     <div className="bg-card border border-border rounded-xl overflow-hidden shadow-lg">
                         <div className="grid grid-cols-8 bg-accent/5 text-muted-foreground border-b border-border">
-                            <div className="p-4 text-center font-black text-[10px] tracking-widest text-purple-500 border-r border-border">TIME</div>
+                            <div className="p-4 text-center font-bold text-[10px] tracking-widest text-purple-500 border-r border-border">TIME</div>
                             {days.map((d, i) => (
                                 <div key={i} className="p-3 text-center border-r border-border last:border-0">
                                     <p className="text-[10px] font-bold mb-1">{d.label}</p>
-                                    <p className={`text-sm font-black ${d.dayOfWeek === '日' ? 'text-red-500' : d.dayOfWeek === '土' ? 'text-blue-500' : 'text-foreground'}`}>{d.dayOfWeek}</p>
+                                    <p className={`text-sm font-bold ${d.dayOfWeek === '日' ? 'text-red-500' : d.dayOfWeek === '土' ? 'text-blue-500' : 'text-foreground'}`}>{d.dayOfWeek}</p>
                                 </div>
                             ))}
                         </div>
@@ -277,13 +277,13 @@ export default function StudioAdminPage() {
                                                 {isReserved && (
                                                     <div className="w-full h-full bg-purple-500/20 border border-purple-500/50 rounded flex flex-col items-center justify-center text-purple-400">
                                                         <span className="text-[8px] font-bold tracking-widest uppercase">事前決済済</span>
-                                                        <span className="text-[10px] font-black">{bookingHere.user?.name || "ゲスト"}</span>
+                                                        <span className="text-[10px] font-bold">{bookingHere.user?.name || "ゲスト"}</span>
                                                     </div>
                                                 )}
                                                 {isPending && (
                                                     <div className="w-full h-full bg-orange-500/20 border border-orange-500/50 rounded flex flex-col items-center justify-center text-orange-400">
                                                         <span className="text-[8px] font-bold tracking-widest uppercase">当日払い</span>
-                                                        <span className="text-[10px] font-black">{bookingHere.user?.name || "ゲスト"}</span>
+                                                        <span className="text-[10px] font-bold">{bookingHere.user?.name || "ゲスト"}</span>
                                                     </div>
                                                 )}
                                             </div>

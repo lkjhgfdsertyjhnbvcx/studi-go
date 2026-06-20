@@ -72,7 +72,7 @@ export default function LedgerPage() {
         <div className="space-y-8">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-black text-foreground">会計帳簿</h1>
+                    <h1 className="text-2xl font-bold text-foreground">会計帳簿</h1>
                     <p className="text-muted-foreground text-sm mt-1">売上帳・売掛金帳のダウンロード</p>
                 </div>
                 <input type="month" value={yearMonth} onChange={e => setYearMonth(e.target.value)}
@@ -82,18 +82,18 @@ export default function LedgerPage() {
             {/* KPI */}
             <div className="grid grid-cols-3 gap-4">
                 <div className="bg-card border border-border rounded-xl p-5">
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-2">売上合計</p>
-                    <p className="text-3xl font-black text-green-500">¥{totalSales.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground font-bold tracking-widest mb-2">売上合計</p>
+                    <p className="text-3xl font-bold text-green-500">¥{totalSales.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground mt-1">{paidList.length}件の入金済み取引</p>
                 </div>
                 <div className="bg-card border border-border rounded-xl p-5">
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-2">売掛金合計</p>
-                    <p className="text-3xl font-black text-orange-500">¥{totalReceivable.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground font-bold tracking-widest mb-2">売掛金合計</p>
+                    <p className="text-3xl font-bold text-orange-500">¥{totalReceivable.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground mt-1">{pendingList.length}件の未入金</p>
                 </div>
                 <div className="bg-card border border-border rounded-xl p-5">
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-2">回収率</p>
-                    <p className="text-3xl font-black text-blue-500">
+                    <p className="text-xs text-muted-foreground font-bold tracking-widest mb-2">回収率</p>
+                    <p className="text-3xl font-bold text-blue-500">
                         {filtered.length > 0 ? Math.round(paidList.length / filtered.length * 100) : 0}%
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">全{filtered.length}件中</p>
@@ -105,14 +105,14 @@ export default function LedgerPage() {
                 <div className="flex border-b border-border">
                     {[["sales","売上帳"],["receivable","売掛金帳"]].map(([v,l]) => (
                         <button key={v} onClick={() => setTab(v as any)}
-                            className={`px-6 py-4 text-sm font-black transition-all ${tab===v ? "border-b-2 border-purple-500 text-purple-500" : "text-muted-foreground hover:text-foreground"}`}>
+                            className={`px-6 py-4 text-sm font-bold transition-all ${tab===v ? "border-b-2 border-purple-500 text-purple-500" : "text-muted-foreground hover:text-foreground"}`}>
                             {l}
                         </button>
                     ))}
                     <div className="ml-auto p-3">
                         <button onClick={tab === "sales" ? downloadSalesLedger : downloadReceivableLedger}
-                            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-black rounded-lg transition-all">
-                            📥 CSVダウンロード
+                            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-lg transition-all">
+                            CSVダウンロード
                         </button>
                     </div>
                 </div>
@@ -124,7 +124,7 @@ export default function LedgerPage() {
                         <thead className="bg-accent/5">
                             <tr>
                                 {["日付","取引番号","スタジオ","顧客名","金額","支払方法", tab==="sales"?"ステータス":"期限"].map(h => (
-                                    <th key={h} className="px-5 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-widest">{h}</th>
+                                    <th key={h} className="px-5 py-3 text-left text-xs font-bold text-muted-foreground tracking-widest">{h}</th>
                                 ))}
                             </tr>
                         </thead>
@@ -138,7 +138,7 @@ export default function LedgerPage() {
                                         <p className="text-sm font-bold text-foreground">{p.userName || "—"}</p>
                                         <p className="text-xs text-muted-foreground">{p.userEmail || ""}</p>
                                     </td>
-                                    <td className="px-5 py-3 text-sm font-black text-foreground">¥{(p.amount || 0).toLocaleString()}</td>
+                                    <td className="px-5 py-3 text-sm font-bold text-foreground">¥{(p.amount || 0).toLocaleString()}</td>
                                     <td className="px-5 py-3 text-xs text-muted-foreground">{p.paymentMethod || "—"}</td>
                                     <td className="px-5 py-3">
                                         {tab === "sales" ? (
@@ -157,8 +157,8 @@ export default function LedgerPage() {
                         </tbody>
                         <tfoot className="bg-accent/5 border-t border-border">
                             <tr>
-                                <td colSpan={4} className="px-5 py-3 text-sm font-black text-foreground">合計</td>
-                                <td className="px-5 py-3 text-sm font-black text-foreground">
+                                <td colSpan={4} className="px-5 py-3 text-sm font-bold text-foreground">合計</td>
+                                <td className="px-5 py-3 text-sm font-bold text-foreground">
                                     ¥{(tab === "sales" ? totalSales : totalReceivable).toLocaleString()}
                                 </td>
                                 <td colSpan={2}></td>

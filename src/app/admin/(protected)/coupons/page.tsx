@@ -128,22 +128,22 @@ export default function CouponsPage() {
             <div className="max-w-7xl mx-auto">
                 <div className="flex justify-between items-center mb-8 border-b border-border pb-6">
                     <div>
-                        <h1 className="text-3xl font-bold text-cyan-400 mb-2">
+                        <h1 className="text-3xl font-bold text-foreground mb-2">
                             クーポン管理 (Activa)
                         </h1>
-                        <p className="text-gray-400">
+                        <p className="text-muted-foreground">
                             割引クーポンの発行・管理を行います
                         </p>
                     </div>
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-cyan-500 hover:bg-cyan-600 text-black font-bold">
+                            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold">
                                 <Plus className="mr-2 h-4 w-4" /> クーポン発行
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="bg-card border-border text-foreground max-w-2xl">
                             <DialogHeader>
-                                <DialogTitle className="text-cyan-400 flex items-center gap-2">
+                                <DialogTitle className="text-foreground flex items-center gap-2">
                                     <Gift className="h-5 w-5" />
                                     新規クーポン発行
                                 </DialogTitle>
@@ -253,7 +253,7 @@ export default function CouponsPage() {
                                 <div>
                                     <Label>対象スタジオ（空欄の場合は全店舗）</Label>
                                     <div className="space-y-2 mt-2 max-h-40 overflow-y-auto bg-muted p-3 rounded border border-border">
-                                        <label className="flex items-center gap-2 cursor-pointer hover:bg-white/5 p-2 rounded">
+                                        <label className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded">
                                             <input
                                                 type="checkbox"
                                                 checked={formData.targetStudioIds.length === 0}
@@ -262,16 +262,16 @@ export default function CouponsPage() {
                                                         setFormData({ ...formData, targetStudioIds: [] });
                                                     }
                                                 }}
-                                                className="rounded border-white/20"
+                                                className="rounded border-border"
                                             />
-                                            <span className="text-sm font-medium text-cyan-400">
+                                            <span className="text-sm font-medium text-foreground">
                                                 全店舗
                                             </span>
                                         </label>
                                         {studios.map((studio) => (
                                             <label
                                                 key={studio.id}
-                                                className="flex items-center gap-2 cursor-pointer hover:bg-white/5 p-2 rounded"
+                                                className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded"
                                             >
                                                 <input
                                                     type="checkbox"
@@ -295,7 +295,7 @@ export default function CouponsPage() {
                                                             });
                                                         }
                                                     }}
-                                                    className="rounded border-white/20"
+                                                    className="rounded border-border"
                                                 />
                                                 <span className="text-sm">{studio.storeName}</span>
                                             </label>
@@ -308,13 +308,13 @@ export default function CouponsPage() {
                                         type="button"
                                         variant="outline"
                                         onClick={() => setIsDialogOpen(false)}
-                                        className="border-white/20 text-foreground hover:bg-white/5"
+                                        className="border-border text-foreground hover:bg-muted/50"
                                     >
                                         キャンセル
                                     </Button>
                                     <Button
                                         type="submit"
-                                        className="bg-cyan-500 hover:bg-cyan-600 text-black"
+                                        className="bg-primary hover:bg-primary/90 text-primary-foreground"
                                     >
                                         発行
                                     </Button>
@@ -328,10 +328,10 @@ export default function CouponsPage() {
                 <div className="grid md:grid-cols-3 gap-6 mb-8">
                     <Card className="bg-card border-border">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-400">
+                            <CardTitle className="text-sm font-medium text-muted-foreground">
                                 発行済みクーポン
                             </CardTitle>
-                            <Ticket className="h-4 w-4 text-cyan-400" />
+                            <Ticket className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-foreground">
@@ -342,7 +342,7 @@ export default function CouponsPage() {
 
                     <Card className="bg-card border-border">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-400">
+                            <CardTitle className="text-sm font-medium text-muted-foreground">
                                 有効なクーポン
                             </CardTitle>
                             <CheckCircle className="h-4 w-4 text-green-400" />
@@ -356,10 +356,10 @@ export default function CouponsPage() {
 
                     <Card className="bg-card border-border">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-400">
+                            <CardTitle className="text-sm font-medium text-muted-foreground">
                                 総利用回数
                             </CardTitle>
-                            <Gift className="h-4 w-4 text-cyan-400" />
+                            <Gift className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-foreground">{totalUsage}</div>
@@ -371,16 +371,16 @@ export default function CouponsPage() {
                 <Card className="bg-card border-border">
                     <CardContent className="p-0">
                         <Table>
-                            <TableHeader className="bg-white/5">
+                            <TableHeader className="bg-muted/50">
                                 <TableRow className="border-border hover:bg-transparent">
-                                    <TableHead className="text-cyan-400">コード</TableHead>
-                                    <TableHead className="text-cyan-400">タイトル</TableHead>
-                                    <TableHead className="text-cyan-400">割引</TableHead>
-                                    <TableHead className="text-cyan-400">利用状況</TableHead>
-                                    <TableHead className="text-cyan-400">有効期間</TableHead>
-                                    <TableHead className="text-cyan-400">対象</TableHead>
-                                    <TableHead className="text-cyan-400">ステータス</TableHead>
-                                    <TableHead className="text-cyan-400">アクション</TableHead>
+                                    <TableHead className="text-foreground">コード</TableHead>
+                                    <TableHead className="text-foreground">タイトル</TableHead>
+                                    <TableHead className="text-foreground">割引</TableHead>
+                                    <TableHead className="text-foreground">利用状況</TableHead>
+                                    <TableHead className="text-foreground">有効期間</TableHead>
+                                    <TableHead className="text-foreground">対象</TableHead>
+                                    <TableHead className="text-foreground">ステータス</TableHead>
+                                    <TableHead className="text-foreground">アクション</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -388,7 +388,7 @@ export default function CouponsPage() {
                                     <TableRow>
                                         <TableCell
                                             colSpan={8}
-                                            className="text-center py-10 text-gray-500"
+                                            className="text-center py-10 text-muted-foreground"
                                         >
                                             クーポンがありません。右上のボタンから発行してください。
                                         </TableCell>
@@ -397,11 +397,11 @@ export default function CouponsPage() {
                                     coupons.map((coupon) => (
                                         <TableRow
                                             key={coupon.id}
-                                            className="border-border hover:bg-white/5"
+                                            className="border-border hover:bg-muted/50"
                                         >
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
-                                                    <code className="bg-muted px-2 py-1 rounded text-cyan-400 font-mono text-sm">
+                                                    <code className="bg-muted px-2 py-1 rounded text-foreground font-mono text-sm">
                                                         {coupon.code}
                                                     </code>
                                                     <Button
@@ -413,7 +413,7 @@ export default function CouponsPage() {
                                                         {copiedCode === coupon.code ? (
                                                             <CheckCircle className="h-3 w-3 text-green-400" />
                                                         ) : (
-                                                            <Copy className="h-3 w-3 text-gray-400" />
+                                                            <Copy className="h-3 w-3 text-muted-foreground" />
                                                         )}
                                                     </Button>
                                                 </div>
@@ -421,7 +421,7 @@ export default function CouponsPage() {
                                             <TableCell className="text-foreground">
                                                 {coupon.title}
                                             </TableCell>
-                                            <TableCell className="font-medium text-cyan-400">
+                                            <TableCell className="font-medium text-foreground">
                                                 {coupon.discountType === "percentage"
                                                     ? `${coupon.discountValue}%`
                                                     : `¥${coupon.discountValue.toLocaleString()}`}
@@ -429,14 +429,14 @@ export default function CouponsPage() {
                                             <TableCell>
                                                 <div className="text-sm">
                                                     <span className="text-foreground">{coupon.usedCount}</span>
-                                                    <span className="text-gray-500">
+                                                    <span className="text-muted-foreground">
                                                         {" "}
                                                         / {coupon.maxUses}
                                                     </span>
                                                 </div>
                                                 <div className="w-full bg-muted rounded-full h-1.5 mt-1">
                                                     <div
-                                                        className="bg-cyan-500 h-1.5 rounded-full"
+                                                        className="bg-primary h-1.5 rounded-full"
                                                         style={{
                                                             width: `${(coupon.usedCount / coupon.maxUses) * 100
                                                                 }%`,
@@ -444,14 +444,14 @@ export default function CouponsPage() {
                                                     />
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-sm text-gray-400">
+                                            <TableCell className="text-sm text-muted-foreground">
                                                 <div>{coupon.validFrom}</div>
                                                 <div>~ {coupon.validUntil}</div>
                                             </TableCell>
                                             <TableCell>
                                                 <Badge
                                                     variant="outline"
-                                                    className="border-cyan-500/30 text-cyan-400"
+                                                    className="border-border text-foreground"
                                                 >
                                                     {coupon.targetStudioIds.length === 0
                                                         ? "全店舗"
@@ -460,11 +460,11 @@ export default function CouponsPage() {
                                             </TableCell>
                                             <TableCell>
                                                 {coupon.isActive ? (
-                                                    <Badge className="bg-green-900/30 text-green-400 border-green-500/30">
+                                                    <Badge className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-500/30">
                                                         有効
                                                     </Badge>
                                                 ) : (
-                                                    <Badge className="bg-gray-700/30 text-gray-400 border-gray-500/30">
+                                                    <Badge className="bg-muted text-muted-foreground border-border">
                                                         無効
                                                     </Badge>
                                                 )}
@@ -473,7 +473,7 @@ export default function CouponsPage() {
                                                 <Button
                                                     size="sm"
                                                     variant="outline"
-                                                    className="border-red-500/30 text-red-400 hover:bg-red-900/20"
+                                                    className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-900/20"
                                                     onClick={() => handleDelete(coupon.id)}
                                                 >
                                                     削除

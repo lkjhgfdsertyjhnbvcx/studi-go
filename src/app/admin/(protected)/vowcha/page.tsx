@@ -166,7 +166,7 @@ export default function VowchaPage() {
         <div className="space-y-8 max-w-6xl">
             <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div>
-                    <h1 className="text-2xl font-black flex items-center gap-2"><Ticket className="w-6 h-6 text-purple-500" /> VOWCHA連携</h1>
+                    <h1 className="text-2xl font-bold flex items-center gap-2"><Ticket className="w-6 h-6 text-purple-500" /> VOWCHA連携</h1>
                     <p className="text-sm text-muted-foreground mt-1">
                         VOWCHAクーポン加入店舗の管理、ACTIVA社への店舗情報提供（CSV）、紹介料の請求書発行・売掛管理を行います。
                     </p>
@@ -192,7 +192,7 @@ export default function VowchaPage() {
                 ].map((c) => (
                     <div key={c.label} className="rounded-xl border border-border bg-card p-4">
                         <div className="text-[11px] text-muted-foreground font-bold">{c.label}</div>
-                        <div className="text-xl font-black mt-1">{c.value}</div>
+                        <div className="text-xl font-bold mt-1">{c.value}</div>
                     </div>
                 ))}
             </div>

@@ -52,7 +52,7 @@ export default function VowchaInvoicePage({ params }: { params: Promise<{ id: st
             {/* 請求書本体（印刷向けに白固定） */}
             <div className="invoice-sheet rounded-xl border border-border shadow-sm p-10 space-y-8" style={{ background: "#ffffff", color: "#1d1d1f" }}>
                 <div className="text-center">
-                    <h1 className="text-2xl font-black tracking-widest" style={{ color: "#1d1d1f" }}>請　求　書</h1>
+                    <h1 className="text-2xl font-bold tracking-widest" style={{ color: "#1d1d1f" }}>請　求　書</h1>
                 </div>
 
                 <div className="flex justify-between items-start gap-6">
@@ -73,7 +73,7 @@ export default function VowchaInvoicePage({ params }: { params: Promise<{ id: st
 
                 <div className="flex items-end gap-4">
                     <div className="text-sm font-bold">ご請求金額</div>
-                    <div className="text-3xl font-black border-b-2 px-4" style={{ borderColor: "#1d1d1f" }}>
+                    <div className="text-3xl font-bold border-b-2 px-4" style={{ borderColor: "#1d1d1f" }}>
                         ¥{invoice.total.toLocaleString()} <span className="text-sm font-bold">（税込）</span>
                     </div>
                 </div>
@@ -103,8 +103,8 @@ export default function VowchaInvoicePage({ params }: { params: Promise<{ id: st
                             <td className="px-3 py-2 border text-right" style={{ borderColor: "#ccc" }}>¥{invoice.tax.toLocaleString()}</td>
                         </tr>
                         <tr style={{ background: "#f0f0f2" }}>
-                            <td className="px-3 py-2 border text-right font-black" style={{ borderColor: "#ccc" }}>合計（税込）</td>
-                            <td className="px-3 py-2 border text-right font-black" style={{ borderColor: "#ccc" }}>¥{invoice.total.toLocaleString()}</td>
+                            <td className="px-3 py-2 border text-right font-bold" style={{ borderColor: "#ccc" }}>合計（税込）</td>
+                            <td className="px-3 py-2 border text-right font-bold" style={{ borderColor: "#ccc" }}>¥{invoice.total.toLocaleString()}</td>
                         </tr>
                     </tbody>
                 </table>

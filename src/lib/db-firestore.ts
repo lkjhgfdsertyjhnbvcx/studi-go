@@ -231,8 +231,9 @@ export const getPaymentsByStudioIdFromFirestore = async (studioId: string): Prom
 
 export const savePaymentToFirestore = async (payment: Payment): Promise<void> => {
     try {
+        const { adminDb } = await import("@/lib/firebase-admin");
         const cleanedData = toPlainObject(payment);
-        await setDoc(doc(db, "payments", payment.id), cleanedData);
+        await adminDb.collection("payments").doc(payment.id).set(cleanedData);
     } catch (e) {
         console.error("Error saving payment:", e);
         throw e;
@@ -241,7 +242,8 @@ export const savePaymentToFirestore = async (payment: Payment): Promise<void> =>
 
 export const updatePaymentStatusInFirestore = async (id: string, status: string): Promise<boolean> => {
     try {
-        await updateDoc(doc(db, "payments", id), { status });
+        const { adminDb } = await import("@/lib/firebase-admin");
+        await adminDb.collection("payments").doc(id).update({ status });
         return true;
     } catch (e) {
         console.error("Error updating payment status:", e);

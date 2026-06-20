@@ -67,7 +67,7 @@ export default function InquiryPage() {
                 <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mb-6">
                     <CheckCircle2 className="w-10 h-10 text-green-500" />
                 </div>
-                <h1 className="text-2xl font-black italic uppercase tracking-tighter mb-2">送信完了</h1>
+                <h1 className="text-2xl font-bold tracking-normal mb-2">送信完了</h1>
                 <p className="text-muted-foreground mb-8">管理者へのメッセージを送信しました。</p>
                 <Button onClick={() => setIsSuccess(false)} variant="outline" className="rounded-xl px-8">
                     新しい問い合わせを作成
@@ -83,7 +83,7 @@ export default function InquiryPage() {
                     <div className="p-2 bg-cyan-500/10 rounded-lg">
                         <Mail className="w-5 h-5 text-cyan-500" />
                     </div>
-                    <h1 className="text-3xl font-black italic uppercase tracking-tighter">サポート問い合わせ</h1>
+                    <h1 className="text-3xl font-bold tracking-normal">サポート問い合わせ</h1>
                 </div>
                 <p className="text-muted-foreground text-lg leading-relaxed">管理者への問い合わせ。件名、本文、お名前を入力してください。</p>
             </div>
@@ -97,7 +97,7 @@ export default function InquiryPage() {
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1">店舗名 (自動入力)</label>
+                                <label className="text-xs font-bold text-muted-foreground tracking-normal ml-1">店舗名 (自動入力)</label>
                                 <Input
                                     value={studioName}
                                     readOnly
@@ -105,7 +105,7 @@ export default function InquiryPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1">お名前</label>
+                                <label className="text-xs font-bold text-muted-foreground tracking-normal ml-1">お名前</label>
                                 <Input
                                     value={personName}
                                     onChange={(e) => setPersonName(e.target.value)}
@@ -117,7 +117,7 @@ export default function InquiryPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1">件名</label>
+                            <label className="text-xs font-bold text-muted-foreground tracking-normal ml-1">件名</label>
                             <Input
                                 name="subject"
                                 placeholder="問い合わせの内容を一言で記入してください"
@@ -127,7 +127,7 @@ export default function InquiryPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1">問い合わせ記入欄</label>
+                            <label className="text-xs font-bold text-muted-foreground tracking-normal ml-1">問い合わせ記入欄</label>
                             <Textarea
                                 name="message"
                                 placeholder="具体的な問い合わせ内容を記入してください..."
@@ -147,7 +147,7 @@ export default function InquiryPage() {
                             <Button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="w-full md:w-auto md:px-12 h-14 bg-cyan-600 hover:bg-cyan-500 text-white font-black rounded-2xl shadow-lg shadow-cyan-950/20 active:scale-[0.98] transition-all uppercase italic tracking-tighter"
+                                className="w-full md:w-auto md:px-12 h-14 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-2xl shadow-lg shadow-cyan-950/20 active:scale-[0.98] transition-all tracking-normal"
                             >
                                 {isSubmitting ? (
                                     <>
@@ -169,7 +169,7 @@ export default function InquiryPage() {
             <div className="mt-8 p-6 bg-accent/5 rounded-3xl border border-dashed border-border flex items-start gap-4">
                 <AlertCircle className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div className="text-xs text-muted-foreground leading-relaxed">
-                    <p className="font-bold mb-1 uppercase tracking-widest text-foreground">お知らせ:</p>
+                    <p className="font-bold mb-1 tracking-normal text-foreground">お知らせ:</p>
                     <p>
                         送信された問い合わせは、プラットフォーム運営サポート（support@studi-go.com）および店舗管理者へ届きます。
                         内容を確認次第、担当者より折り返しご連絡いたします。

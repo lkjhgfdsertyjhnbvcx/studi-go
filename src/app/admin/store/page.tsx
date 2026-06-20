@@ -33,22 +33,22 @@ export default function StoreAdminPage() {
         <div className="min-h-screen bg-gray-50 text-gray-800 p-8 font-sans">
             <div className="max-w-3xl mx-auto">
                 <div className="flex justify-between items-center mb-10">
-                    <h1 className="text-3xl font-black italic text-gray-900">Store Setup</h1>
+                    <h1 className="text-3xl font-bold text-gray-900">Store Setup</h1>
                     <button onClick={handleSave} className="px-8 py-3 bg-purple-800 text-white rounded-xl font-bold shadow-lg hover:bg-purple-900">
-                        {isSaving ? "保存中..." : "💾 設定を保存"}
+                        {isSaving ? "保存中..." : "設定を保存"}
                     </button>
                 </div>
 
                 <div className="bg-white border border-gray-200 rounded-[2rem] p-8 shadow-sm space-y-6">
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">店舗名</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-2">店舗名</label>
                         <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 font-bold focus:border-purple-800 focus:outline-none" />
                     </div>
 
                     {/* 🌟 学割額の設定入力欄 */}
                     <div className="p-6 bg-purple-50 rounded-2xl border border-purple-100">
-                        <label className="block text-xs font-bold text-purple-800 uppercase mb-2">学割の割引額 (¥)</label>
-                        <input type="number" name="studentDiscount" value={formData.studentDiscount} onChange={handleChange} className="w-full bg-white border border-purple-200 rounded-xl px-4 py-3 text-xl font-black text-purple-800 focus:border-purple-800 focus:outline-none" />
+                        <label className="block text-xs font-bold text-purple-800 mb-2">学割の割引額 (¥)</label>
+                        <input type="number" name="studentDiscount" value={formData.studentDiscount} onChange={handleChange} className="w-full bg-white border border-purple-200 rounded-xl px-4 py-3 text-xl font-bold text-purple-800 focus:border-purple-800 focus:outline-none" />
                         <p className="text-[10px] text-purple-400 font-bold mt-2">※お客様が「学割」を選択した際に差し引かれる金額です。</p>
                     </div>
 

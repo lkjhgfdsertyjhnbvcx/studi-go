@@ -113,7 +113,7 @@ export function StudioBookings({ studioId }: { studioId: string }) {
                         <Calendar className="h-3 w-3 text-cyan-500 dark:text-cyan-400" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-black text-foreground">{activeBookings.length}</div>
+                        <div className="text-2xl font-bold text-foreground">{activeBookings.length}</div>
                     </CardContent>
                 </Card>
 
@@ -125,7 +125,7 @@ export function StudioBookings({ studioId }: { studioId: string }) {
                         <AlertTriangle className="h-3 w-3 text-red-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-black text-red-500">
+                        <div className="text-2xl font-bold text-red-500">
                             {cancelledCount}<span className="text-xs text-purple-600 dark:text-purple-400 ml-1">+{noShowCount}</span>
                         </div>
                     </CardContent>
@@ -139,7 +139,7 @@ export function StudioBookings({ studioId }: { studioId: string }) {
                         <RefreshCcw className="h-3 w-3 text-orange-500 dark:text-orange-400" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-black text-orange-500 dark:text-orange-400">{modifiedCount}</div>
+                        <div className="text-2xl font-bold text-orange-500 dark:text-orange-400">{modifiedCount}</div>
                     </CardContent>
                 </Card>
 
@@ -151,7 +151,7 @@ export function StudioBookings({ studioId }: { studioId: string }) {
                         <DollarSign className="h-3 w-3 text-green-600 dark:text-green-400" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-black text-green-600 dark:text-green-400">¥{totalRevenue.toLocaleString()}</div>
+                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">¥{totalRevenue.toLocaleString()}</div>
                     </CardContent>
                 </Card>
             </div>
@@ -159,7 +159,7 @@ export function StudioBookings({ studioId }: { studioId: string }) {
             {/* Bookings Table */}
             <Card className="bg-card border-border overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
-                    <CardTitle className="text-xl font-black italic tracking-tighter text-cyan-500 uppercase">
+                    <CardTitle className="text-xl font-bold tracking-normal text-foreground">
                         Studio Booking Log
                     </CardTitle>
                     <Button variant="outline" size="sm" onClick={loadBookings} className="h-8 border-border text-muted-foreground hover:text-foreground">
@@ -182,7 +182,7 @@ export function StudioBookings({ studioId }: { studioId: string }) {
                         <TableBody>
                             {bookings.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-24 text-muted-foreground italic uppercase tracking-widest">
+                                    <TableCell colSpan={7} className="text-center py-24 text-muted-foreground tracking-widest">
                                         No bookings on record
                                     </TableCell>
                                 </TableRow>
@@ -247,7 +247,7 @@ export function StudioBookings({ studioId }: { studioId: string }) {
                                                     {booking.userCount}名様
                                                 </div>
                                             </TableCell>
-                                            <TableCell className={`font-mono font-black ${isCancelled || isNoShow ? 'text-muted-foreground line-through' : 'text-cyan-600 dark:text-cyan-400'}`}>
+                                            <TableCell className={`font-mono font-bold ${isCancelled || isNoShow ? 'text-muted-foreground line-through' : 'text-cyan-600 dark:text-cyan-400'}`}>
                                                 ¥{booking.totalPrice.toLocaleString()}
                                             </TableCell>
                                             <TableCell className="text-right pr-6">

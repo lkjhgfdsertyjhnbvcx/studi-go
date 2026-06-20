@@ -88,7 +88,7 @@ export default function InvitesPage() {
     return (
         <div className="space-y-8 max-w-5xl">
             <div>
-                <h1 className="text-2xl font-black flex items-center gap-2"><Send className="w-6 h-6 text-purple-500" /> 店舗招待</h1>
+                <h1 className="text-2xl font-bold flex items-center gap-2"><Send className="w-6 h-6 text-purple-500" /> 店舗招待</h1>
                 <p className="text-sm text-muted-foreground mt-1">
                     招待リンクを発行して店舗に送ると、店舗側で基本情報・写真・部屋・機材を入力できます。提出内容を確認して承認すると本登録（公開）されます。
                 </p>

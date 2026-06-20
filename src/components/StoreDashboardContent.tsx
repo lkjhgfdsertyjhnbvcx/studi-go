@@ -202,6 +202,57 @@ export default function StoreDashboard({ studioId: propStudioId, isAdmin = false
         </div>
     );
 
+    // プラン未選択の場合、プラン選択画面のみ表示（管理者は除外）
+    if (!store.planKey && !isAdmin) {
+        return (
+            <div className="min-h-screen bg-background text-foreground flex flex-col" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                {showNotify && (
+                    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-white text-black px-8 py-4 rounded-full font-black shadow-2xl text-sm">
+                        {notifyMsg}
+                    </div>
+                )}
+                <header className="bg-card border-b border-border px-6 py-4 flex justify-between items-center shrink-0">
+                    <div className="flex items-center gap-4">
+                        {store.logoUrl && <img src={store.logoUrl} className="h-8 w-auto object-contain" alt="logo" />}
+                        <div>
+                            <p className="font-black text-foreground text-lg leading-none">{store.storeName}</p>
+                            <p className="text-muted-foreground text-xs mt-0.5">店舗管理ダッシュボード</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <ThemeToggle />
+                        <button
+                            onClick={() => {
+                                if (!confirm("ログアウトしますか？")) return;
+                                localStorage.removeItem("storeId");
+                                document.cookie = "__session=;path=/;max-age=0";
+                                window.location.href = "/store/login";
+                            }}
+                            className="px-4 py-2 text-xs font-bold text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 rounded-lg transition-all"
+                        >
+                            ログアウト
+                        </button>
+                    </div>
+                </header>
+                <div className="flex-1 flex items-start justify-center overflow-y-auto py-12 px-4">
+                    <div className="w-full max-w-2xl">
+                        <div className="text-center mb-8">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-600/20 mb-4">
+                                <span className="text-3xl">🚀</span>
+                            </div>
+                            <h1 className="text-2xl font-black text-foreground mb-2">ご利用にはプラン選択が必要です</h1>
+                            <p className="text-muted-foreground text-sm">
+                                Studi-Goをご利用いただくには、まずプランをお選びください。<br/>
+                                フリープランは無料でお試しいただけます。
+                            </p>
+                        </div>
+                        <PlanTab store={store} setStore={setStore} notify={notify} />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     const storeBookings = bookings.filter(b => b.studioId === store.id);
 
     return (

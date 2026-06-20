@@ -54,14 +54,14 @@ export default function EmailPage() {
     return (
         <div className="space-y-8 max-w-3xl">
             <div>
-                <h1 className="text-2xl font-black text-foreground">メール送信</h1>
+                <h1 className="text-2xl font-bold text-foreground">メール送信</h1>
                 <p className="text-muted-foreground text-sm mt-1">ユーザー・店舗へのお知らせメール送信</p>
             </div>
 
             <div className="bg-card border border-border rounded-xl p-6 space-y-6">
                 {/* Recipient */}
                 <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">送信先</label>
+                    <label className="block text-xs font-bold text-muted-foreground tracking-normal mb-3">送信先</label>
                     <div className="grid grid-cols-3 gap-3">
                         {recipientOptions.map(opt => (
                             <button
@@ -69,7 +69,7 @@ export default function EmailPage() {
                                 onClick={() => setRecipientType(opt.value)}
                                 className={`flex flex-col items-start p-4 rounded-xl border-2 text-left transition-all ${
                                     recipientType === opt.value
-                                        ? "border-purple-500 bg-purple-500/10 text-purple-400"
+                                        ? "border-purple-500 bg-purple-50 text-purple-700"
                                         : "border-border text-muted-foreground hover:border-purple-400"
                                 }`}
                             >
@@ -84,7 +84,7 @@ export default function EmailPage() {
                 {/* Specific emails input */}
                 {recipientType === "specific" && (
                     <div>
-                        <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                        <label className="block text-xs font-bold text-muted-foreground tracking-normal mb-2">
                             メールアドレス（改行 or カンマ区切り）
                         </label>
                         <textarea
@@ -99,7 +99,7 @@ export default function EmailPage() {
 
                 {/* Subject */}
                 <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">件名</label>
+                    <label className="block text-xs font-bold text-muted-foreground tracking-normal mb-2">件名</label>
                     <input
                         value={subject}
                         onChange={e => setSubject(e.target.value)}
@@ -110,7 +110,7 @@ export default function EmailPage() {
 
                 {/* Body */}
                 <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">本文</label>
+                    <label className="block text-xs font-bold text-muted-foreground tracking-normal mb-2">本文</label>
                     <textarea
                         value={body}
                         onChange={e => setBody(e.target.value)}
@@ -125,8 +125,8 @@ export default function EmailPage() {
                 {result && (
                     <div className={`p-4 rounded-xl border flex items-start gap-3 ${
                         result.error
-                            ? "bg-red-950/20 border-red-900/50 text-red-400"
-                            : "bg-green-950/20 border-green-900/50 text-green-400"
+                            ? "bg-red-50 border-red-200 text-red-700"
+                            : "bg-green-50 border-green-200 text-green-700"
                     }`}>
                         {result.error ? <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" /> : <CheckCircle className="w-5 h-5 shrink-0 mt-0.5" />}
                         <div className="text-sm font-bold">
@@ -150,14 +150,14 @@ export default function EmailPage() {
             </div>
 
             {/* Note */}
-            <div className="bg-yellow-950/20 border border-yellow-900/40 rounded-xl p-4 text-xs text-yellow-400/80 space-y-1">
-                <p className="font-bold text-yellow-400">⚠️ メール送信には設定が必要です</p>
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 rounded-xl p-4 text-xs text-amber-800 dark:text-amber-200 space-y-1">
+                <p className="font-bold text-amber-900 dark:text-amber-100">メール送信には設定が必要です</p>
                 <p>.env ファイルに以下を追加してください：</p>
-                <code className="block bg-black/30 rounded px-3 py-2 font-mono mt-2 text-yellow-300">
+                <code className="block bg-amber-100 dark:bg-amber-900/40 rounded px-3 py-2 font-mono mt-2 text-amber-900 dark:text-amber-100">
                     RESEND_API_KEY=re_xxxxxxxxxx<br/>
                     EMAIL_FROM=Studi-Go &lt;noreply@studi-go.com&gt;
                 </code>
-                <p className="mt-2">Resend API キーは <a href="https://resend.com" target="_blank" className="underline">resend.com</a> で取得できます（無料プランあり）</p>
+                <p className="mt-2">Resend API キーは <a href="https://resend.com" target="_blank" className="underline text-amber-700 dark:text-amber-300">resend.com</a> で取得できます（無料プランあり）</p>
             </div>
         </div>
     );

@@ -13,6 +13,11 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "権限がありません" }, { status: 403 });
         }
 
+        // プラン未選択の店舗はisPublishedをtrueにできない（管理者除く）
+        if (!auth.isAdmin && !data.planKey && data.isPublished === true) {
+            data.isPublished = false;
+        }
+
         // SAVE ALL のたびに updatedAt を更新（運営管理画面の更新状況に反映される）
         const dataWithTimestamp = {
             ...data,

@@ -183,7 +183,6 @@ export async function POST(request: Request) {
             success: true,
             applicationId,
             message: "申込書を送信しました",
-            debug: { storeResult, adminResult },
         });
     } catch (error: any) {
         console.error("申込書送信エラー:", error);

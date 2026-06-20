@@ -74,10 +74,10 @@ export default async function AdminPage() {
             <header className="mb-10">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
-                        <h1 className="text-4xl font-black mb-2 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600 uppercase italic">
+                        <h1 className="text-4xl font-bold mb-2 tracking-normal text-foreground">
                             プラットフォーム管理コンソール
                         </h1>
-                        <p className="text-muted-foreground font-mono text-xs uppercase tracking-widest leading-relaxed">
+                        <p className="text-muted-foreground font-mono text-xs tracking-widest leading-relaxed">
                             予約状況・売上集計・プラットフォーム概況
                         </p>
                     </div>
@@ -91,9 +91,9 @@ export default async function AdminPage() {
                     <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-2">
                             <CreditCard className="w-3.5 h-3.5 text-green-400" />
-                            <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest">月次収益 (MRR)</div>
+                            <div className="text-muted-foreground text-[10px] font-bold tracking-widest">月次収益 (MRR)</div>
                         </div>
-                        <div className="text-3xl font-black text-green-400 tracking-tight">¥{mrr.toLocaleString()}</div>
+                        <div className="text-3xl font-bold text-green-400 tracking-tight">¥{mrr.toLocaleString()}</div>
                         <div className="text-[10px] text-muted-foreground mt-1">契約店舗からの月額収益</div>
                     </div>
                 </div>
@@ -101,9 +101,9 @@ export default async function AdminPage() {
                     <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-2">
                             <Store className="w-3.5 h-3.5 text-purple-400" />
-                            <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest">登録店舗数</div>
+                            <div className="text-muted-foreground text-[10px] font-bold tracking-widest">登録店舗数</div>
                         </div>
-                        <div className="text-3xl font-black text-purple-400 tracking-tight">{totalStudios}</div>
+                        <div className="text-3xl font-bold text-purple-400 tracking-tight">{totalStudios}</div>
                         <div className="text-[10px] text-muted-foreground mt-1">契約中: {contractedStudios} / 公開中: {publishedStudios}</div>
                     </div>
                 </div>
@@ -111,9 +111,9 @@ export default async function AdminPage() {
                     <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-2">
                             <Users className="w-3.5 h-3.5 text-blue-400" />
-                            <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest">ユーザー数</div>
+                            <div className="text-muted-foreground text-[10px] font-bold tracking-widest">ユーザー数</div>
                         </div>
-                        <div className="text-3xl font-black text-blue-400 tracking-tight">{totalUsers}</div>
+                        <div className="text-3xl font-bold text-blue-400 tracking-tight">{totalUsers}</div>
                         <div className="text-[10px] text-muted-foreground mt-1">登録ユーザー総数</div>
                     </div>
                 </div>
@@ -121,9 +121,9 @@ export default async function AdminPage() {
                     <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-2">
                             <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
-                            <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest">今月予約売上</div>
+                            <div className="text-muted-foreground text-[10px] font-bold tracking-widest">今月予約売上</div>
                         </div>
-                        <div className="text-3xl font-black text-cyan-400 tracking-tight">¥{revenueThisMonth.toLocaleString()}</div>
+                        <div className="text-3xl font-bold text-cyan-400 tracking-tight">¥{revenueThisMonth.toLocaleString()}</div>
                         <div className="text-[10px] text-muted-foreground mt-1">{bookingsThisMonth}件の予約</div>
                     </div>
                 </div>
@@ -133,8 +133,8 @@ export default async function AdminPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
                 <div className="bg-card border border-border p-6 rounded-2xl relative overflow-hidden group hover:border-cyan-500/50 transition-all shadow-2xl">
                     <div className="relative z-10">
-                        <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest mb-1">累計予約売上</div>
-                        <div className="text-4xl font-black text-foreground tracking-tight">¥{totalRevenue.toLocaleString()}</div>
+                        <div className="text-muted-foreground text-[10px] font-bold tracking-widest mb-1">累計予約売上</div>
+                        <div className="text-4xl font-bold text-foreground tracking-tight">¥{totalRevenue.toLocaleString()}</div>
                         <div className="text-[10px] text-muted-foreground mt-1">全期間の予約売上合計</div>
                     </div>
                     <div className="absolute -right-4 -bottom-4 text-cyan-500/10 rotate-12 group-hover:scale-110 transition-transform">
@@ -144,8 +144,8 @@ export default async function AdminPage() {
 
                 <div className="bg-card border border-border p-6 rounded-2xl relative overflow-hidden group hover:border-blue-500/50 transition-all shadow-2xl">
                     <div className="relative z-10">
-                        <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest mb-1">累計予約件数</div>
-                        <div className="text-4xl font-black text-foreground tracking-tight">{bookings.length} <span className="text-sm font-normal text-blue-400">件</span></div>
+                        <div className="text-muted-foreground text-[10px] font-bold tracking-widest mb-1">累計予約件数</div>
+                        <div className="text-4xl font-bold text-foreground tracking-tight">{bookings.length} <span className="text-sm font-normal text-blue-400">件</span></div>
                         <div className="text-[10px] text-muted-foreground mt-1">今月: {bookingsThisMonth}件</div>
                     </div>
                     <div className="absolute -right-4 -bottom-4 text-blue-500/10 rotate-12 group-hover:scale-110 transition-transform">
@@ -155,8 +155,8 @@ export default async function AdminPage() {
 
                 <div className="bg-card border border-border p-6 rounded-2xl relative overflow-hidden group hover:border-purple-500/50 transition-all shadow-2xl">
                     <div className="relative z-10">
-                        <div className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest mb-1">平均客単価</div>
-                        <div className="text-4xl font-black text-foreground tracking-tight">¥{Math.round(avgPrice).toLocaleString()}</div>
+                        <div className="text-muted-foreground text-[10px] font-bold tracking-widest mb-1">平均客単価</div>
+                        <div className="text-4xl font-bold text-foreground tracking-tight">¥{Math.round(avgPrice).toLocaleString()}</div>
                         <div className="text-[10px] text-muted-foreground mt-1">1予約あたりの平均金額</div>
                     </div>
                     <div className="absolute -right-4 -bottom-4 text-purple-500/10 rotate-12 group-hover:scale-110 transition-transform">
@@ -174,7 +174,7 @@ export default async function AdminPage() {
                 <TransactionTable bookings={JSON.parse(JSON.stringify(typedBookings))} />
             </div>
 
-            <footer className="mt-12 flex justify-between items-center text-[10px] text-muted-foreground font-mono tracking-widest uppercase pb-10 border-t border-border pt-8">
+            <footer className="mt-12 flex justify-between items-center text-[10px] text-muted-foreground font-mono tracking-widest pb-10 border-t border-border pt-8">
                 <div>システム構成: 正常稼働中 // DB接続先: クラウド同期済み</div>
                 <div className="flex gap-6">
                     <span className="hover:text-cyan-500 transition-colors cursor-help">決済API: 稼働中</span>

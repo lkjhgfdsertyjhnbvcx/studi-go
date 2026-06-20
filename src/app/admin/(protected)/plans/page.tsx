@@ -267,7 +267,7 @@ export default function PlansPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-black text-foreground">プラン管理</h1>
+                    <h1 className="text-2xl font-bold text-foreground">プラン管理</h1>
                     <p className="text-muted-foreground text-sm mt-1">プランの設計と店舗への割り当て</p>
                 </div>
             </div>
@@ -275,8 +275,8 @@ export default function PlansPage() {
             {/* Tabs */}
             <div className="flex gap-1 border-b border-border">
                 {[
-                    { key: "design", label: "🎨 プラン設計" },
-                    { key: "assign", label: "🏪 店舗割り当て" },
+                    { key: "design", label: "プラン設計" },
+                    { key: "assign", label: "店舗割り当て" },
                 ].map(t => (
                     <button
                         key={t.key}
@@ -300,7 +300,7 @@ export default function PlansPage() {
                             {/* Plans */}
                             <div>
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className="font-black text-foreground text-lg">プランプラン一覧</h2>
+                                    <h2 className="font-bold text-foreground text-lg">プランプラン一覧</h2>
                                     <button
                                         onClick={addPlan}
                                         className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-xl transition-all"
@@ -332,7 +332,7 @@ export default function PlansPage() {
                                                         <input
                                                             value={plan.name}
                                                             onChange={e => updatePlan(idx, "name", e.target.value)}
-                                                            className="w-full bg-transparent font-black text-foreground text-lg focus:outline-none border-b border-transparent focus:border-border"
+                                                            className="w-full bg-transparent font-bold text-foreground text-lg focus:outline-none border-b border-transparent focus:border-border"
                                                             placeholder="プラン名"
                                                         />
                                                     </div>
@@ -343,14 +343,14 @@ export default function PlansPage() {
 
                                                 {/* Price */}
                                                 <div>
-                                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">月額料金</label>
+                                                    <label className="text-xs font-bold text-muted-foreground tracking-widest">月額料金</label>
                                                     <div className="flex items-center gap-2 mt-1">
                                                         <span className="text-muted-foreground text-sm">¥</span>
                                                         <input
                                                             type="number"
                                                             value={plan.price}
                                                             onChange={e => updatePlan(idx, "price", Number(e.target.value))}
-                                                            className="w-32 bg-background border border-border rounded-lg px-3 py-1.5 text-foreground font-black text-sm focus:outline-none focus:border-purple-500"
+                                                            className="w-32 bg-background border border-border rounded-lg px-3 py-1.5 text-foreground font-bold text-sm focus:outline-none focus:border-purple-500"
                                                         />
                                                         <span className="text-muted-foreground text-sm">/月</span>
                                                     </div>
@@ -358,7 +358,7 @@ export default function PlansPage() {
 
                                                 {/* Description */}
                                                 <div>
-                                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">説明文</label>
+                                                    <label className="text-xs font-bold text-muted-foreground tracking-widest">説明文</label>
                                                     <input
                                                         value={plan.description}
                                                         onChange={e => updatePlan(idx, "description", e.target.value)}
@@ -369,7 +369,7 @@ export default function PlansPage() {
 
                                                 {/* Features */}
                                                 <div>
-                                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">含まれる機能</label>
+                                                    <label className="text-xs font-bold text-muted-foreground tracking-widest">含まれる機能</label>
                                                     <div className="mt-2 space-y-2">
                                                         {plan.features.map((feat, fi) => (
                                                             <div key={fi} className="flex items-center gap-2">
@@ -402,7 +402,7 @@ export default function PlansPage() {
                             {/* Options */}
                             <div>
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className="font-black text-foreground text-lg">オプション一覧</h2>
+                                    <h2 className="font-bold text-foreground text-lg">オプション一覧</h2>
                                     <button
                                         onClick={addOption}
                                         className="flex items-center gap-2 px-4 py-2 bg-accent/20 hover:bg-accent/30 text-foreground text-sm font-bold rounded-xl transition-all border border-border"
@@ -418,7 +418,7 @@ export default function PlansPage() {
                                             <thead className="bg-accent/5 border-b border-border">
                                                 <tr>
                                                     {["オプション名", "課金タイプ", "追加料金", ""].map(h => (
-                                                        <th key={h} className="px-5 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-widest">{h}</th>
+                                                        <th key={h} className="px-5 py-3 text-left text-xs font-bold text-muted-foreground tracking-widest">{h}</th>
                                                     ))}
                                                 </tr>
                                             </thead>
@@ -509,8 +509,8 @@ export default function PlansPage() {
                             { label: "契約率", value: studios.length ? `${Math.round(withPlan.length/studios.length*100)}%` : "0%", sub: "プラン設定済み", color: "text-blue-500" },
                         ].map((kpi, i) => (
                             <div key={i} className="bg-card border border-border rounded-xl p-5">
-                                <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-2">{kpi.label}</p>
-                                <p className={`text-3xl font-black ${kpi.color}`}>{kpi.value}</p>
+                                <p className="text-xs text-muted-foreground font-bold tracking-widest mb-2">{kpi.label}</p>
+                                <p className={`text-3xl font-bold ${kpi.color}`}>{kpi.value}</p>
                                 <p className="text-xs text-muted-foreground mt-1">{kpi.sub}</p>
                             </div>
                         ))}
@@ -523,10 +523,10 @@ export default function PlansPage() {
                             return (
                                 <div key={plan.id} className="bg-card border border-border rounded-xl p-5">
                                     <div className="flex justify-between items-center mb-3">
-                                        <span className="font-black text-foreground">{plan.name}</span>
+                                        <span className="font-bold text-foreground">{plan.name}</span>
                                         <span className="text-xs font-bold text-muted-foreground">¥{plan.price.toLocaleString()}/月</span>
                                     </div>
-                                    <p className="text-2xl font-black" style={{ color: plan.color }}>{count}店舗</p>
+                                    <p className="text-2xl font-bold" style={{ color: plan.color }}>{count}店舗</p>
                                     <p className="text-xs text-muted-foreground mt-1">月次収益: ¥{(count * plan.price).toLocaleString()}</p>
                                 </div>
                             );
@@ -536,7 +536,7 @@ export default function PlansPage() {
                     {/* Store list */}
                     <div className="bg-card border border-border rounded-xl overflow-hidden">
                         <div className="p-5 border-b border-border flex items-center justify-between">
-                            <h2 className="font-black text-foreground">店舗一覧</h2>
+                            <h2 className="font-bold text-foreground">店舗一覧</h2>
                             <div className="flex gap-2">
                                 {[["all","すべて"],["active","契約中"],["inactive","未契約"]].map(([v,l]) => (
                                     <button key={v} onClick={() => setFilter(v)}
@@ -553,7 +553,7 @@ export default function PlansPage() {
                                 <thead className="bg-accent/5">
                                     <tr>
                                         {["店舗名","プラン","オプション","月額","支払方法","契約日",""].map(h => (
-                                            <th key={h} className="px-5 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-widest">{h}</th>
+                                            <th key={h} className="px-5 py-3 text-left text-xs font-bold text-muted-foreground tracking-widest">{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
@@ -597,7 +597,7 @@ export default function PlansPage() {
                                                         {(!s.planOptions || s.planOptions.length === 0) && <span className="text-xs text-muted-foreground">—</span>}
                                                     </div>
                                                 </td>
-                                                <td className="px-5 py-4 font-black text-foreground">
+                                                <td className="px-5 py-4 font-bold text-foreground">
                                                     {monthly > 0 ? `¥${monthly.toLocaleString()}` : "—"}
                                                 </td>
                                                 <td className="px-5 py-4 text-xs text-muted-foreground">
@@ -628,11 +628,11 @@ export default function PlansPage() {
             {editForm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
                     <div className="bg-card border border-border rounded-2xl p-8 w-full max-w-md shadow-2xl">
-                        <h2 className="text-xl font-black text-foreground mb-1">プラン割り当て</h2>
+                        <h2 className="text-xl font-bold text-foreground mb-1">プラン割り当て</h2>
                         <p className="text-sm text-muted-foreground mb-6">{editForm.storeName}</p>
 
                         <div className="mb-5">
-                            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">契約プラン</label>
+                            <label className="block text-xs font-bold text-muted-foreground tracking-widest mb-3">契約プラン</label>
                             <div className="grid grid-cols-2 gap-2">
                                 <button
                                     onClick={() => setEditForm({ ...editForm, planKey: "" })}
@@ -656,7 +656,7 @@ export default function PlansPage() {
 
                         {config.options.length > 0 && (
                             <div className="mb-5">
-                                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">オプション</label>
+                                <label className="block text-xs font-bold text-muted-foreground tracking-widest mb-3">オプション</label>
                                 <div className="space-y-1">
                                     {config.options.map(opt => {
                                         const isOnce = opt.billingType === "once";
@@ -706,7 +706,7 @@ export default function PlansPage() {
                         )}
 
                         <div className="mb-5">
-                            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">支払方法</label>
+                            <label className="block text-xs font-bold text-muted-foreground tracking-widest mb-3">支払方法</label>
                             <div className="flex gap-3">
                                 {[["invoice","🧾 請求書払い"],["stripe","💳 カード"]].map(([v,l]) => (
                                     <button key={v} onClick={() => setEditForm({ ...editForm, planPayMethod: v })}
@@ -718,7 +718,7 @@ export default function PlansPage() {
                         </div>
 
                         <div className="mb-5">
-                            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">無料期間の終了日</label>
+                            <label className="block text-xs font-bold text-muted-foreground tracking-widest mb-3">無料期間の終了日</label>
                             <div className="flex items-center gap-3">
                                 <input
                                     type="date"
@@ -755,7 +755,7 @@ export default function PlansPage() {
                         {editForm.planKey && (
                             <div className="mb-5 p-3 bg-accent/10 rounded-xl flex justify-between items-center">
                                 <span className="text-sm text-muted-foreground">月額合計</span>
-                                <span className="text-xl font-black text-foreground">¥{calcMonthly(editForm.planKey, editForm.planOptions).toLocaleString()}</span>
+                                <span className="text-xl font-bold text-foreground">¥{calcMonthly(editForm.planKey, editForm.planOptions).toLocaleString()}</span>
                             </div>
                         )}
 

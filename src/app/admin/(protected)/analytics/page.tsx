@@ -116,11 +116,11 @@ export default function AnalyticsPage() {
                     <div>
                         <div className="flex items-center gap-2 mb-2">
                             <BarChart3 className="w-6 h-6 text-cyan-500" />
-                            <h1 className="text-4xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600 uppercase italic">
+                            <h1 className="text-2xl font-bold tracking-normal text-foreground">
                                 売上集計・帳簿
                             </h1>
                         </div>
-                        <p className="text-muted-foreground font-mono text-xs uppercase tracking-widest leading-relaxed">
+                        <p className="text-muted-foreground font-mono text-xs tracking-widest leading-relaxed">
                             店舗の売上、売掛金、未入金状況を期間別に集計します。
                         </p>
                     </div>
@@ -148,7 +148,7 @@ export default function AnalyticsPage() {
                             size="sm"
                             onClick={() => setIncludeTax(!includeTax)}
                             className={cn(
-                                "rounded-xl text-[10px] font-black uppercase h-11 border-cyan-500/30 px-4",
+                                "rounded-xl text-[10px] font-bold h-11 border-cyan-500/30 px-4",
                                 includeTax ? "bg-cyan-500/10 text-cyan-400" : "text-muted-foreground"
                             )}
                         >
@@ -160,7 +160,7 @@ export default function AnalyticsPage() {
                             variant="outline" 
                             size="sm" 
                             onClick={handleExport}
-                            className="rounded-xl text-[10px] font-black uppercase h-11 border-border text-muted-foreground hover:text-foreground px-4"
+                            className="rounded-xl text-[10px] font-bold h-11 border-border text-muted-foreground hover:text-foreground px-4"
                         >
                             <Download className="w-3 h-3 mr-2" />
                             CSV出力
@@ -172,14 +172,14 @@ export default function AnalyticsPage() {
                     <Card className="bg-card/50 border-border rounded-3xl overflow-hidden relative group">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-cyan-500/10 transition-colors" />
                         <CardHeader className="pb-2">
-                            <CardDescription className="text-[10px] font-black uppercase tracking-widest text-cyan-500/70">総売上額 (期間中)</CardDescription>
-                            <CardTitle className="text-3xl font-black italic tracking-tighter flex items-end gap-2 text-foreground">
+                            <CardDescription className="text-[10px] font-bold tracking-widest text-cyan-500/70">総売上額 (期間中)</CardDescription>
+                            <CardTitle className="text-2xl font-bold tracking-normal flex items-end gap-2 text-foreground">
                                 ¥{stats.total}
-                                {includeTax && <span className="text-[10px] not-italic font-bold text-muted-foreground tracking-normal pb-1">税込</span>}
+                                {includeTax && <span className="text-[10px] font-bold text-muted-foreground tracking-normal pb-1">税込</span>}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="flex items-center text-[10px] font-bold text-cyan-500/60 font-mono tracking-tighter">
+                            <div className="flex items-center text-[10px] font-bold text-cyan-500/60 font-mono tracking-normal">
                                 <TrendingUp className="w-3 h-3 mr-1" />
                                 先月比 +12.5%
                             </div>
@@ -188,11 +188,11 @@ export default function AnalyticsPage() {
 
                     <Card className="bg-card/50 border-border rounded-3xl overflow-hidden group">
                         <CardHeader className="pb-2">
-                            <CardDescription className="text-[10px] font-black uppercase tracking-widest text-green-500/70">入金済み</CardDescription>
-                            <CardTitle className="text-3xl font-black italic tracking-tighter text-foreground">¥{stats.paid}</CardTitle>
+                            <CardDescription className="text-[10px] font-bold tracking-widest text-green-500/70">入金済み</CardDescription>
+                            <CardTitle className="text-2xl font-bold tracking-normal text-foreground">¥{stats.paid}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="flex items-center text-[10px] font-bold text-green-500/60 font-mono uppercase">
+                            <div className="flex items-center text-[10px] font-bold text-green-500/60 font-mono">
                                 <CheckCircle2 className="w-3 h-3 mr-1" />
                                 支払い確認済み
                             </div>
@@ -201,11 +201,11 @@ export default function AnalyticsPage() {
 
                     <Card className="bg-card/50 border-border rounded-3xl overflow-hidden group">
                         <CardHeader className="pb-2">
-                            <CardDescription className="text-[10px] font-black uppercase tracking-widest text-indigo-500/70">売掛金 (入金待ち)</CardDescription>
-                            <CardTitle className="text-3xl font-black italic tracking-tighter text-foreground">¥{stats.pending}</CardTitle>
+                            <CardDescription className="text-[10px] font-bold tracking-widest text-indigo-500/70">売掛金 (入金待ち)</CardDescription>
+                            <CardTitle className="text-2xl font-bold tracking-normal text-foreground">¥{stats.pending}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="flex items-center text-[10px] font-bold text-indigo-500/60 font-mono uppercase">
+                            <div className="flex items-center text-[10px] font-bold text-indigo-500/60 font-mono">
                                 <Clock className="w-3 h-3 mr-1" />
                                 入金予定
                             </div>
@@ -214,11 +214,11 @@ export default function AnalyticsPage() {
 
                     <Card className="bg-card/50 border-border rounded-3xl overflow-hidden ring-1 ring-red-500/20">
                         <CardHeader className="pb-2">
-                            <CardDescription className="text-[10px] font-black uppercase tracking-widest text-red-500/70">未入金 (期限超過)</CardDescription>
-                            <CardTitle className="text-3xl font-black italic tracking-tighter text-red-500">¥{stats.unpaid}</CardTitle>
+                            <CardDescription className="text-[10px] font-bold tracking-widest text-red-500/70">未入金 (期限超過)</CardDescription>
+                            <CardTitle className="text-2xl font-bold tracking-normal text-red-500">¥{stats.unpaid}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="flex items-center text-[10px] font-bold text-red-500/60 font-mono uppercase">
+                            <div className="flex items-center text-[10px] font-bold text-red-500/60 font-mono">
                                 <AlertCircle className="w-3 h-3 mr-1" />
                                 要対応
                             </div>
@@ -228,22 +228,22 @@ export default function AnalyticsPage() {
 
                 <div className="bg-card/30 border border-border rounded-3xl overflow-hidden shadow-xl backdrop-blur-sm">
                     <div className="px-8 py-6 border-b border-border bg-accent/5 flex items-center justify-between">
-                        <h2 className="text-lg font-black italic uppercase tracking-tighter flex items-center gap-2 text-foreground">
+                        <h2 className="text-lg font-bold tracking-normal flex items-center gap-2 text-foreground">
                             <Wallet className="w-4 h-4 text-cyan-500" />
                             売上台帳 // 会計明細
                         </h2>
-                        <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase">{stats.count} 件の取引が見つかりました</span>
+                        <span className="text-[10px] font-mono font-bold text-muted-foreground">{stats.count} 件の取引が見つかりました</span>
                     </div>
 
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="border-b border-border bg-accent/5">
-                                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap">日付</th>
-                                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap">利用者 / メモ</th>
-                                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap">ステータス</th>
-                                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap">支払方法</th>
-                                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right whitespace-nowrap">金額</th>
+                                    <th className="px-8 py-4 text-[10px] font-bold tracking-widest text-muted-foreground whitespace-nowrap">日付</th>
+                                    <th className="px-8 py-4 text-[10px] font-bold tracking-widest text-muted-foreground whitespace-nowrap">利用者 / メモ</th>
+                                    <th className="px-8 py-4 text-[10px] font-bold tracking-widest text-muted-foreground whitespace-nowrap">ステータス</th>
+                                    <th className="px-8 py-4 text-[10px] font-bold tracking-widest text-muted-foreground whitespace-nowrap">支払方法</th>
+                                    <th className="px-8 py-4 text-[10px] font-bold tracking-widest text-muted-foreground text-right whitespace-nowrap">金額</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -256,23 +256,23 @@ export default function AnalyticsPage() {
                                         </td>
                                         <td className="px-8 py-6">
                                             {p.status === 'paid' ? (
-                                                <Badge className="bg-green-500/10 text-green-500 border-none rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-tighter">完全入金</Badge>
+                                                <Badge className="bg-green-500/10 text-green-500 border-none rounded-md px-2 py-0.5 text-[9px] font-bold tracking-normal">完全入金</Badge>
                                             ) : p.dueDate && p.dueDate < new Date().toISOString().split('T')[0] ? (
-                                                <Badge className="bg-red-500/10 text-red-500 border-none rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-tighter">未入金・滞納</Badge>
+                                                <Badge className="bg-red-500/10 text-red-500 border-none rounded-md px-2 py-0.5 text-[9px] font-bold tracking-normal">未入金・滞納</Badge>
                                             ) : (
-                                                <Badge className="bg-indigo-500/10 text-indigo-500 border-none rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-tighter">売掛金</Badge>
+                                                <Badge className="bg-indigo-500/10 text-indigo-500 border-none rounded-md px-2 py-0.5 text-[9px] font-bold tracking-normal">売掛金</Badge>
                                             )}
                                         </td>
                                         <td className="px-8 py-6">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground border border-border px-2 py-1 rounded-lg bg-background">
+                                            <span className="text-[10px] font-bold tracking-widest text-muted-foreground border border-border px-2 py-1 rounded-lg bg-background">
                                                 {p.paymentMethod}
                                             </span>
                                         </td>
                                         <td className="px-8 py-6 text-right">
-                                            <div className="text-sm font-black italic tracking-tighter text-foreground">
+                                            <div className="text-sm font-bold tracking-normal text-foreground">
                                                 ¥{(includeTax ? p.amount : Math.floor(p.amount / 1.1)).toLocaleString()}
                                             </div>
-                                            <div className="text-[9px] font-bold text-muted-foreground font-mono uppercase">
+                                            <div className="text-[9px] font-bold text-muted-foreground font-mono">
                                                 Tax: ¥{(p.amount - Math.floor(p.amount / 1.1)).toLocaleString()}
                                             </div>
                                         </td>
@@ -283,7 +283,7 @@ export default function AnalyticsPage() {
                                         <td colSpan={5} className="px-8 py-20 text-center">
                                             <div className="flex flex-col items-center gap-2 opacity-20">
                                                 <Filter className="w-8 h-8" />
-                                                <div className="font-mono text-xs uppercase tracking-[0.2em]">データがありません</div>
+                                                <div className="font-mono text-xs tracking-[0.2em]">データがありません</div>
                                             </div>
                                         </td>
                                     </tr>
@@ -292,9 +292,9 @@ export default function AnalyticsPage() {
                             {filteredPayments.length > 0 && (
                                 <tfoot>
                                     <tr className="bg-accent/10">
-                                        <td colSpan={4} className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.5em] text-cyan-500/50">合計集計値</td>
+                                        <td colSpan={4} className="px-8 py-6 text-[10px] font-bold tracking-[0.5em] text-cyan-500/50">合計集計値</td>
                                         <td className="px-8 py-6 text-right">
-                                            <div className="text-2xl font-black italic tracking-tighter text-cyan-400">¥{stats.total}</div>
+                                            <div className="text-2xl font-bold tracking-normal text-foreground">¥{stats.total}</div>
                                             {!includeTax && <div className="text-[9px] font-bold text-muted-foreground">※表示価格はすべて税抜き</div>}
                                         </td>
                                     </tr>

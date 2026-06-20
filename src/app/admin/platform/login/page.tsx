@@ -47,12 +47,12 @@ export default function PlatformAdminLoginPage() {
                         </div>
                     </div>
                     <h1 className="text-2xl font-bold tracking-widest text-white mb-2">Studi-Go</h1>
-                    <p className="text-sm font-semibold text-purple-400 uppercase tracking-widest">運営管理者用</p>
+                    <p className="text-sm font-semibold text-purple-400 tracking-widest">運営管理者用</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-slate-400 tracking-wider ml-1 uppercase">メールアドレス</label>
+                        <label className="text-[10px] font-bold text-slate-400 tracking-wider ml-1">メールアドレス</label>
                         <Input
                             name="email"
                             type="email"
@@ -62,7 +62,7 @@ export default function PlatformAdminLoginPage() {
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-muted-foreground tracking-wider ml-1 uppercase">パスワード</label>
+                        <label className="text-[10px] font-bold text-muted-foreground tracking-wider ml-1">パスワード</label>
                         <div className="relative">
                             <Input
                                 name="password"
@@ -94,7 +94,7 @@ export default function PlatformAdminLoginPage() {
                 </form>
 
                 <div className="mt-8 text-center">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                    <p className="text-[10px] text-muted-foreground tracking-widest">
                         制限区域<br />許可された関係者のみ
                     </p>
                 </div>

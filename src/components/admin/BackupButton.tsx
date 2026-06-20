@@ -87,7 +87,7 @@ export function BackupButton() {
                 onClick={handleBackup}
                 disabled={status === 'loading'}
                 variant="outline"
-                className="bg-slate-900/50 border-white/10 hover:border-cyan-500/50 text-[10px] font-black tracking-widest uppercase transition-all gap-2 group h-9"
+                className="bg-slate-900/50 border-white/10 hover:border-cyan-500/50 text-[10px] font-bold tracking-widest transition-all gap-2 group h-9"
             >
                 {status === 'loading' ? (
                     <Loader2 className="h-3 w-3 animate-spin text-cyan-400" />

@@ -97,14 +97,14 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
             <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-4">
                     <div className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse"></div>
-                    <h2 className="text-lg font-bold tracking-tight uppercase">
+                    <h2 className="text-lg font-bold tracking-tight">
                         {isAdmin ? 'ユーザーデータベース' : 'メンバー名簿'}
                     </h2>
                 </div>
                 <Button 
                     onClick={handleExportCSV}
                     variant="outline" 
-                    className="border-cyan-500/30 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/10 gap-2 font-bold text-xs uppercase italic"
+                    className="border-cyan-500/30 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/10 gap-2 font-bold text-xs uppercase"
                 >
                     <Download size={14} /> CSV出力 (Spreadsheet用)
                 </Button>
@@ -114,18 +114,18 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
                 <Table>
                     <TableHeader className="bg-accent/5 border-b border-border">
                         <TableRow className="hover:bg-transparent border-none">
-                            <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5 px-8">メンバー情報</TableHead>
-                            <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5">連絡先 / 住所</TableHead>
-                            {!isAdmin && <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5">利用履歴</TableHead>}
-                            <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5">登録日</TableHead>
-                            <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5 px-8 text-right">認証</TableHead>
-                            {isAdmin && <TableHead className="text-muted-foreground uppercase text-[10px] font-black tracking-widest py-5 text-right px-6">操作</TableHead>}
+                            <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5 px-8">メンバー情報</TableHead>
+                            <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5">連絡先 / 住所</TableHead>
+                            {!isAdmin && <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5">利用履歴</TableHead>}
+                            <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5">登録日</TableHead>
+                            <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5 px-8 text-right">認証</TableHead>
+                            {isAdmin && <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5 text-right px-6">操作</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {users.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={isAdmin ? 5 : 5} className="text-center py-24 text-muted-foreground italic font-mono uppercase tracking-[0.2em]">
+                                <TableCell colSpan={isAdmin ? 5 : 5} className="text-center py-24 text-muted-foreground font-mono tracking-[0.2em]">
                                     データなし // 登録メンバーがいません
                                 </TableCell>
                             </TableRow>
@@ -136,7 +136,7 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
                                         <div className="flex flex-col">
                                             <button 
                                                 onClick={() => handleNameClick(user.id)}
-                                                className="text-left font-bold text-foreground group-hover:text-cyan-400 transition-colors uppercase tracking-tight text-base hover:underline"
+                                                className="text-left font-bold text-foreground group-hover:text-cyan-400 transition-colors tracking-tight text-base hover:underline"
                                             >
                                                 {user.name}
                                             </button>
@@ -159,7 +159,7 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
                                     {!isAdmin && (
                                         <TableCell className="py-6">
                                             <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-2 text-cyan-400 font-bold text-xs uppercase">
+                                                <div className="flex items-center gap-2 text-cyan-400 font-bold text-xs">
                                                     <History size={12} />
                                                     {user.bookings?.length || 0} 回来店
                                                 </div>
@@ -218,7 +218,7 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
                             <div className="h-32 bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-950 p-8 flex items-end">
                                 <div className="flex justify-between w-full items-end">
                                     <div>
-                                        <h2 className="text-3xl font-black text-white italic uppercase tracking-tighter leading-none">{userDetail.name}</h2>
+                                        <h2 className="text-3xl font-bold text-white tracking-normal leading-none">{userDetail.name}</h2>
                                         <p className="text-cyan-400 font-mono text-[10px] uppercase tracking-widest mt-2">USER_PROFILE_METADATA // ID: {userDetail.id}</p>
                                     </div>
                                     <Badge className="bg-cyan-500 text-black font-bold h-6 px-3">
@@ -304,11 +304,11 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
                                             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div className="space-y-1">
                                                     <p className="text-[10px] text-muted-foreground uppercase">保有クーポン数 (残り)</p>
-                                                    <p className="text-lg font-black text-purple-400">{(userDetail.coupons?.filter((c:any) => !c.isUsed).length) || 0} <span className="text-[10px] font-normal text-muted-foreground uppercase ml-1">Coupons</span></p>
+                                                    <p className="text-lg font-bold text-purple-400">{(userDetail.coupons?.filter((c:any) => !c.isUsed).length) || 0} <span className="text-[10px] font-normal text-muted-foreground uppercase ml-1">Coupons</span></p>
                                                 </div>
                                                 <div className="space-y-1">
                                                     <p className="text-[10px] text-muted-foreground uppercase">累計利用回数</p>
-                                                    <p className="text-lg font-black text-foreground">{userDetail.bookings?.length || 0} <span className="text-[10px] font-normal text-muted-foreground uppercase ml-1">Visits</span></p>
+                                                    <p className="text-lg font-bold text-foreground">{userDetail.bookings?.length || 0} <span className="text-[10px] font-normal text-muted-foreground uppercase ml-1">Visits</span></p>
                                                 </div>
                                             </div>
                                         </div>
@@ -319,7 +319,7 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-3">
                                         <div className="h-6 w-1 bg-cyan-500 rounded-full"></div>
-                                        <h3 className="text-lg font-black uppercase italic tracking-tighter">利用履歴 // HISTORY</h3>
+                                        <h3 className="text-lg font-bold tracking-normal">利用履歴 // HISTORY</h3>
                                     </div>
                                     <div className="border border-border rounded-2xl overflow-hidden bg-card/10">
                                         <Table>
@@ -334,7 +334,7 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
                                             <TableBody>
                                                 {(!userDetail.bookings || userDetail.bookings.length === 0) ? (
                                                     <TableRow>
-                                                        <TableCell colSpan={4} className="text-center py-10 text-muted-foreground font-mono text-xs italic">
+                                                        <TableCell colSpan={4} className="text-center py-10 text-muted-foreground font-mono text-xs">
                                                             利用データがありません
                                                         </TableCell>
                                                     </TableRow>
@@ -345,7 +345,7 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
                                                             <TableCell className="py-4">
                                                                 <div className="flex flex-col">
                                                                     <span className="text-xs font-bold text-foreground">{booking.studioName || "店舗"}</span>
-                                                                    <span className="text-[10px] text-muted-foreground italic tracking-tight">{booking.roomName || "メインルーム"}</span>
+                                                                    <span className="text-[10px] text-muted-foreground tracking-tight">{booking.roomName || "メインルーム"}</span>
                                                                 </div>
                                                             </TableCell>
                                                             <TableCell className="py-4 text-xs font-mono">{booking.startTime} ({booking.durationHours}h)</TableCell>
@@ -362,7 +362,7 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-3">
                                         <div className="h-6 w-1 bg-purple-500 rounded-full"></div>
-                                        <h3 className="text-lg font-black uppercase italic tracking-tighter">クーポン発行・利用履歴 // COUPONS</h3>
+                                        <h3 className="text-lg font-bold tracking-normal">クーポン発行・利用履歴 // COUPONS</h3>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {(!userDetail.coupons || userDetail.coupons.length === 0) ? (
@@ -384,7 +384,7 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
                                                         </Badge>
                                                     </div>
                                                     <div className="mt-4 flex justify-between items-center relative z-10">
-                                                        <div className="text-xl font-black text-purple-400">
+                                                        <div className="text-xl font-bold text-purple-400">
                                                             {coupon.discountType === 'percentage' ? `${coupon.discountValue}% OFF` : `¥${coupon.discountValue.toLocaleString()} OFF`}
                                                         </div>
                                                         {coupon.usedAt && (

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { saveBookingToFirestore, getAllBookingsFromFirestore } from "@/lib/db-firestore";
+import { saveBookingToFirestore, getAllBookingsFromFirestore, savePaymentToFirestore } from "@/lib/db-firestore";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +59,25 @@ export async function POST(request: Request) {
             paymentMethod: "onsite",  // 店頭払い
             createdAt: new Date().toISOString(),
         } as any);
+
+        // paymentsコレクションにも売上レコードを作成（店頭払い = pending）
+        try {
+            await savePaymentToFirestore({
+                id: `pay-${bookingId}`,
+                bookingId,
+                studioId,
+                studioName: studioName || '',
+                userName: userName || 'ゲスト',
+                userEmail: userEmail || '',
+                amount: totalPrice || 0,
+                status: 'pending',
+                paymentMethod: 'other',
+                date: new Date().toISOString().split('T')[0],
+                createdAt: new Date().toISOString(),
+            } as any);
+        } catch (payErr) {
+            console.error("[booking-onsite] Payment record creation failed:", payErr);
+        }
 
         return NextResponse.json({ success: true, bookingId });
     } catch (error: any) {

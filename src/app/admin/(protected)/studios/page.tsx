@@ -104,7 +104,7 @@ export default function StudiosAdminPage() {
             {/* ヘッダー */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-black text-foreground">スタジオ管理</h1>
+                    <h1 className="text-2xl font-bold text-foreground">スタジオ管理</h1>
                     <p className="text-muted-foreground text-sm mt-1">登録店舗の一覧・公開状況・更新状況</p>
                 </div>
                 <div className="flex items-center gap-3 text-sm font-mono">
@@ -118,8 +118,8 @@ export default function StudiosAdminPage() {
                     onClick={() => setFilter("all")}
                     className={`rounded-xl border p-4 cursor-pointer transition-all ${filter === "all" ? "border-purple-500 bg-purple-500/10" : "border-border bg-card hover:border-purple-500/50"}`}
                 >
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-1">全店舗</p>
-                    <p className="text-3xl font-black text-foreground">{studios.length}</p>
+                    <p className="text-xs text-muted-foreground font-bold tracking-widest mb-1">全店舗</p>
+                    <p className="text-3xl font-bold text-foreground">{studios.length}</p>
                 </div>
                 <div
                     onClick={() => setFilter("published")}
@@ -127,9 +127,9 @@ export default function StudiosAdminPage() {
                 >
                     <div className="flex items-center gap-2 mb-1">
                         <Globe className="w-3 h-3 text-green-400" />
-                        <p className="text-xs text-green-400 font-bold uppercase tracking-widest">公開中</p>
+                        <p className="text-xs text-green-400 font-bold tracking-widest">公開中</p>
                     </div>
-                    <p className="text-3xl font-black text-green-400">{publishedCount}</p>
+                    <p className="text-3xl font-bold text-green-400">{publishedCount}</p>
                 </div>
                 <div
                     onClick={() => setFilter("unpublished")}
@@ -137,9 +137,9 @@ export default function StudiosAdminPage() {
                 >
                     <div className="flex items-center gap-2 mb-1">
                         <EyeOff className="w-3 h-3 text-yellow-400" />
-                        <p className="text-xs text-yellow-400 font-bold uppercase tracking-widest">非公開</p>
+                        <p className="text-xs text-yellow-400 font-bold tracking-widest">非公開</p>
                     </div>
-                    <p className="text-3xl font-black text-yellow-400">{unpublishedCount}</p>
+                    <p className="text-3xl font-bold text-yellow-400">{unpublishedCount}</p>
                 </div>
             </div>
 
@@ -167,7 +167,7 @@ export default function StudiosAdminPage() {
                         <thead className="bg-accent/5 border-b border-border">
                             <tr>
                                 {["店舗名 / メール", "公開状況", "更新状況", "プラン", "住所", "登録日", "操作"].map(h => (
-                                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-widest">{h}</th>
+                                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-muted-foreground tracking-widest">{h}</th>
                                 ))}
                             </tr>
                         </thead>
