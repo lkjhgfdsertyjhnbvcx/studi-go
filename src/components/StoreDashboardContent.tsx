@@ -72,7 +72,7 @@ interface Store {
     businessHours?: { weekday: string; saturday: string; sundayHoliday: string };
     reservationLeadDays?: number;
     personalPracticeSettings?: { enabled: boolean; maxPeople: number; advanceDays?: number; advanceHours?: number; pricePerHour?: number; };
-    studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: "per_use" | "per_hour" };
+    studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: "per_use" | "per_hour"; timeRestriction?: { enabled: boolean; days: number[]; slots: { start: string; end: string }[] } };
     otherDiscounts?: Discount[];
     personalPracticeDiscounts?: Discount[];
     holidayPeriods?: Array<{ name: string; start: string; end: string }>;
@@ -667,16 +667,19 @@ function SettingsTab({ store, setStore }: any) {
             <Subsection title="割引設定">
                 <Toggle label="学割" value={store.studentDiscount?.enabled ?? false} onChange={v => u("studentDiscount", { ...store.studentDiscount, enabled: v })} />
                 {store.studentDiscount?.enabled && (
-                    <div className="ml-4 flex gap-2 items-center mt-2 flex-wrap">
-                        <input type="number" className="w-20 p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none text-center" value={store.studentDiscount?.value || 0} onChange={e => u("studentDiscount", { ...store.studentDiscount, value: parseInt(e.target.value) })} />
-                        <select className="p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none" value={store.studentDiscount?.discountType || "amount"} onChange={e => u("studentDiscount", { ...store.studentDiscount, discountType: e.target.value })}>
-                            <option value="amount">円引き</option>
-                            <option value="percentage">%割引</option>
-                        </select>
-                        <select className="p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none" value={(store.studentDiscount as any)?.billingUnit || "per_use"} onChange={e => u("studentDiscount", { ...store.studentDiscount, billingUnit: e.target.value })}>
-                            <option value="per_use">1回あたり</option>
-                            <option value="per_hour">1時間あたり</option>
-                        </select>
+                    <div className="ml-4 mt-2 space-y-3">
+                        <div className="flex gap-2 items-center flex-wrap">
+                            <input type="number" className="w-20 p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none text-center" value={store.studentDiscount?.value || 0} onChange={e => u("studentDiscount", { ...store.studentDiscount, value: parseInt(e.target.value) })} />
+                            <select className="p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none" value={store.studentDiscount?.discountType || "amount"} onChange={e => u("studentDiscount", { ...store.studentDiscount, discountType: e.target.value })}>
+                                <option value="amount">円引き</option>
+                                <option value="percentage">%割引</option>
+                            </select>
+                            <select className="p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none" value={(store.studentDiscount as any)?.billingUnit || "per_use"} onChange={e => u("studentDiscount", { ...store.studentDiscount, billingUnit: e.target.value })}>
+                                <option value="per_use">1回あたり</option>
+                                <option value="per_hour">1時間あたり</option>
+                            </select>
+                        </div>
+                        <StudentDiscountTimeEditor studentDiscount={store.studentDiscount} onChange={(td: any) => u("studentDiscount", td)} />
                     </div>
                 )}
                 <div className="mt-3 space-y-3">
@@ -830,6 +833,56 @@ function TimeRestrictionEditor({ restriction, onChange }: { restriction?: TimeRe
                             </div>
                         );
                     })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ===== 学割の時間帯・曜日制限エディタ =====
+const STUDENT_WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+function StudentDiscountTimeEditor({ studentDiscount, onChange }: { studentDiscount: any; onChange: (td: any) => void }) {
+    const tr = studentDiscount?.timeRestriction || { enabled: false, days: [], slots: [] };
+    const update = (patch: any) => onChange({ ...studentDiscount, timeRestriction: { ...tr, ...patch } });
+    const days: number[] = Array.isArray(tr.days) ? tr.days : [];
+    const slots: { start: string; end: string }[] = Array.isArray(tr.slots) ? tr.slots : [];
+    const toggleDay = (d: number) =>
+        update({ enabled: true, days: days.includes(d) ? days.filter(x => x !== d) : [...days, d].sort((a, b) => a - b) });
+    const setSlot = (i: number, field: "start" | "end", val: string) =>
+        update({ enabled: true, slots: slots.map((s, idx) => (idx === i ? { ...s, [field]: val } : s)) });
+    const addSlot = () => update({ enabled: true, slots: [...slots, { start: "10:00", end: "18:00" }] });
+    const removeSlot = (i: number) => update({ enabled: true, slots: slots.filter((_, idx) => idx !== i) });
+    return (
+        <div>
+            <Toggle label="時間帯・曜日を限定する" value={tr.enabled ?? false} onChange={(v: boolean) => update({ enabled: v })} />
+            {tr.enabled && (
+                <div className="ml-4 mt-2 space-y-3">
+                    <div>
+                        <p className="text-[10px] text-muted-foreground font-bold mb-1">対象曜日（未選択＝全曜日）</p>
+                        <div className="flex gap-1 flex-wrap">
+                            {STUDENT_WEEKDAY_LABELS.map((label, d) => (
+                                <button key={d} type="button" onClick={() => toggleDay(d)}
+                                    className={`w-8 h-8 rounded-lg text-xs font-black border transition-all ${days.includes(d) ? "bg-purple-600 border-purple-500 text-white" : "bg-accent/10 border-border text-muted-foreground hover:border-gray-500"}`}>
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-muted-foreground font-bold mb-1">対象時間帯（複数設定可・未設定＝全時間）</p>
+                        <div className="space-y-2">
+                            {slots.map((s, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                    <input type="time" value={s.start} onChange={e => setSlot(i, "start", e.target.value)} className="p-1.5 bg-accent/10 border border-border rounded text-xs font-bold text-foreground outline-none" />
+                                    <span className="text-xs text-muted-foreground">〜</span>
+                                    <input type="time" value={s.end} onChange={e => setSlot(i, "end", e.target.value)} className="p-1.5 bg-accent/10 border border-border rounded text-xs font-bold text-foreground outline-none" />
+                                    <button type="button" onClick={() => removeSlot(i)} className="text-red-400 px-1 text-sm">✕</button>
+                                </div>
+                            ))}
+                        </div>
+                        <button type="button" onClick={addSlot} className="mt-2 w-full py-1.5 border border-dashed border-border rounded-lg text-[10px] font-black text-muted-foreground hover:text-foreground transition-all">+ 時間帯を追加</button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">この曜日・時間帯に当てはまる予約だけ学割が表示・適用されます。</p>
                 </div>
             )}
         </div>

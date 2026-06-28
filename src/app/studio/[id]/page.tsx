@@ -21,7 +21,7 @@ interface Studio {
   equipmentOptions?: EquipmentOption[];
   designSettings?: { backgroundColor?: string; backgroundType?: string; backgroundImageUrl?: string; logoSize?: number; showMap?: boolean };
   personalPracticeSettings?: { enabled: boolean; maxPeople: number; pricePerHour?: number };
-  studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string };
+  studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string; timeRestriction?: { enabled: boolean; days: number[]; slots: { start: string; end: string }[] } };
   otherDiscounts?: Array<{ name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string }>;
   personalPracticeDiscounts?: Array<{ name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string }>;
   paymentMethod?: "store" | "studigo";
@@ -245,7 +245,37 @@ export default function StudioDetailPage() {
     const multiplier = billingUnit === "per_hour" ? selectedDuration : 1;
     return discountType === "amount" ? value * multiplier : Math.round(subtotal * value / 100);
   };
-  const studentDiscountAmount = (isStudentDiscount && studio?.studentDiscount?.enabled)
+  // 学割の時間帯・曜日制限の判定（選択中の予約がその条件に合致するか）
+  const studentTR = studio?.studentDiscount?.timeRestriction;
+  const studentEligibleByTime = (() => {
+    if (!studentTR || !studentTR.enabled) return true; // 制限なし＝常に対象
+    if (!selectedDate || selectedStart === null) return false;
+    // 曜日（未選択＝全曜日）。getDay(): 0=日 .. 6=土
+    if (Array.isArray(studentTR.days) && studentTR.days.length > 0 && !studentTR.days.includes(selectedDate.getDay())) {
+      return false;
+    }
+    // 時間帯（未設定＝全時間）。予約開始時刻がいずれかのスロット内か
+    if (Array.isArray(studentTR.slots) && studentTR.slots.length > 0) {
+      const startMin = Math.round(selectedStart * 60);
+      const toMin = (t: string) => { const [h, m] = String(t).split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+      const inSlot = studentTR.slots.some(s => { const ss = toMin(s.start), se = toMin(s.end); return startMin >= ss && startMin < se; });
+      if (!inSlot) return false;
+    }
+    return true;
+  })();
+  // 対象外のときに表示する案内文（例：「月・火・水・木・金曜 10:00〜18:00」）
+  const studentRestrictionLabel = (() => {
+    if (!studentTR || !studentTR.enabled) return "";
+    const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
+    const dayPart = (Array.isArray(studentTR.days) && studentTR.days.length > 0)
+      ? studentTR.days.map((d: number) => dayLabels[d]).join("・") + "曜"
+      : "全曜日";
+    const slotPart = (Array.isArray(studentTR.slots) && studentTR.slots.length > 0)
+      ? studentTR.slots.map(s => `${s.start}〜${s.end}`).join("、")
+      : "全時間";
+    return `${dayPart} ${slotPart}`;
+  })();
+  const studentDiscountAmount = (isStudentDiscount && studio?.studentDiscount?.enabled && studentEligibleByTime)
     ? calcDiscount(studio.studentDiscount.value, studio.studentDiscount.discountType, studio.studentDiscount.billingUnit)
     : 0;
   const otherDiscountAmount = selectedOtherDiscounts.reduce((sum, idx) => {
@@ -822,7 +852,7 @@ export default function StudioDetailPage() {
                       {(studio.studentDiscount?.enabled || (studio.otherDiscounts && studio.otherDiscounts.filter(d => d.enabled).length > 0)) && (
                         <div className="border-t border-gray-700 pt-2 mt-2 space-y-2">
                           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">割引</p>
-                          {studio.studentDiscount?.enabled && (
+                          {studio.studentDiscount?.enabled && studentEligibleByTime && (
                             <label className="flex items-center justify-between cursor-pointer">
                               <div className="flex items-center gap-2">
                                 <input
@@ -837,6 +867,9 @@ export default function StudioDetailPage() {
                                 -{studio.studentDiscount.value}{studio.studentDiscount.discountType === "percentage" ? "%" : "円"}{studio.studentDiscount.billingUnit === "per_hour" ? "/h" : "/回"}
                               </span>
                             </label>
+                          )}
+                          {studio.studentDiscount?.enabled && studentTR?.enabled && !studentEligibleByTime && (
+                            <p className="text-[10px] text-muted-foreground">学割対象: {studentRestrictionLabel}（対象の日時を選ぶと割引が表示されます）</p>
                           )}
                           {studio.otherDiscounts?.map((d, i) => {
                             if (!d.enabled) return null;
