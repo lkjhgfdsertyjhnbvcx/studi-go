@@ -66,12 +66,18 @@ function isHolidayDate(date: Date, holidayPeriods?: Array<{ name: string; start:
   return null;
 }
 
+// 割引の時間帯・曜日制限の判定（新形式: { enabled, days:number[], slots:{start,end}[] }）。
+// days未選択＝全曜日、slots未設定＝全時間。制限オフ＝常に対象。
 function isDiscountAvailable(discount: any, date: Date | null, startHour: number | null): boolean {
-  if (!discount?.timeRestriction?.enabled || !date || startHour === null) return true;
-  const dayType = getDayType(date);
-  const dayRule = discount.timeRestriction[dayType];
-  if (!dayRule) return false; // day not enabled = not available
-  return startHour >= dayRule.start && startHour < dayRule.end;
+  const tr = discount?.timeRestriction;
+  if (!tr?.enabled || !date || startHour === null) return true;
+  if (Array.isArray(tr.days) && tr.days.length > 0 && !tr.days.includes(date.getDay())) return false;
+  if (Array.isArray(tr.slots) && tr.slots.length > 0) {
+    const startMin = Math.round(startHour * 60);
+    const toMin = (t: string) => { const [h, m] = String(t).split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+    return tr.slots.some((s: any) => { const ss = toMin(s.start), se = toMin(s.end); return startMin >= ss && startMin < se; });
+  }
+  return true;
 }
 
 function formatTime(t: number) {
@@ -247,22 +253,7 @@ export default function StudioDetailPage() {
   };
   // 学割の時間帯・曜日制限の判定（選択中の予約がその条件に合致するか）
   const studentTR = studio?.studentDiscount?.timeRestriction;
-  const studentEligibleByTime = (() => {
-    if (!studentTR || !studentTR.enabled) return true; // 制限なし＝常に対象
-    if (!selectedDate || selectedStart === null) return false;
-    // 曜日（未選択＝全曜日）。getDay(): 0=日 .. 6=土
-    if (Array.isArray(studentTR.days) && studentTR.days.length > 0 && !studentTR.days.includes(selectedDate.getDay())) {
-      return false;
-    }
-    // 時間帯（未設定＝全時間）。予約開始時刻がいずれかのスロット内か
-    if (Array.isArray(studentTR.slots) && studentTR.slots.length > 0) {
-      const startMin = Math.round(selectedStart * 60);
-      const toMin = (t: string) => { const [h, m] = String(t).split(":").map(Number); return (h || 0) * 60 + (m || 0); };
-      const inSlot = studentTR.slots.some(s => { const ss = toMin(s.start), se = toMin(s.end); return startMin >= ss && startMin < se; });
-      if (!inSlot) return false;
-    }
-    return true;
-  })();
+  const studentEligibleByTime = isDiscountAvailable(studio?.studentDiscount, selectedDate, selectedStart);
   // 対象外のときに表示する案内文（例：「月・火・水・木・金曜 10:00〜18:00」）
   const studentRestrictionLabel = (() => {
     if (!studentTR || !studentTR.enabled) return "";

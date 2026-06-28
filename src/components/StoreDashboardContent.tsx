@@ -62,8 +62,7 @@ interface Room {
 interface StaffMember { id: string; name: string; email: string; password?: string; role: "admin" | "staff"; createdAt: string; }
 interface BlacklistEntry { userId: string; userName: string; email?: string; reason: string; createdAt: string; }
 interface EquipmentOption { name: string; pricePerHour: number; priceType?: "per_use" | "per_hour"; imageUrl?: string; quantity?: number; category?: "amp" | "drums" | "mic" | "pa" | "guitar" | "bass" | "keys" | "other"; status?: "active" | "maintenance" | "broken"; assignedRoom?: string; }
-interface TimeRestriction { enabled: boolean; weekday?: { start: number; end: number }; saturday?: { start: number; end: number }; sundayHoliday?: { start: number; end: number }; }
-interface Discount { name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: "per_use" | "per_hour"; timeRestriction?: TimeRestriction; }
+interface Discount { name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: "per_use" | "per_hour"; timeRestriction?: { enabled: boolean; days: number[]; slots: { start: string; end: string }[] }; }
 interface Store {
     id: string; storeName: string; companyName?: string; representative?: string; email?: string;
     postalCode?: string; address?: string; phone?: string; invoiceNumber?: string; closedDays?: string;
@@ -679,7 +678,7 @@ function SettingsTab({ store, setStore }: any) {
                                 <option value="per_hour">1時間あたり</option>
                             </select>
                         </div>
-                        <StudentDiscountTimeEditor studentDiscount={store.studentDiscount} onChange={(td: any) => u("studentDiscount", td)} />
+                        <DiscountTimeEditor timeRestriction={store.studentDiscount?.timeRestriction} onChange={(tr: any) => u("studentDiscount", { ...store.studentDiscount, timeRestriction: tr })} />
                     </div>
                 )}
                 <div className="mt-3 space-y-3">
@@ -701,7 +700,7 @@ function SettingsTab({ store, setStore }: any) {
                                 </select>
                                 <Toggle label="有効" value={d.enabled} onChange={v => uDiscount(idx, "enabled", v)} />
                             </div>
-                            <TimeRestrictionEditor restriction={d.timeRestriction} onChange={tr => uDiscount(idx, "timeRestriction", tr)} />
+                            <DiscountTimeEditor timeRestriction={d.timeRestriction} onChange={tr => uDiscount(idx, "timeRestriction", tr)} />
                         </div>
                     ))}
                     <button onClick={() => setStore({ ...store, otherDiscounts: [...(store.otherDiscounts || []), { name: "", enabled: true, discountType: "amount", value: 0 }] })} className="w-full py-2 border border-dashed border-border rounded-xl text-xs font-black text-muted-foreground hover:text-foreground transition-all">
@@ -793,57 +792,11 @@ function SettingsTab({ store, setStore }: any) {
     );
 }
 
-// ===== 時間帯制限エディタ =====
-function TimeRestrictionEditor({ restriction, onChange }: { restriction?: TimeRestriction; onChange: (tr: TimeRestriction) => void }) {
-    const enabled = restriction?.enabled ?? false;
-    const toggle = () => onChange({ ...restriction, enabled: !enabled } as TimeRestriction);
-    const setDay = (day: "weekday" | "saturday" | "sundayHoliday", field: "start" | "end", val: number) => {
-        const current = restriction?.[day] || { start: 10, end: 22 };
-        onChange({ ...restriction, enabled: true, [day]: { ...current, [field]: val } });
-    };
-    const dayLabels = [
-        { key: "weekday" as const, label: "平日" },
-        { key: "saturday" as const, label: "土曜" },
-        { key: "sundayHoliday" as const, label: "日祝" },
-    ];
-    return (
-        <div className="mt-1">
-            <Toggle label="時間帯制限" value={enabled} onChange={toggle} />
-            {enabled && (
-                <div className="ml-4 mt-2 space-y-1">
-                    {dayLabels.map(({ key, label }) => {
-                        const dayEnabled = !!restriction?.[key];
-                        return (
-                            <div key={key} className="flex items-center gap-2 flex-wrap">
-                                <label className="flex items-center gap-1 cursor-pointer">
-                                    <input type="checkbox" checked={dayEnabled} onChange={e => {
-                                        if (e.target.checked) setDay(key, "start", 10);
-                                        else { const { [key]: _, ...rest } = restriction || {}; onChange({ ...rest, enabled: true } as TimeRestriction); }
-                                    }} className="w-3 h-3 accent-purple-600" />
-                                    <span className="text-[10px] font-bold text-muted-foreground w-6">{label}</span>
-                                </label>
-                                {dayEnabled && (
-                                    <>
-                                        <input type="number" min={0} max={23} className="w-12 p-1 bg-accent/10 border border-border rounded text-[10px] font-bold text-foreground outline-none text-center" value={restriction?.[key]?.start ?? 10} onChange={e => setDay(key, "start", parseInt(e.target.value))} />
-                                        <span className="text-[10px] text-muted-foreground">〜</span>
-                                        <input type="number" min={1} max={30} className="w-12 p-1 bg-accent/10 border border-border rounded text-[10px] font-bold text-foreground outline-none text-center" value={restriction?.[key]?.end ?? 22} onChange={e => setDay(key, "end", parseInt(e.target.value))} />
-                                        <span className="text-[10px] text-muted-foreground">時</span>
-                                    </>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-        </div>
-    );
-}
-
-// ===== 学割の時間帯・曜日制限エディタ =====
+// ===== 割引の時間帯・曜日制限エディタ（複数時間帯＋曜日選択。学割・その他割引で共用） =====
 const STUDENT_WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
-function StudentDiscountTimeEditor({ studentDiscount, onChange }: { studentDiscount: any; onChange: (td: any) => void }) {
-    const tr = studentDiscount?.timeRestriction || { enabled: false, days: [], slots: [] };
-    const update = (patch: any) => onChange({ ...studentDiscount, timeRestriction: { ...tr, ...patch } });
+function DiscountTimeEditor({ timeRestriction, onChange }: { timeRestriction?: any; onChange: (tr: any) => void }) {
+    const tr = timeRestriction || { enabled: false, days: [], slots: [] };
+    const update = (patch: any) => onChange({ ...tr, ...patch });
     const days: number[] = Array.isArray(tr.days) ? tr.days : [];
     const slots: { start: string; end: string }[] = Array.isArray(tr.slots) ? tr.slots : [];
     const toggleDay = (d: number) =>
