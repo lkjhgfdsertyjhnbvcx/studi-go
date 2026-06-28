@@ -807,7 +807,13 @@ function DiscountTimeEditor({ timeRestriction, onChange }: { timeRestriction?: a
     const removeSlot = (i: number) => update({ enabled: true, slots: slots.filter((_, idx) => idx !== i) });
     return (
         <div>
-            <Toggle label="時間帯・曜日を限定する" value={tr.enabled ?? false} onChange={(v: boolean) => update({ enabled: v })} />
+            {/* 行全体をクリック可能にする（共有Toggleはスイッチ部分しか反応しないため） */}
+            <button type="button" onClick={() => update({ enabled: !tr.enabled })} className="flex items-center gap-3 cursor-pointer bg-transparent p-0 border-0">
+                <div className={`w-10 h-6 rounded-full transition-all relative shrink-0 ${tr.enabled ? "bg-purple-600" : "bg-accent/20"}`}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${tr.enabled ? "left-5" : "left-1"}`} />
+                </div>
+                <span className="text-sm font-bold text-muted-foreground">時間帯・曜日を限定する</span>
+            </button>
             {tr.enabled && (
                 <div className="ml-4 mt-2 space-y-3">
                     <div>
