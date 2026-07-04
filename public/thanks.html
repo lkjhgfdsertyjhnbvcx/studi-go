@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>お問い合わせありがとうございました｜Studi-Go</title>
+<meta name="description" content="Studi-Goへのお問い合わせありがとうございました。1営業日以内に担当よりご連絡いたします。">
+<meta name="robots" content="noindex,follow">
+<meta name="theme-color" content="#16161f">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Google Analytics 4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-99KCX5C2EB"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){ dataLayer.push(arguments); }
+  gtag('js', new Date());
+  gtag('config', 'G-99KCX5C2EB');
+  // 遷移経由でもコンバージョンを確実に取れるように、Thanks到達時にもう一発計測
+  var params = new URLSearchParams(location.search);
+  gtag('event', 'lead_thanks_view', {
+    lp: params.get('src') || 'unknown',
+    variant: params.get('v') || null
+  });
+</script>
+
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --white: #ffffff;
+  --bg-warm: #f5f3ef;
+  --border: #e8e5e0;
+  --text-primary: #1a1a1a;
+  --text-secondary: #4a4a4a;
+  --text-muted: #888;
+  --accent: #b08d57;
+  --accent-soft: #c9a96e;
+  --accent-bg: rgba(176,141,87,0.08);
+  --green: #2e7d52;
+  --dark: #1a1a1a;
+}
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Noto Sans JP', 'Inter', -apple-system, sans-serif;
+  background: var(--bg-warm);
+  color: var(--text-secondary);
+  line-height: 1.8; font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh; display: flex; flex-direction: column;
+}
+a { color: inherit; text-decoration: none; }
+.container { max-width: 720px; margin: 0 auto; padding: 0 24px; width: 100%; }
+
+/* NAV */
+nav {
+  background: rgba(255,255,255,0.94); backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--border);
+}
+nav .container { display: flex; align-items: center; height: 64px; max-width: 1080px; }
+.nav-logo-img { height: 26px; display: block; }
+
+/* MAIN */
+main { flex: 1; padding: 90px 0 120px; }
+.thanks-card {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 24px; padding: 56px 48px; text-align: center;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.05);
+}
+.check {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--accent-bg); color: var(--accent);
+  display: inline-flex; align-items: center; justify-content: center;
+  margin: 0 auto 24px;
+}
+h1 {
+  font-size: clamp(24px, 4vw, 32px); font-weight: 700;
+  color: var(--text-primary); line-height: 1.5; margin-bottom: 16px;
+}
+.lead {
+  font-size: 15px; color: var(--text-secondary); max-width: 520px;
+  margin: 0 auto 36px;
+}
+
+.next {
+  background: var(--bg-warm); border-radius: 16px;
+  padding: 28px; margin: 32px 0;
+  text-align: left;
+}
+.next h2 {
+  font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 800;
+  letter-spacing: 3px; text-transform: uppercase; color: var(--accent);
+  margin-bottom: 14px;
+}
+.next-list { list-style: none; }
+.next-list li {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 12px 0; font-size: 14px; color: var(--text-secondary);
+  border-top: 1px solid var(--border);
+}
+.next-list li:first-child { border-top: none; }
+.next-list .num {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--dark); color: #fff;
+  font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.actions {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  justify-content: center; margin-top: 32px;
+}
+.btn-primary {
+  display: inline-block; background: var(--accent); color: #fff;
+  padding: 14px 30px; border-radius: 10px; font-weight: 700; font-size: 14px;
+  box-shadow: 0 6px 18px rgba(176,141,87,0.28);
+  transition: transform .2s, box-shadow .2s;
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(176,141,87,0.38); }
+.btn-ghost {
+  display: inline-block; background: var(--white);
+  border: 1px solid var(--border); color: var(--text-primary);
+  padding: 14px 30px; border-radius: 10px; font-weight: 600; font-size: 14px;
+  transition: background .2s;
+}
+.btn-ghost:hover { background: var(--bg-warm); }
+
+.footer-note {
+  font-size: 12.5px; color: var(--text-muted); margin-top: 28px;
+}
+
+footer { background: var(--dark); padding: 32px 0; color: rgba(255,255,255,0.5); font-size: 12.5px; }
+footer .container { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; max-width: 1080px; }
+footer a { color: rgba(255,255,255,0.7); margin-left: 22px; }
+footer a:hover { color: #fff; }
+
+@media (max-width: 560px) {
+  .thanks-card { padding: 44px 28px; }
+  main { padding: 60px 0 80px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <a href="information.html"><img src="logo-new.png" alt="Studi-Go" class="nav-logo-img"></a>
+  </div>
+</nav>
+
+<main>
+  <div class="container">
+    <div class="thanks-card">
+      <div class="check" aria-hidden="true">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <h1>お申し込みを受け付けました。<br>ありがとうございました。</h1>
+      <p class="lead">ご入力いただいたメールアドレス宛に、受付完了メールをお送りしました。<br>1営業日以内に担当より、ご案内のメールを差し上げます。</p>
+
+      <div class="next">
+        <h2>Next Steps</h2>
+        <ol class="next-list">
+          <li><span class="num">1</span><div><strong>受付メールをご確認ください</strong><br><span style="color:var(--text-muted);font-size:13px;">迷惑メールフォルダに振り分けられている場合があります。</span></div></li>
+          <li><span class="num">2</span><div><strong>担当からのご連絡をお待ちください</strong><br><span style="color:var(--text-muted);font-size:13px;">1営業日以内にサービス資料と料金のご案内をお送りします。</span></div></li>
+          <li><span class="num">3</span><div><strong>お急ぎの場合はそのままお申し込みも可能です</strong><br><span style="color:var(--text-muted);font-size:13px;">3分で完了、クレジットカード登録不要。今日から使えます。</span></div></li>
+        </ol>
+      </div>
+
+      <div class="actions">
+        <a href="information.htmlstore/register" class="btn-primary" id="ctaRegister">いますぐ無料ではじめる</a>
+        <a href="information.html" class="btn-ghost">公式サイトに戻る</a>
+      </div>
+
+      <p class="footer-note">お問い合わせについてのご質問は <a href="mailto:info@studi-go.com" style="color:var(--accent);border-bottom:1px solid var(--accent);">info@studi-go.com</a> まで</p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="container">
+    <div>© 2026 Studi-Go（スタジゴ）</div>
+    <div>
+      <a href="information.html">公式サイト</a>
+      <a href="company.html">運営会社</a>
+      <a href="tokusho.html">特定商取引法に基づく表記</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Thanks ページからの申込ボタンクリックも計測
+document.getElementById('ctaRegister').addEventListener('click', function () {
+  if (typeof window.gtag === 'function') {
+    var params = new URLSearchParams(location.search);
+    window.gtag('event', 'cta_click', {
+      lp: 'thanks',
+      source: params.get('src') || 'unknown',
+      variant: params.get('v') || null
+    });
+  }
+});
+</script>
+</body>
+</html>
