@@ -15,8 +15,8 @@ const CORS_HEADERS = {
     "Access-Control-Allow-Headers": "Content-Type",
 };
 
-// 一時的に元に戻す（send.studi-go.com への切替で送信失敗のため要調査）
-const FROM = "Studi-Go <noreply@studi-go.com>";
+// jocolla Resend アカウントの認証済みドメイン（DKIM/SPF Verified）から送信
+const FROM = "Studi-Go <noreply@send.studi-go.com>";
 const INTERNAL_NOTIFY = "info@studi-go.com";
 const BASE_URL = "https://studi-go.com";
 const RESEND = new Resend(process.env.RESEND_API_KEY);
