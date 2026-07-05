@@ -140,6 +140,10 @@ function autoReplyHtml(params: {
                 <a href="${BASE_URL}/information" style="color:rgba(255,255,255,0.7); text-decoration:none;">公式サイト</a>
                 <a href="${BASE_URL}/company" style="color:rgba(255,255,255,0.7); text-decoration:none;">運営会社</a>
               </div>
+              <div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.15); font-size:10.5px; color:rgba(255,255,255,0.4);">
+                このメールは、あなたが「${storeName}」名義で studi-go.com のお問い合わせフォームに送信された内容を受けてお送りしています。<br>
+                今後の連絡を停止したい場合は、<a href="mailto:${INTERNAL_NOTIFY}?subject=unsubscribe" style="color:rgba(255,255,255,0.6); text-decoration:underline;">こちらから配信停止</a>をご依頼ください。
+              </div>
             </td>
           </tr>
         </table>
@@ -285,10 +289,18 @@ export async function POST(request: Request) {
         const emailSource: Source = normSource === "unknown" ? "lp-start" : normSource;
         const subject = subjectFor(emailSource, normInterest);
 
+        // Gmail/Yahoo の spam 判定を下げるための List-Unsubscribe ヘッダー
+        // 参考: RFC 8058, 2024 Google/Yahoo bulk sender requirements
+        const AUTO_REPLY_HEADERS: Record<string, string> = {
+            "List-Unsubscribe": `<mailto:${INTERNAL_NOTIFY}?subject=unsubscribe>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        };
+
         const mailResults = await Promise.allSettled([
             RESEND.emails.send({
                 from: FROM,
                 to: lead.email,
+                replyTo: INTERNAL_NOTIFY,
                 subject,
                 html: autoReplyHtml({
                     storeName: lead.storeName,
@@ -300,6 +312,7 @@ export async function POST(request: Request) {
                     source: emailSource,
                     interest: normInterest,
                 }),
+                headers: AUTO_REPLY_HEADERS,
             }),
             RESEND.emails.send({
                 from: FROM,
