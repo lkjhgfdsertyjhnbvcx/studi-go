@@ -15,8 +15,9 @@ const CORS_HEADERS = {
     "Access-Control-Allow-Headers": "Content-Type",
 };
 
-// Resend で DKIM Verified 済みのサブドメインから送信することで Gmail の spam 判定を下げる
-const FROM = "Studi-Go <noreply@send.studi-go.com>";
+// TODO: DNS (SPF for send.send.studi-go.com) が Verified になったら
+// "Studi-Go <noreply@send.studi-go.com>" に戻すと Gmail の spam 判定が下がる
+const FROM = "Studi-Go <noreply@studi-go.com>";
 const INTERNAL_NOTIFY = "info@studi-go.com";
 const BASE_URL = "https://studi-go.com";
 const RESEND = new Resend(process.env.RESEND_API_KEY);
