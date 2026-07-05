@@ -368,7 +368,7 @@ footer a:hover { color: #fff; }
       <a href="#steps">乗り換え手順</a>
       <a href="#pricing">料金</a>
       <a href="#faq">よくある質問</a>
-      <a href="https://studi-go.com/store/register" class="nav-cta">無料で乗り換える</a>
+      <a href="/studigo_apply.html" class="nav-cta">無料で乗り換える</a>
     </div>
   </div>
 </nav>
@@ -381,7 +381,7 @@ footer a:hover { color: #fff; }
     <h1 class="hero-title" id="heroTitle">今のスタジオ予約システム、<br><em>高すぎませんか？</em></h1>
     <p class="hero-sub" id="heroSub">月額数万円のシステム費、音楽スタジオ業務に合わない汎用機能。Studi-Goは音楽スタジオ専用設計で、月額¥0から。今お使いの顧客・予約データは、そのまま引き継げます。</p>
     <div class="hero-actions">
-      <a href="https://studi-go.com/store/register" class="btn-primary">無料で乗り換える</a>
+      <a href="/studigo_apply.html" class="btn-primary">無料で乗り換える</a>
       <a href="#cta-form" class="btn-ghost">資料請求・相談する</a>
     </div>
     <div class="hero-perks">
@@ -651,7 +651,7 @@ footer a:hover { color: #fff; }
           <li><svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>顧客・予約データの移行は無料で代行</li>
           <li><svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>旧システムと並行運用しながら切り替えOK</li>
         </ul>
-        <a href="https://studi-go.com/store/register" class="btn-primary">いますぐ無料で乗り換える</a>
+        <a href="/studigo_apply.html" class="btn-primary">いますぐ無料で乗り換える</a>
       </div>
       <form class="lead-form" id="leadForm" novalidate>
         <h3>資料請求・乗り換え相談</h3>
@@ -710,7 +710,7 @@ const io = new IntersectionObserver(entries => {
 document.querySelectorAll('.fade').forEach(el => io.observe(el));
 
 // リードフォーム送信
-const LEAD_API = 'https://studi-go.com/api/lp-leads';
+const LEAD_API = '/api/lp-leads';
 const THANKS_URL = 'thanks.html';
 const form = document.getElementById('leadForm');
 const msg = document.getElementById('formMsg');

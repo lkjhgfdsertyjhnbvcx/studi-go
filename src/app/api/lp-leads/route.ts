@@ -27,18 +27,12 @@ type Interest = "docs" | "consult" | "demo";
 // メール本文テンプレート
 // ================================================================
 
-function docLinkFor(source: Source): { url: string; label: string } {
-    if (source === "lp-switch") {
-        return {
-            url: `${BASE_URL}/docs/studi-go-switch.pdf`,
-            label: "Studi-Go 乗り換えガイド（PDF）",
-        };
-    }
-    return {
-        url: `${BASE_URL}/docs/studi-go-intro.pdf`,
-        label: "Studi-Go 導入ガイド（PDF）",
-    };
-}
+// 資料誘導先：Web版（詳細版HTML）と PDF 版（同内容）の両方を案内
+// - Web版：`studigo_information_kit_detailed.html`（ブラウザで即開ける）
+// - PDF版：`Studi-Go_ご案内資料_詳細版.pdf`（保存・印刷に）
+const KIT_WEB_URL = `${BASE_URL}/studigo_information_kit_detailed.html`;
+const KIT_PDF_URL = `${BASE_URL}/Studi-Go_ご案内資料_詳細版.pdf`;
+const APPLY_URL = `${BASE_URL}/studigo_apply.html`;
 
 function subjectFor(source: Source, interest: Interest): string {
     const base = "【Studi-Go】";
@@ -73,13 +67,12 @@ function autoReplyHtml(params: {
     interest: Interest;
 }): string {
     const { storeName, source, interest } = params;
-    const doc = docLinkFor(source);
     const context = contextText(source, interest);
 
     const nextStepsHtml =
         interest === "docs"
             ? `<li>資料をご確認のうえ、ご不明点があればお気軽にご返信ください。</li>
-               <li>そのままお申込みも可能です（<a href="${BASE_URL}/store/register" style="color:#b08d57;">お申込みフォーム</a>）。</li>`
+               <li>そのままお申込みも可能です（<a href="${APPLY_URL}" style="color:#b08d57;">お申込みフォーム</a>）。</li>`
             : interest === "consult"
               ? `<li>1営業日以内に担当より、ご相談に関するご連絡を差し上げます。</li>
                  <li>お急ぎの場合は <a href="mailto:${INTERNAL_NOTIFY}" style="color:#b08d57;">${INTERNAL_NOTIFY}</a> までご連絡ください。</li>`
@@ -111,14 +104,15 @@ function autoReplyHtml(params: {
               )}様<br>お問い合わせありがとうございました。</h1>
               <p style="font-size:14px; color:#4a4a4a; margin:0 0 24px;">${context}</p>
 
-              <!-- Document Download -->
+              <!-- Document Access -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:#f5f3ef; border-radius:10px; padding:24px; margin:0 0 24px;">
                 <tr>
                   <td>
                     <div style="font-size:10px; font-weight:700; letter-spacing:2px; color:#b08d57; text-transform:uppercase; margin-bottom:8px;">Document</div>
-                    <div style="font-size:16px; font-weight:700; color:#1a1a1a; margin-bottom:6px;">${doc.label}</div>
-                    <div style="font-size:12px; color:#888; margin-bottom:16px;">下記ボタンからダウンロードできます（PDF・約400KB）</div>
-                    <a href="${doc.url}" style="display:inline-block; background:#b08d57; color:#ffffff; text-decoration:none; padding:12px 28px; border-radius:8px; font-weight:700; font-size:14px;">資料をダウンロード →</a>
+                    <div style="font-size:16px; font-weight:700; color:#1a1a1a; margin-bottom:6px;">Studi-Go ご案内資料（詳細版）</div>
+                    <div style="font-size:12px; color:#888; margin-bottom:16px;">機能・活用例・料金・よくある質問まで、まとめてご覧いただけます。</div>
+                    <a href="${KIT_WEB_URL}" style="display:inline-block; background:#b08d57; color:#ffffff; text-decoration:none; padding:12px 28px; border-radius:8px; font-weight:700; font-size:14px; margin-right:8px;">Web版で見る →</a>
+                    <a href="${KIT_PDF_URL}" style="display:inline-block; background:#ffffff; color:#b08d57; border:1px solid #b08d57; text-decoration:none; padding:11px 24px; border-radius:8px; font-weight:700; font-size:14px;">PDFをダウンロード</a>
                   </td>
                 </tr>
               </table>
@@ -161,21 +155,21 @@ function autoReplyText(params: {
     interest: Interest;
 }): string {
     const { storeName, source, interest } = params;
-    const doc = docLinkFor(source);
     return `${storeName}様
 
 お問い合わせありがとうございました。
 ${contextText(source, interest)}
 
-■ ${doc.label}
-下記URLからダウンロードいただけます（PDF・約400KB）
-${doc.url}
+■ Studi-Go ご案内資料（詳細版）
+機能・活用例・料金・よくある質問まで、まとめてご覧いただけます。
+Web版：${KIT_WEB_URL}
+PDF版：${KIT_PDF_URL}
 
 ■ Next Steps
 ${
     interest === "docs"
         ? `・資料をご確認のうえ、ご不明点があればお気軽にご返信ください。
-・そのままお申込みも可能です： ${BASE_URL}/store/register`
+・そのままお申込みも可能です： ${APPLY_URL}`
         : interest === "consult"
           ? `・1営業日以内に担当より、ご相談に関するご連絡を差し上げます。
 ・お急ぎの場合は ${INTERNAL_NOTIFY} までご連絡ください。`

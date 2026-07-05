@@ -60,3 +60,4 @@ next-env.d.ts
 # leaked env dump (never commit)
 vercel-env-import.txt
 *env-import*
+*.bak
