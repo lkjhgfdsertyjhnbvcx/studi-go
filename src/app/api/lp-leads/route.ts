@@ -280,11 +280,11 @@ export async function POST(request: Request) {
         await adminDb.collection("lpLeads").doc(lead.id).set(lead);
 
         // ---- 自動返信・内部通知（失敗しても本フローは成功扱い） ----
-        // 並列送信、エラーはログのみ
+        // await で完了を待つ（Vercelサーバレスはレスポンス後にfire-and-forgetが切られるため）
         const emailSource: Source = normSource === "unknown" ? "lp-start" : normSource;
         const subject = subjectFor(emailSource, normInterest);
 
-        Promise.allSettled([
+        const mailResults = await Promise.allSettled([
             RESEND.emails.send({
                 from: FROM,
                 to: lead.email,
@@ -317,13 +317,15 @@ export async function POST(request: Request) {
                     id: lead.id,
                 }),
             }),
-        ]).then((results) => {
-            results.forEach((r, i) => {
-                const kind = i === 0 ? "auto-reply" : "internal-notify";
-                if (r.status === "rejected") {
-                    console.error(`lp-leads mail(${kind}) failed:`, r.reason);
-                }
-            });
+        ]);
+
+        mailResults.forEach((r, i) => {
+            const kind = i === 0 ? "auto-reply" : "internal-notify";
+            if (r.status === "rejected") {
+                console.error(`lp-leads mail(${kind}) failed:`, r.reason);
+            } else {
+                console.log(`lp-leads mail(${kind}) sent:`, r.value);
+            }
         });
 
         return NextResponse.json({ success: true }, { headers: CORS_HEADERS });
