@@ -5,10 +5,14 @@ import { adminDb } from "@/lib/firebase-admin";
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { bookingId, userId } = body;
+        const { bookingId } = body;
+
+        // IDOR対策: セッションクッキー検証済みのuserIdを優先（無ければ互換で申告値）
+        const { resolveUserId } = await import("@/lib/user-session");
+        const userId = await resolveUserId(body.userId);
 
         if (!bookingId || !userId) {
-            return NextResponse.json({ error: "bookingId と userId が必要です" }, { status: 400 });
+            return NextResponse.json({ error: "bookingId と認証情報が必要です" }, { status: 400 });
         }
 
         // Admin SDKで予約取得

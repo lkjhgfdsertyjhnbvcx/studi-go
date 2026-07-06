@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, limit } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 import { verifyPassword } from "@/lib/password";
 import { checkRateLimit, recordFailedAttempt, clearAttempts } from "@/lib/rate-limit";
 
@@ -21,8 +20,7 @@ export async function POST(request: Request) {
             }, { status: 429 });
         }
 
-        const q = query(collection(db, "users"), where("email", "==", email), limit(1));
-        const snap = await getDocs(q);
+        const snap = await adminDb.collection("users").where("email", "==", email).limit(1).get();
 
         if (snap.empty) {
             recordFailedAttempt(rateLimitKey);
@@ -39,11 +37,17 @@ export async function POST(request: Request) {
         // ログイン成功 → 試行カウントをクリア
         clearAttempts(rateLimitKey);
 
-        return NextResponse.json({
+        const resolvedId = user.id || snap.docs[0].id;
+        const res = NextResponse.json({
             success: true,
-            userId: user.id || snap.docs[0].id,
+            userId: resolvedId,
             name: user.name,
         });
+        // IDOR対策: 署名付きユーザーセッションクッキーを発行
+        const { createUserSessionValue, userSessionCookieOptions } = await import("@/lib/user-session");
+        const { name: cookieName, ...opts } = userSessionCookieOptions();
+        res.cookies.set(cookieName, createUserSessionValue(resolvedId), opts);
+        return res;
     } catch (error: any) {
         console.error("Login error:", error);
         return NextResponse.json({ error: "サーバーエラーが発生しました" }, { status: 500 });

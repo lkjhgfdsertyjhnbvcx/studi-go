@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { stripe } from "@/lib/stripe";
 import { getStudioByIdFromFirestore } from "@/lib/db-firestore";
 import { getPlanLimits, normalizePlanKey } from "@/lib/plan-features";
@@ -6,7 +7,32 @@ import { validateBookingAmount, createBookingAtomic } from "@/lib/booking-server
 
 export async function POST(request: Request) {
     try {
-        const body = await request.json();
+        const rawBody = await request.json();
+        // 入力バリデーション（型・形式・範囲）
+        const StripeInput = z.object({
+            studioId: z.string().min(1),
+            studioName: z.string().max(300).optional(),
+            roomId: z.string().optional(),
+            roomName: z.string().max(200).optional(),
+            date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+            startTime: z.string().regex(/^\d{1,2}:\d{2}$/),
+            durationHours: z.coerce.number().int().min(1).max(24).optional(),
+            totalPrice: z.coerce.number().int().min(0).max(10_000_000),
+            userId: z.string().max(200).optional(),
+            userName: z.string().max(200).optional(),
+            userEmail: z.string().max(320).optional(),
+            selectedOptions: z.any().optional(),
+            skipBooking: z.boolean().optional(),
+            existingBookingId: z.string().max(200).optional(),
+            splitPerson: z.coerce.number().int().min(1).max(100).optional(),
+            splitTotal: z.coerce.number().int().min(0).max(10_000_000).optional(),
+            splitMemberCount: z.coerce.number().int().min(1).max(100).optional(),
+        });
+        const parsedInput = StripeInput.safeParse(rawBody);
+        if (!parsedInput.success) {
+            return NextResponse.json({ error: "入力内容が正しくありません。" }, { status: 400 });
+        }
+        const body = parsedInput.data;
         const {
             studioId, studioName, roomId, roomName,
             date, startTime, durationHours,
@@ -60,7 +86,7 @@ export async function POST(request: Request) {
                     roomName,
                     date,
                     startTime,
-                    durationHours,
+                    durationHours: durationHours || 1,
                     totalPrice: splitTotal || totalPrice,
                     status: "pending",
                     createdAt: new Date().toISOString(),
@@ -118,9 +144,12 @@ export async function POST(request: Request) {
                 transfer_data: { destination: connectedAccountId },
             } : undefined,
             mode: "payment",
+            // 決済離脱時にpending予約が枠を塞ぎ続けないよう30分で失効させる
+            // （失効時は checkout.session.expired webhookで予約を解放）
+            expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
             success_url: `${process.env.NEXT_PUBLIC_BASE_URL || request.headers.get("origin") || "http://localhost:3002"}/pay/success?bookingId=${bookingId}&session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/studio/${studioId}`,
-            metadata: { bookingId, studioId, roomName, date, startTime, durationHours: String(durationHours), userId: userId ?? "guest", userEmail: userEmail ?? "", skipBooking: skipBooking ? "true" : "false" },
+            metadata: { bookingId, studioId, roomName: roomName ?? "", date, startTime, durationHours: String(durationHours ?? 1), userId: userId ?? "guest", userEmail: userEmail ?? "", skipBooking: skipBooking ? "true" : "false" },
             customer_email: userEmail || undefined,
         });
 

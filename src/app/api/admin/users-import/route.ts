@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { collection, doc, setDoc, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import { v4 as uuidv4 } from "uuid";
 import { requirePlatformAdmin } from "@/lib/api-auth";
 
@@ -96,7 +95,7 @@ export async function POST(request: Request) {
         }
 
         // 既存ユーザーのメールアドレス一覧を取得（重複チェック用）
-        const existingSnap = await getDocs(collection(db, "users"));
+        const existingSnap = await adminDb.collection("users").get();
         const existingEmails = new Set(
             existingSnap.docs.map(d => (d.data().email || "").toLowerCase())
         );
@@ -142,7 +141,7 @@ export async function POST(request: Request) {
                     myStudios: [],
                 };
 
-                await setDoc(doc(db, "users", userId), userData);
+                await adminDb.collection("users").doc(userId).set(userData);
                 imported++;
 
                 if (email) {

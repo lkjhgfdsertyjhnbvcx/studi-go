@@ -27,7 +27,9 @@ export async function GET(request: Request) {
     try {
         if (state) {
             const decoded = JSON.parse(Buffer.from(state, "base64url").toString());
-            redirectAfter = decoded.redirect || "/";
+            const r = String(decoded.redirect || "/");
+            // オープンリダイレクト対策: サイト内パスのみ許可（"//"や外部URLは拒否）
+            redirectAfter = r.startsWith("/") && !r.startsWith("//") ? r : "/";
         }
     } catch {}
 
@@ -146,7 +148,12 @@ export async function GET(request: Request) {
         successUrl.searchParams.set("linePictureUrl", linePictureUrl);
         successUrl.searchParams.set("redirect", redirectAfter);
 
-        return NextResponse.redirect(successUrl.toString());
+        const res = NextResponse.redirect(successUrl.toString());
+        // IDOR対策: 署名付きユーザーセッションクッキーを発行
+        const { createUserSessionValue, userSessionCookieOptions } = await import("@/lib/user-session");
+        const { name, ...opts } = userSessionCookieOptions();
+        res.cookies.set(name, createUserSessionValue(userId), opts);
+        return res;
 
     } catch (err: any) {
         console.error("LINE callback error:", err);

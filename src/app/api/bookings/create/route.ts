@@ -1,14 +1,27 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { validateBookingAmount, createBookingAtomic } from "@/lib/booking-server";
+
+// 入力バリデーション（型・形式・範囲）
+const BookingInput = z.object({
+    studioId: z.string().min(1),
+    roomId: z.string().optional(),
+    roomName: z.string().max(200).optional(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    startTime: z.string().regex(/^\d{1,2}:\d{2}$/),
+    durationHours: z.coerce.number().int().min(1).max(24).optional(),
+    userCount: z.coerce.number().int().min(1).max(1000).optional(),
+    totalPrice: z.coerce.number().int().min(0).max(10_000_000).optional(),
+    userId: z.string().max(200).optional(),
+});
 
 export async function POST(request: Request) {
     try {
-        const data = await request.json();
-
-        // 必須項目チェック
-        if (!data.studioId || !data.date || !data.startTime) {
-            return NextResponse.json({ error: "必須項目が不足しています。" }, { status: 400 });
+        const parsed = BookingInput.safeParse(await request.json());
+        if (!parsed.success) {
+            return NextResponse.json({ error: "入力内容が正しくありません。" }, { status: 400 });
         }
+        const data = parsed.data;
 
         const durationHours = data.durationHours ?? 1;
 
@@ -20,7 +33,7 @@ export async function POST(request: Request) {
             date: data.date,
             startTime: data.startTime,
             durationHours,
-            claimedTotal: parseInt(data.totalPrice ?? "0"),
+            claimedTotal: data.totalPrice ?? 0,
         });
         if (!amountCheck.ok) {
             return NextResponse.json({ error: amountCheck.message ?? "金額が正しくありません。" }, { status: 400 });
@@ -35,7 +48,7 @@ export async function POST(request: Request) {
             startTime: data.startTime,
             durationHours,
             userCount: data.userCount ?? 1,
-            totalPrice: parseInt(data.totalPrice ?? "0"),
+            totalPrice: data.totalPrice ?? 0,
             status: "active" as const,
             createdAt: new Date().toISOString(),
         };

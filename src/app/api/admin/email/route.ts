@@ -1,8 +1,7 @@
 // /api/admin/email - 運営側からユーザー・店舗へのメール送信
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import { requirePlatformAdmin } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
@@ -27,13 +26,13 @@ export async function POST(request: Request) {
         let emails: { to: string; name: string }[] = [];
 
         if (recipientType === "all_users") {
-            const snap = await getDocs(collection(db, "users"));
+            const snap = await adminDb.collection("users").get();
             snap.docs.forEach(d => {
                 const data = d.data();
                 if (data.email) emails.push({ to: data.email, name: data.name || data.email });
             });
         } else if (recipientType === "all_studios") {
-            const snap = await getDocs(collection(db, "studios"));
+            const snap = await adminDb.collection("studios").get();
             snap.docs.forEach(d => {
                 const data = d.data();
                 if (data.email) emails.push({ to: data.email, name: data.storeName || data.email });

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllUsersFromFirestore, saveUserToFirestore } from "@/lib/db-firestore";
 import { getApiAuth } from "@/lib/api-auth";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 
 // ユーザー一覧（GET）
 // storeId パラメータがある場合：その店舗の予約に紐づくユーザーのみ返す
@@ -26,9 +25,7 @@ export async function GET(request: NextRequest) {
         if (effectiveStoreId) {
             // 店舗に紐づくユーザーのみ取得
             // 1. その店舗の予約からuserIdを収集
-            const bookingsSnap = await getDocs(
-                query(collection(db, "bookings"), where("studioId", "==", effectiveStoreId))
-            );
+            const bookingsSnap = await adminDb.collection("bookings").where("studioId", "==", effectiveStoreId).get();
             const userIds = new Set<string>();
             bookingsSnap.docs.forEach(doc => {
                 const uid = doc.data().userId;
@@ -37,7 +34,7 @@ export async function GET(request: NextRequest) {
 
             // 2. 店舗にCSVインポートされた顧客も含める
             try {
-                const custSnap = await getDocs(collection(db, `studios/${effectiveStoreId}/customers`));
+                const custSnap = await adminDb.collection(`studios/${effectiveStoreId}/customers`).get();
                 custSnap.docs.forEach(doc => userIds.add(doc.id));
             } catch { /* subcollection may not exist */ }
 

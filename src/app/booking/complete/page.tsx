@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import DOMPurify from "dompurify";
 
 export default function BookingComplete() {
     const [adCode, setAdCode] = useState("");
@@ -14,7 +15,7 @@ export default function BookingComplete() {
                 <p className="text-xl font-bold mb-12 text-gray-700">予約が確定しました。当日お待ちしております。</p>
                 <div className="w-full bg-gray-100 rounded-[3rem] p-8 min-h-[280px] flex flex-col items-center justify-center border-2 border-dashed">
                     <p className="text-[10px] font-black text-gray-400 uppercase mb-6 tracking-widest">Sponsored Information</p>
-                    <div className="w-full flex justify-center" dangerouslySetInnerHTML={{ __html: adCode }} />
+                    <div className="w-full flex justify-center" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(adCode) }} />
                     {!adCode && <div className="text-gray-300 font-black text-xl italic">Enjoy your session!</div>}
                 </div>
                 <button onClick={() => window.location.href = '/'} className="mt-12 text-sm font-black text-gray-400 hover:text-red-500 uppercase tracking-widest">← BACK TO HOME</button>

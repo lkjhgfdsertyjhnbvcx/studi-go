@@ -4,8 +4,10 @@ import { adminDb } from "@/lib/firebase-admin";
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
-        const userId = searchParams.get("userId");
-        if (!userId) return NextResponse.json({ error: "userIdが必要です" }, { status: 400 });
+        // IDOR対策: セッションクッキー検証済みのuserIdを優先（無ければ互換で申告値）
+        const { resolveUserId } = await import("@/lib/user-session");
+        const userId = await resolveUserId(searchParams.get("userId"));
+        if (!userId) return NextResponse.json({ error: "認証情報が必要です" }, { status: 401 });
 
         // ユーザー取得
         const userDoc = await adminDb.collection("users").doc(userId).get();

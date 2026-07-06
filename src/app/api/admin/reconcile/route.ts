@@ -23,11 +23,19 @@ export async function POST() {
 
         for (const payment of payments.data) {
             if (payment.status === "succeeded") {
+                // stripePaymentIntentId で照合し、未確定(pending等)の予約を confirmed に消し込む
                 const booking = allBookings.find(
-                    (b) => (b as any).stripePaymentId === payment.id && b.status === "active"
+                    (b) =>
+                        ((b as any).stripePaymentIntentId === payment.id ||
+                            (b as any).stripePaymentId === payment.id) &&
+                        b.status !== "confirmed" &&
+                        b.status !== "cancelled"
                 );
                 if (booking) {
-                    await updateBookingInFirestore(booking.id, { status: "active" });
+                    await updateBookingInFirestore(booking.id, {
+                        status: "confirmed",
+                        confirmedAt: new Date().toISOString(),
+                    } as any);
                     count++;
                     totalAmount += booking.totalPrice;
                 }

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import { v4 as uuidv4 } from "uuid";
 import { hashPassword } from "@/lib/password";
 
@@ -22,7 +21,7 @@ export async function POST(request: Request) {
             myStudios: [],
             bands: [],
         };
-        await setDoc(doc(db, "users", newUser.id), newUser);
+        await adminDb.collection("users").doc(newUser.id).set(newUser);
         return NextResponse.json({ success: true, userId: newUser.id });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });

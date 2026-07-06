@@ -125,9 +125,8 @@ export async function DELETE(request: Request) {
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "studio id required" }, { status: 400 });
 
-    const { doc: firestoreDoc, deleteDoc } = await import("firebase/firestore");
-    const { db: fireDb } = await import("@/lib/firebase");
-    await deleteDoc(firestoreDoc(fireDb, "studios", id));
+    const { adminDb } = await import("@/lib/firebase-admin");
+    await adminDb.collection("studios").doc(id).delete();
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("【studios DELETE エラー】", error?.message || error);

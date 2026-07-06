@@ -135,6 +135,22 @@ function overlaps(
     return aS < bE && aE > bS;
 }
 
+/**
+ * 予約が「枠を占有している」とみなすか。
+ * - cancelled は占有しない
+ * - pending（決済中の仮予約）はCheckoutの失効(30分)+猶予を過ぎたら占有しない
+ *   （webhook取りこぼしで解放されなかった場合のセーフティネット）
+ */
+export function isSlotOccupying(b: any): boolean {
+    if (!b) return false;
+    if (b.status === "cancelled") return false;
+    if (b.status === "pending" && b.createdAt) {
+        const age = Date.now() - new Date(b.createdAt).getTime();
+        if (Number.isFinite(age) && age > 40 * 60 * 1000) return false;
+    }
+    return true;
+}
+
 export interface AtomicBookingInput {
     id: string;
     studioId: string;
@@ -162,7 +178,7 @@ export async function createBookingAtomic(booking: AtomicBookingInput): Promise<
 
         const conflict = snap.docs.some((d) => {
             const b: any = d.data();
-            if (b.status === "cancelled") return false;
+            if (!isSlotOccupying(b)) return false;
             if (roomName && b.roomName && b.roomName !== roomName) return false;
             return overlaps(startTime, durationHours || 1, b.startTime, b.durationHours || 1);
         });

@@ -32,6 +32,18 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 })
     }
 
+    // 冪等性ガード: Stripeは同一イベントを重複配信し得るため、処理済みIDを記録しスキップ
+    // （クーポン残高の多重減算などを防ぐ。create()は既存時に失敗する）
+    try {
+        await adminDb.collection('processed_stripe_events').doc(event.id).create({
+            type: event.type,
+            processedAt: new Date().toISOString(),
+        })
+    } catch {
+        console.log(`[Webhook] Duplicate event skipped: ${event.id}`)
+        return NextResponse.json({ received: true, duplicate: true })
+    }
+
     if (event.type === 'checkout.session.completed') {
         const session = event.data.object as any
         const metadata = session.metadata
@@ -77,7 +89,8 @@ export async function POST(req: Request) {
                             studioName,
                             userName,
                             userEmail,
-                            amount: session.amount_total ? Math.round(session.amount_total / 100) : (booking.totalPrice || 0),
+                            // JPYはStripeのzero-decimal通貨のため amount_total は円そのまま（/100しない）
+                            amount: session.amount_total ?? (booking.totalPrice || 0),
                             status: 'paid',
                             paymentMethod: 'stripe',
                             stripeSessionId: session.id,
@@ -92,6 +105,12 @@ export async function POST(req: Request) {
                 }
             } catch (err) {
                 console.error('[Firestore] Failed to confirm booking:', err)
+                // 予約確定は決済成立の要。失敗時は処理済みマーカーを消して500を返し、
+                // Stripeに再試行させる（従来は200を返して入金済み×pendingのまま放置されていた）
+                try {
+                    await adminDb.collection('processed_stripe_events').doc(event.id).delete()
+                } catch {}
+                return NextResponse.json({ error: 'Failed to confirm booking' }, { status: 500 })
             }
         }
 
@@ -109,7 +128,7 @@ export async function POST(req: Request) {
                     studioName,
                     userName: studioName,
                     userEmail: storeEmail,
-                    amount: session.amount_total ? Math.round(session.amount_total / 100) : 0,
+                    amount: session.amount_total ?? 0, // JPYはzero-decimal（/100しない）
                     status: 'paid',
                     paymentMethod: 'stripe',
                     paymentType: 'subscription',
@@ -221,6 +240,28 @@ export async function POST(req: Request) {
                     }
                 }
             })
+        }
+    }
+
+    // 決済離脱でCheckoutが失効 → 仮予約(pending)を解放して枠を空ける
+    if (event.type === 'checkout.session.expired') {
+        const session = event.data.object as any
+        const bookingId = session.metadata?.bookingId
+        if (bookingId && session.metadata?.skipBooking !== 'true') {
+            try {
+                const ref = adminDb.collection('bookings').doc(bookingId)
+                const snap = await ref.get()
+                if (snap.exists && snap.data()?.status === 'pending') {
+                    await ref.update({
+                        status: 'cancelled',
+                        cancelledAt: new Date().toISOString(),
+                        cancelledBy: 'system:checkout_expired',
+                    })
+                    console.log(`[Webhook] Pending booking ${bookingId} released (checkout expired).`)
+                }
+            } catch (err) {
+                console.error('[Webhook] Failed to release expired booking:', err)
+            }
         }
     }
 

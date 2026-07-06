@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAllBookingsFromFirestore, getBlockedSlotsByStudioFromFirestore } from "@/lib/db-firestore";
+import { isSlotOccupying } from "@/lib/booking-server";
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -13,7 +14,7 @@ export async function GET(request: Request) {
     const dayBookings = allBookings.filter(b =>
         b.studioId === studioId &&
         b.date === date &&
-        b.status === "confirmed" &&
+        isSlotOccupying(b) &&
         (!roomName || b.roomName === roomName)
     );
 

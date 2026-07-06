@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +25,7 @@ export async function GET(request: Request) {
         const studioId = searchParams.get("studioId");
         if (!studioId) return NextResponse.json({ error: "studioId is required" }, { status: 400 });
 
-        const snapshot = await getDocs(collection(db, "equipmentRentals"));
+        const snapshot = await adminDb.collection("equipmentRentals").get();
         const rentals = snapshot.docs
             .map(d => ({ id: d.id, ...d.data() } as EquipmentRental))
             .filter(r => r.studioId === studioId);
@@ -65,7 +64,7 @@ export async function POST(request: Request) {
             createdAt: new Date().toISOString(),
         };
 
-        await setDoc(doc(db, "equipmentRentals", id), rental);
+        await adminDb.collection("equipmentRentals").doc(id).set(rental);
         return NextResponse.json({ success: true, rental });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -79,7 +78,7 @@ export async function DELETE(request: Request) {
         const id = searchParams.get("id");
         if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
-        await deleteDoc(doc(db, "equipmentRentals", id));
+        await adminDb.collection("equipmentRentals").doc(id).delete();
         return NextResponse.json({ success: true });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });

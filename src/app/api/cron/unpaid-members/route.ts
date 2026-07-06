@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     // セキュリティチェック（Vercel Cron からのリクエストのみ許可）
     const { searchParams } = new URL(request.url);
     const secret = request.headers.get("authorization");
-    if (CRON_SECRET && secret !== `Bearer ${CRON_SECRET}`) {
+    if (!CRON_SECRET || secret !== `Bearer ${CRON_SECRET}`) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

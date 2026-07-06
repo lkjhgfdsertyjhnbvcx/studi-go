@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { collection, getDocs, doc, setDoc, deleteDoc, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +27,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: "studioId is required" }, { status: 400 });
         }
 
-        const snapshot = await getDocs(collection(db, "blockedSlots"));
+        const snapshot = await adminDb.collection("blockedSlots").get();
         const slots = snapshot.docs
             .map(d => ({ id: d.id, ...d.data() } as BlockedSlot))
             .filter(s => s.studioId === studioId);
@@ -72,7 +71,7 @@ export async function POST(request: Request) {
             createdAt: new Date().toISOString(),
         };
 
-        await setDoc(doc(db, "blockedSlots", id), newSlot);
+        await adminDb.collection("blockedSlots").doc(id).set(newSlot);
         return NextResponse.json({ success: true, slot: newSlot });
     } catch (error: any) {
         console.error("blockedSlots POST error:", error.message);
@@ -90,7 +89,7 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ error: "id is required" }, { status: 400 });
         }
 
-        await deleteDoc(doc(db, "blockedSlots", id));
+        await adminDb.collection("blockedSlots").doc(id).delete();
         return NextResponse.json({ success: true });
     } catch (error: any) {
         console.error("blockedSlots DELETE error:", error.message);

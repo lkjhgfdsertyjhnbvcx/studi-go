@@ -1,16 +1,7 @@
-import { db } from "./firebase";
-import {
-    collection,
-    doc,
-    getDocs,
-    getDoc,
-    setDoc,
-    updateDoc,
-    deleteDoc,
-    query,
-    where,
-    Timestamp
-} from "firebase/firestore";
+// サーバー専用データ層（Firebase Admin SDK使用）
+// 旧: クライアントSDK(firebase/firestore)を使用していたが、Firestoreルールを
+// ロックダウンするためAdmin SDKへ全面移行（Admin SDKはルールをバイパスする）。
+import { adminDb } from "./firebase-admin";
 import { StudioProfile } from "./db-studio";
 import { User } from "@/actions/auth";
 import { Booking } from "./db-local";
@@ -92,8 +83,8 @@ export interface Coupon {
 // --- STUDIOS ---
 export const getAllStudiosFromFirestore = async (): Promise<StudioProfile[]> => {
     try {
-        const snapshot = await getDocs(collection(db, "studios"));
-        return snapshot.docs.map(doc => doc.data() as StudioProfile);
+        const snapshot = await adminDb.collection("studios").get();
+        return snapshot.docs.map(d => d.data() as StudioProfile);
     } catch (e) {
         console.error("Error fetching studios:", e);
         return [];
@@ -102,9 +93,8 @@ export const getAllStudiosFromFirestore = async (): Promise<StudioProfile[]> => 
 
 export const getStudioByIdFromFirestore = async (id: string): Promise<StudioProfile | null> => {
     try {
-        const docRef = doc(db, "studios", id);
-        const docSnap = await getDoc(docRef);
-        return docSnap.exists() ? (docSnap.data() as StudioProfile) : null;
+        const docSnap = await adminDb.collection("studios").doc(id).get();
+        return docSnap.exists ? (docSnap.data() as StudioProfile) : null;
     } catch (e) {
         console.error("Error fetching studio:", e);
         return null;
@@ -117,7 +107,7 @@ export const saveStudioToFirestore = async (studio: StudioProfile): Promise<void
 
         console.log(`[saveStudioToFirestore] Saving studio: ${studio.id} (${studio.storeName})`);
 
-        await setDoc(doc(db, "studios", studio.id), cleanedData);
+        await adminDb.collection("studios").doc(studio.id).set(cleanedData);
     } catch (e) {
         console.error("[saveStudioToFirestore] Error saving studio:", e);
         throw e;
@@ -126,7 +116,7 @@ export const saveStudioToFirestore = async (studio: StudioProfile): Promise<void
 
 export const deleteStudioFromFirestore = async (id: string): Promise<void> => {
     try {
-        await deleteDoc(doc(db, "studios", id));
+        await adminDb.collection("studios").doc(id).delete();
     } catch (e) {
         console.error("Error deleting studio:", e);
         throw e;
@@ -136,8 +126,8 @@ export const deleteStudioFromFirestore = async (id: string): Promise<void> => {
 // --- USERS ---
 export const getAllUsersFromFirestore = async (): Promise<User[]> => {
     try {
-        const snapshot = await getDocs(collection(db, "users"));
-        return snapshot.docs.map(doc => doc.data() as User);
+        const snapshot = await adminDb.collection("users").get();
+        return snapshot.docs.map(d => d.data() as User);
     } catch (e) {
         console.error("Error fetching users:", e);
         return [];
@@ -146,9 +136,8 @@ export const getAllUsersFromFirestore = async (): Promise<User[]> => {
 
 export const getUserByIdFromFirestore = async (id: string): Promise<User | undefined> => {
     try {
-        const docRef = doc(db, "users", id);
-        const docSnap = await getDoc(docRef);
-        return docSnap.exists() ? (docSnap.data() as User) : undefined;
+        const docSnap = await adminDb.collection("users").doc(id).get();
+        return docSnap.exists ? (docSnap.data() as User) : undefined;
     } catch (e) {
         console.error("Error fetching user:", e);
         return undefined;
@@ -158,7 +147,7 @@ export const getUserByIdFromFirestore = async (id: string): Promise<User | undef
 export const saveUserToFirestore = async (user: User): Promise<void> => {
     try {
         const cleanedData = toPlainObject(user);
-        await setDoc(doc(db, "users", user.id), cleanedData);
+        await adminDb.collection("users").doc(user.id).set(cleanedData);
     } catch (e) {
         console.error("Error saving user:", e);
         throw e;
@@ -168,8 +157,8 @@ export const saveUserToFirestore = async (user: User): Promise<void> => {
 // --- BOOKINGS ---
 export const getAllBookingsFromFirestore = async (): Promise<Booking[]> => {
     try {
-        const snapshot = await getDocs(collection(db, "bookings"));
-        return snapshot.docs.map(doc => doc.data() as Booking);
+        const snapshot = await adminDb.collection("bookings").get();
+        return snapshot.docs.map(d => d.data() as Booking);
     } catch (e) {
         console.error("Error fetching bookings:", e);
         return [];
@@ -178,9 +167,8 @@ export const getAllBookingsFromFirestore = async (): Promise<Booking[]> => {
 
 export const getBookingByIdFromFirestore = async (id: string): Promise<Booking | undefined> => {
     try {
-        const docRef = doc(db, "bookings", id);
-        const docSnap = await getDoc(docRef);
-        return docSnap.exists() ? (docSnap.data() as Booking) : undefined;
+        const docSnap = await adminDb.collection("bookings").doc(id).get();
+        return docSnap.exists ? (docSnap.data() as Booking) : undefined;
     } catch (e) {
         console.error("Error fetching booking:", e);
         return undefined;
@@ -190,7 +178,7 @@ export const getBookingByIdFromFirestore = async (id: string): Promise<Booking |
 export const saveBookingToFirestore = async (booking: Booking): Promise<void> => {
     try {
         const cleanedData = toPlainObject(booking);
-        await setDoc(doc(db, "bookings", booking.id), cleanedData);
+        await adminDb.collection("bookings").doc(booking.id).set(cleanedData);
     } catch (e) {
         console.error("Error saving booking:", e);
         throw e;
@@ -199,7 +187,7 @@ export const saveBookingToFirestore = async (booking: Booking): Promise<void> =>
 
 export const updateBookingInFirestore = async (id: string, updates: Partial<Booking>): Promise<boolean> => {
     try {
-        await updateDoc(doc(db, "bookings", id), updates);
+        await adminDb.collection("bookings").doc(id).update(toPlainObject(updates));
         return true;
     } catch (e) {
         console.error("Error updating booking:", e);
@@ -210,8 +198,8 @@ export const updateBookingInFirestore = async (id: string, updates: Partial<Book
 // --- PAYMENTS ---
 export const getAllPaymentsFromFirestore = async (): Promise<Payment[]> => {
     try {
-        const snapshot = await getDocs(collection(db, "payments"));
-        return snapshot.docs.map(doc => doc.data() as Payment);
+        const snapshot = await adminDb.collection("payments").get();
+        return snapshot.docs.map(d => d.data() as Payment);
     } catch (e) {
         console.error("Error fetching payments:", e);
         return [];
@@ -220,9 +208,8 @@ export const getAllPaymentsFromFirestore = async (): Promise<Payment[]> => {
 
 export const getPaymentsByStudioIdFromFirestore = async (studioId: string): Promise<Payment[]> => {
     try {
-        const q = query(collection(db, "payments"), where("studioId", "==", studioId));
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => doc.data() as Payment);
+        const snapshot = await adminDb.collection("payments").where("studioId", "==", studioId).get();
+        return snapshot.docs.map(d => d.data() as Payment);
     } catch (e) {
         console.error("Error fetching studio payments:", e);
         return [];
@@ -231,7 +218,6 @@ export const getPaymentsByStudioIdFromFirestore = async (studioId: string): Prom
 
 export const savePaymentToFirestore = async (payment: Payment): Promise<void> => {
     try {
-        const { adminDb } = await import("@/lib/firebase-admin");
         const cleanedData = toPlainObject(payment);
         await adminDb.collection("payments").doc(payment.id).set(cleanedData);
     } catch (e) {
@@ -242,7 +228,6 @@ export const savePaymentToFirestore = async (payment: Payment): Promise<void> =>
 
 export const updatePaymentStatusInFirestore = async (id: string, status: string): Promise<boolean> => {
     try {
-        const { adminDb } = await import("@/lib/firebase-admin");
         await adminDb.collection("payments").doc(id).update({ status });
         return true;
     } catch (e) {
@@ -254,7 +239,7 @@ export const updatePaymentStatusInFirestore = async (id: string, status: string)
 // --- BLOCKED SLOTS ---
 export const getBlockedSlotsByStudioFromFirestore = async (studioId: string) => {
     try {
-        const snapshot = await getDocs(collection(db, "blockedSlots"));
+        const snapshot = await adminDb.collection("blockedSlots").get();
         return snapshot.docs
             .map(d => ({ id: d.id, ...d.data() }))
             .filter((s: any) => s.studioId === studioId);
@@ -324,8 +309,8 @@ export const checkAvailabilityFromFirestore = async (
 // --- CAMPAIGNS ---
 export const getAllCampaignsFromFirestore = async (): Promise<Campaign[]> => {
     try {
-        const snapshot = await getDocs(collection(db, "campaigns"));
-        return snapshot.docs.map(doc => doc.data() as Campaign);
+        const snapshot = await adminDb.collection("campaigns").get();
+        return snapshot.docs.map(d => d.data() as Campaign);
     } catch (e) {
         console.error("Error fetching campaigns:", e);
         return [];
@@ -335,7 +320,7 @@ export const getAllCampaignsFromFirestore = async (): Promise<Campaign[]> => {
 export const saveCampaignToFirestore = async (campaign: Campaign): Promise<void> => {
     try {
         const cleanedData = toPlainObject(campaign);
-        await setDoc(doc(db, "campaigns", campaign.id), cleanedData);
+        await adminDb.collection("campaigns").doc(campaign.id).set(cleanedData);
     } catch (e) {
         console.error("Error saving campaign:", e);
         throw e;
@@ -344,7 +329,7 @@ export const saveCampaignToFirestore = async (campaign: Campaign): Promise<void>
 
 export const deleteCampaignFromFirestore = async (id: string): Promise<void> => {
     try {
-        await deleteDoc(doc(db, "campaigns", id));
+        await adminDb.collection("campaigns").doc(id).delete();
     } catch (e) {
         console.error("Error deleting campaign:", e);
         throw e;
@@ -354,8 +339,8 @@ export const deleteCampaignFromFirestore = async (id: string): Promise<void> => 
 // --- COUPONS ---
 export const getAllCouponsFromFirestore = async (): Promise<Coupon[]> => {
     try {
-        const snapshot = await getDocs(collection(db, "coupons"));
-        return snapshot.docs.map(doc => doc.data() as Coupon);
+        const snapshot = await adminDb.collection("coupons").get();
+        return snapshot.docs.map(d => d.data() as Coupon);
     } catch (e) {
         console.error("Error fetching coupons:", e);
         return [];
@@ -365,7 +350,7 @@ export const getAllCouponsFromFirestore = async (): Promise<Coupon[]> => {
 export const saveCouponToFirestore = async (coupon: Coupon): Promise<void> => {
     try {
         const cleanedData = toPlainObject(coupon);
-        await setDoc(doc(db, "coupons", coupon.id), cleanedData);
+        await adminDb.collection("coupons").doc(coupon.id).set(cleanedData);
     } catch (e) {
         console.error("Error saving coupon:", e);
         throw e;
@@ -374,11 +359,9 @@ export const saveCouponToFirestore = async (coupon: Coupon): Promise<void> => {
 
 export const deleteCouponFromFirestore = async (id: string): Promise<void> => {
     try {
-        await deleteDoc(doc(db, "coupons", id));
+        await adminDb.collection("coupons").doc(id).delete();
     } catch (e) {
         console.error("Error deleting coupon:", e);
         throw e;
     }
 };
-
-// ← これは残す（既存の正しいコード）

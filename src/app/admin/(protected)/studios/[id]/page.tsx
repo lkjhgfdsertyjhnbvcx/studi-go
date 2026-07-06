@@ -1,8 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
 const getMonday = (d: Date) => {
     const date = new Date(d);
@@ -80,16 +78,22 @@ export default function StudioAdminPage() {
         setIsSaving(true);
         setSaveMsg("");
         try {
-            await updateDoc(doc(db, "studios", studioId), {
-                allowCash: formData.allowCash,
-                allowOnlineStripe: formData.allowOnlineStripe,
-                showMap: formData.showMap,
-                showRooms: formData.showRooms,
-                showEquipment: formData.showEquipment,
-                showReviews: formData.showReviews,
-                showGallery: formData.showGallery,
-                showSNS: formData.showSNS,
+            const res = await fetch("/api/admin/stores", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: studioId,
+                    allowCash: formData.allowCash,
+                    allowOnlineStripe: formData.allowOnlineStripe,
+                    showMap: formData.showMap,
+                    showRooms: formData.showRooms,
+                    showEquipment: formData.showEquipment,
+                    showReviews: formData.showReviews,
+                    showGallery: formData.showGallery,
+                    showSNS: formData.showSNS,
+                }),
             });
+            if (!res.ok) throw new Error("保存に失敗しました");
             setSaveMsg("✅ 設定を保存しました");
             setTimeout(() => setSaveMsg(""), 3000);
         } catch (error) {

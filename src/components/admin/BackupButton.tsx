@@ -4,8 +4,6 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Loader2, HardDrive, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 export function BackupButton() {
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -14,13 +12,13 @@ export function BackupButton() {
     const handleBackup = async () => {
         setStatus('loading');
         try {
-            // サーバーAPIを使わず、クライアントサイドでデータを直接取得
-            // これによりサーバーエラー(500)を完全に回避
-            const studiosSnap = await getDocs(collection(db, 'studios'));
-            const studios = studiosSnap.docs.map(doc => doc.data());
-
-            const bookingsSnap = await getDocs(collection(db, 'bookings'));
-            const bookings = bookingsSnap.docs.map(doc => doc.data());
+            // サーバーAPI（Admin SDK）経由でデータを取得
+            const res = await fetch('/api/admin/backup');
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || `バックアップデータの取得に失敗しました (${res.status})`);
+            }
+            const { studios, bookings } = await res.json();
 
             // JSONファイル生成
             const backupData = {

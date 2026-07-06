@@ -1,0 +1,11 @@
+rules_version = '2';
+
+// Firebase Storage: クライアントからの直接アクセスを全面拒否
+// （画像アップロードは /api/upload 経由・サーバー側で認証/検証済み）
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

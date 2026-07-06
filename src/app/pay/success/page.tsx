@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import DOMPurify from "dompurify";
 
 interface AdSettings {
     enabled: boolean; provider: "adsense" | "custom" | "affiliate";
@@ -36,7 +37,7 @@ function AdBanner({ settings }: { settings: AdSettings | null }) {
     if (settings.provider === "custom" && settings.customHtml) {
         return (
             <div className="w-full bg-card border border-border rounded-2xl p-4"
-                dangerouslySetInnerHTML={{ __html: settings.customHtml }} />
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(settings.customHtml) }} />
         );
     }
     return null;

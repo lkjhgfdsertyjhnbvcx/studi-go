@@ -1,77 +1,16 @@
 rules_version = '2';
 
+// ============================================================
+// 全コレクションをクライアントSDKから遮断（デフォルト拒否）
+//
+// 本アプリのデータアクセスはすべてNext.js APIルート経由の
+// Firebase Admin SDK（ルールをバイパス）で行う設計に統一済み。
+// - 認可はAPI層（__session / sg_uid クッキー + requirePlatformAdmin等）で実施
+// - クライアントSDKの直接読み書きを許すと、APIのバリデーション・
+//   認可チェックを迂回して全ユーザーの個人情報閲覧・改ざんが可能になるため全面拒否
+// ============================================================
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // ========================================
-    // users コレクション
-    // ========================================
-    match /users/{userId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if false;
-    }
-
-    // ========================================
-    // studios コレクション
-    // ========================================
-    match /studios/{studioId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if false;  // 削除はAdmin SDKのみ
-    }
-
-    // ========================================
-    // settings コレクション（プラン設定など）
-    // ========================================
-    match /settings/{docId} {
-      allow read: if true;
-      allow write: if true;
-    }
-
-    // ========================================
-    // bookings コレクション
-    // ========================================
-    match /bookings/{bookingId} {
-      allow read: if true;    // API経由でフィルタリング
-      allow create: if true;  // API経由でバリデーション
-      allow update: if true;  // API経由で権限チェック
-      allow delete: if false;
-    }
-
-    // ========================================
-    // payments コレクション
-    // ========================================
-    match /payments/{paymentId} {
-      allow read: if true;
-      allow write: if false;  // Stripe Webhook（Admin SDK）のみ
-    }
-
-    // ========================================
-    // campaigns コレクション
-    // ========================================
-    match /campaigns/{campaignId} {
-      allow read: if true;
-      allow write: if false;  // Admin SDKのみ
-    }
-
-    // ========================================
-    // coupons コレクション
-    // ========================================
-    match /coupons/{couponId} {
-      allow read: if true;
-      allow write: if false;  // Admin SDKのみ
-    }
-
-    // ========================================
-    // その他：デフォルト拒否
-    // ========================================
     match /{document=**} {
       allow read, write: if false;
     }

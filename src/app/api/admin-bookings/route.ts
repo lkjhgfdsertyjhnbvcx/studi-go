@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
     try {
-        const snapshot = await getDocs(collection(db, "bookings"));
+        const snapshot = await adminDb.collection("bookings").get();
         const bookings = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         return NextResponse.json(bookings.sort((a: any, b: any) => {
             const ta = a.createdAt?.toDate?.() ?? new Date(a.createdAt ?? 0);
@@ -29,7 +28,7 @@ export async function PUT(request: Request) {
         if (!body.id || !body.status) {
             return NextResponse.json({ error: "idとstatusが必要です" }, { status: 400 });
         }
-        await updateDoc(doc(db, "bookings", body.id), { status: body.status });
+        await adminDb.collection("bookings").doc(body.id).update({ status: body.status });
         return NextResponse.json({ success: true });
     } catch (error: any) {
         console.error("booking update error:", error.message);
@@ -43,7 +42,7 @@ export async function DELETE(request: Request) {
         const id = searchParams.get("id");
         if (!id) return NextResponse.json({ error: "IDが必要です" }, { status: 400 });
 
-        await deleteDoc(doc(db, "bookings", id));
+        await adminDb.collection("bookings").doc(id).delete();
         return NextResponse.json({ success: true });
     } catch (error: any) {
         console.error("booking delete error:", error.message);

@@ -28,7 +28,7 @@ export async function POST(request: Request) {
             if (b.studioId !== studioId) return false;
             if (b.roomName !== roomName) return false;
             if (b.date !== date) return false;
-            if (b.status === "confirmed" || b.status === "pending") {
+            if (b.status !== "cancelled") {
                 const bStart = toMinutes(b.startTime);
                 const bEnd = bStart + (b.durationHours || 1) * 60;
                 const newStart = toMinutes(startTime);

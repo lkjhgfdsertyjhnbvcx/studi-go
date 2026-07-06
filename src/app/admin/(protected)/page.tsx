@@ -5,8 +5,7 @@ import { redirect } from 'next/navigation';
 import { DollarSign, BarChart3, Users, Store, Globe, TrendingUp, CreditCard } from "lucide-react";
 import { BackupButton } from '@/components/admin/BackupButton';
 import { TransactionTable } from '@/components/admin/TransactionTable';
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 
 export default async function AdminPage() {
     const auth = await getAuthInfo();
@@ -23,9 +22,9 @@ export default async function AdminPage() {
 
     const [bookings, studiosSnap, usersSnap, planConfigSnap] = await Promise.all([
         safeGet(() => fetchBookings(), []),
-        safeGet(() => getDocs(collection(db, "studios")), { docs: [], size: 0 }),
-        safeGet(() => getDocs(collection(db, "users")), { docs: [], size: 0 }),
-        safeGet(() => getDoc(doc(db, "settings", "planConfig")), null),
+        safeGet(() => adminDb.collection("studios").get(), { docs: [], size: 0 }),
+        safeGet(() => adminDb.collection("users").get(), { docs: [], size: 0 }),
+        safeGet(() => adminDb.collection("settings").doc("planConfig").get(), null),
     ]);
 
     // Booking stats
@@ -50,7 +49,7 @@ export default async function AdminPage() {
     const totalUsers = usersSnap.size || 0;
 
     // MRR calculation from studio plan assignments
-    const planConfig = planConfigSnap?.exists?.() ? planConfigSnap.data() : (planConfigSnap?.exists === true ? planConfigSnap.data() : null);
+    const planConfig = planConfigSnap?.exists ? planConfigSnap.data() : null;
     const planPrices: Record<string, number> = {};
     const optPrices: Record<string, { price: number; billingType: string }> = {};
     if (planConfig?.plans) {

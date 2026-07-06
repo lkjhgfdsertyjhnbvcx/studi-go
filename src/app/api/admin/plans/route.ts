@@ -1,7 +1,6 @@
 // /api/admin/plans - 運営側による店舗プラン編集
 import { NextResponse } from "next/server";
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import { requirePlatformAdmin } from "@/lib/api-auth";
 
 export async function PUT(request: Request) {
@@ -33,7 +32,7 @@ export async function PUT(request: Request) {
             updateData.planSetupFeePaid = planSetupFeePaid;
         }
 
-        await updateDoc(doc(db, "studios", studioId), updateData);
+        await adminDb.collection("studios").doc(studioId).update(updateData);
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

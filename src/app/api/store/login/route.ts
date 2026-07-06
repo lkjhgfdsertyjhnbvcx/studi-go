@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import { verifyPassword } from "@/lib/password";
 import { checkRateLimit, recordFailedAttempt, clearAttempts } from "@/lib/rate-limit";
 
@@ -25,8 +24,8 @@ export async function POST(request: Request) {
             }, { status: 429 });
         }
 
-        // Client SDKでFirestoreからスタジオ一覧を取得
-        const snapshot = await getDocs(collection(db, "studios"));
+        // Admin SDKでFirestoreからスタジオ一覧を取得
+        const snapshot = await adminDb.collection("studios").get();
         const studios = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as any[];
 
         // 全スタジオのスタッフを検索

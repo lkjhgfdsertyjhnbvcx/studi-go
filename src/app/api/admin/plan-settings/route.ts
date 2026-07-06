@@ -1,7 +1,6 @@
 // /api/admin/plan-settings - プラン定義の読み書き（Client SDK使用）
 import { NextResponse } from "next/server";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import { requirePlatformAdmin } from "@/lib/api-auth";
 
 const SETTINGS_DOC_PATH = "settings/planConfig";
@@ -37,13 +36,13 @@ function isOldPlanConfig(data: any): boolean {
 
 export async function GET() {
     try {
-        const ref = doc(db, "settings", "planConfig");
-        const snap = await getDoc(ref);
-        if (!snap.exists()) {
+        const ref = adminDb.collection("settings").doc("planConfig");
+        const snap = await ref.get();
+        if (!snap.exists) {
             // ドキュメントがない → デフォルトを返す（書き込みは保存ボタンで行う）
             return NextResponse.json(DEFAULT_CONFIG);
         }
-        const data = snap.data();
+        const data = snap.data()!;
 
         // 古い3プラン構成の場合、デフォルト4プランを返す（Firestoreは上書きせず表示だけ切り替える）
         if (isOldPlanConfig(data)) {
@@ -66,15 +65,15 @@ export async function PUT(request: Request) {
         const denied = await requirePlatformAdmin();
         if (denied) return denied;
         const body = await request.json();
-        const ref = doc(db, "settings", "planConfig");
+        const ref = adminDb.collection("settings").doc("planConfig");
 
         // reset=true の場合、デフォルト設定を保存
         if (body.reset === true) {
-            await setDoc(ref, DEFAULT_CONFIG);
+            await ref.set(DEFAULT_CONFIG);
             return NextResponse.json({ success: true, data: DEFAULT_CONFIG });
         }
 
-        await setDoc(ref, {
+        await ref.set({
             plans: Array.isArray(body.plans) ? body.plans : [],
             options: Array.isArray(body.options) ? body.options : [],
         });

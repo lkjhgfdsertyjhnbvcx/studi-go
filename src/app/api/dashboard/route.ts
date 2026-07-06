@@ -11,12 +11,20 @@ export async function GET(request: Request) {
         const studio = await getStudioByIdFromFirestore(studioId);
         if (!studio) return NextResponse.json({ error: "スタジオが見つかりません" }, { status: 404 });
 
+        // 今月分に限定（従来は全期間累積で、売上・稼働率が月次にならず膨張していた）
+        const now = new Date(Date.now() + 9 * 60 * 60 * 1000); // JST
+        const monthPrefix = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+
         const allBookings = await getAllBookingsFromFirestore();
         const bookings = allBookings.filter(
-            (b) => b.studioId === studioId && b.status !== "cancelled"
+            (b) =>
+                b.studioId === studioId &&
+                b.status !== "cancelled" &&
+                (b.date || "").startsWith(monthPrefix)
         );
 
-        const paidBookings = bookings.filter((b) => b.status === "active");
+        // "confirmed"(Stripe決済済) も売上に含める（従来は "active" のみで決済済み分が漏れていた）
+        const paidBookings = bookings.filter((b) => b.status === "active" || b.status === "confirmed");
         const actualSales = paidBookings.reduce((sum, b) => sum + b.totalPrice, 0);
         const bookingCount = bookings.length;
         const averagePrice = bookingCount > 0 ? Math.round(actualSales / bookingCount) : 0;
