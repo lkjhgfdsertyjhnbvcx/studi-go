@@ -27,57 +27,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const publishedOnly = searchParams.get("published") === "true";
 
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "studi-go-488d1";
-    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    // 旧実装はFirestore REST API（セキュリティルールの影響を受ける）だったため、
+    // ルールのロックダウン後に0件になる。Admin SDK（ルールをバイパス）に移行。
+    const { adminDb } = await import("@/lib/firebase-admin");
+    const col = adminDb.collection("studios");
+    const snap = publishedOnly
+      ? await col.where("isPublished", "==", true).get()
+      : await col.get();
 
-    // Firestore REST API でrunQuery
-    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery?key=${apiKey}`;
-
-    const queryBody = publishedOnly
-      ? {
-          structuredQuery: {
-            from: [{ collectionId: "studios" }],
-            where: {
-              fieldFilter: {
-                field: { fieldPath: "isPublished" },
-                op: "EQUAL",
-                value: { booleanValue: true },
-              },
-            },
-          },
-        }
-      : {
-          structuredQuery: {
-            from: [{ collectionId: "studios" }],
-          },
-        };
-
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(queryBody),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error("Firestore REST error:", errText);
-      return NextResponse.json({ error: "Firestore query failed", detail: errText }, { status: 500 });
-    }
-
-    const data = await res.json();
-
-    const studios = (Array.isArray(data) ? data : [])
-      .filter((item: any) => item.document)
-      .map((item: any) => {
-        const doc = item.document;
-        const id = doc.name.split("/").pop();
-        const fields = doc.fields || {};
-        const studio: any = { id };
-        for (const [key, value] of Object.entries(fields)) {
-          studio[key] = convertValue(value);
-        }
-        return studio;
-      });
+    const studios = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
     return NextResponse.json(studios, {
       headers: {
