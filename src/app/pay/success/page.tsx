@@ -37,7 +37,7 @@ function AdBanner({ settings }: { settings: AdSettings | null }) {
     if (settings.provider === "custom" && settings.customHtml) {
         return (
             <div className="w-full bg-card border border-border rounded-2xl p-4"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(settings.customHtml) }} />
+                dangerouslySetInnerHTML={{ __html: typeof window === "undefined" ? "" : DOMPurify.sanitize(settings.customHtml) }} />
         );
     }
     return null;
