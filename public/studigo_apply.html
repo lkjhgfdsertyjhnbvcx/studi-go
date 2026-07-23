@@ -129,6 +129,15 @@
         </div>
       </div>
 
+      <div class="field">
+        <label class="l">お支払い方法<span class="req-mark">必須</span></label>
+        <div class="checks">
+          <label class="check"><input type="radio" name="payment" value="クレジットカード" required><span>クレジットカード</span></label>
+          <label class="check"><input type="radio" name="payment" value="口座振替"><span>口座振替<small style="display:block;color:#888;font-size:12px;margin-top:2px;">※口座振替の設定完了まで（1〜2ヶ月程度）は請求書払い（銀行振込）でのご対応となります</small></span></label>
+          <label class="check"><input type="radio" name="payment" value="請求書払い（銀行振込）"><span>請求書払い（銀行振込）</span></label>
+        </div>
+      </div>
+
       <div class="row2">
         <div class="field">
           <label class="l" for="rooms">ルーム数<span class="opt-mark">任意</span></label>
@@ -206,9 +215,11 @@
     var val=function(n){var el=f.querySelector('[name="'+n+'"]');return el?el.value.trim():'';};
     var plan=(f.querySelector('input[name="plan"]:checked')||{}).value||'';
     var opts=Array.prototype.map.call(f.querySelectorAll('input[name="option"]:checked'),function(x){return x.value;}).join('、')||'なし';
+    var payment=(f.querySelector('input[name="payment"]:checked')||{}).value||'未選択';
     var data={
       shop:val('shop'), name:val('name'), email:val('email'),
       pref:val('pref'), tel:val('tel'), plan:plan, option:opts,
+      payment:payment,
       rooms:(val('rooms')||'未記入'), locations:(val('locations')||'未記入'),
       message:(val('message')||'なし')
     };
@@ -222,6 +233,7 @@
       '電話番号：'+data.tel+'\n'+
       'ご希望プラン：'+data.plan+'\n'+
       'オプション：'+data.option+'\n'+
+      'お支払い方法：'+data.payment+'\n'+
       'ルーム数：'+data.rooms+'\n'+
       '拠点数：'+data.locations+'\n'+
       'ご質問・ご要望：\n'+data.message+'\n';
@@ -237,7 +249,7 @@
           from_name:data.shop, replyto:data.email,
           '店舗・スタジオ名':data.shop,'ご担当者名':data.name,'メールアドレス':data.email,
           '都道府県':data.pref,'電話番号':data.tel,'ご希望プラン':data.plan,
-          'オプション':data.option,'ルーム数':data.rooms,'拠点数':data.locations,
+          'オプション':data.option,'お支払い方法':data.payment,'ルーム数':data.rooms,'拠点数':data.locations,
           'ご質問・ご要望':data.message
         })
       }).then(function(r){return r.json();}).then(function(res){
