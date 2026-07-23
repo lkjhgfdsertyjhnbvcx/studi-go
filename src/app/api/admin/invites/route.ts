@@ -45,6 +45,8 @@ export async function POST(request: Request) {
             data: emptyIntakeData(label),
             createdAt: now,
             updatedAt: now,
+            // 乗り換えキャンペーン（有料プラン2ヶ月無料）フラグ。指定時のみ保存
+            ...(body.campaign === "switch-2m" ? { campaign: "switch-2m" } : {}),
         };
 
         const db = initializeAdmin();

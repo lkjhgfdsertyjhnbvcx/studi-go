@@ -36,6 +36,13 @@ export async function POST(
         const studio = intakeToStudioProfile(intake.data);
         const now = new Date().toISOString();
 
+        // 乗り換えキャンペーン招待なら、有料プラン2ヶ月無料(60日トライアル)を初期セット。
+        // 店舗がダッシュボードでカード契約する際、store.planTrialDays が Stripe に渡り自動適用される。
+        if (intake.campaign === "switch-2m") {
+            (studio as any).planTrialDays = 60;
+            (studio as any).campaign = "switch-2m";
+        }
+
         await db.collection("studios").doc(studio.id).set(studio);
 
         // VOWCHA同意済みなら紹介料管理（vowchaReferrals）に登録

@@ -130,6 +130,7 @@ export interface StudioProfile {
     planUpdatedAt?: string;
     planTrialDays?: number;
     trialEndDate?: string;  // ISO日付 例: "2026-06-01"
+    campaign?: string;      // 適用キャンペーン（例: "switch-2m" = 乗り換え2ヶ月無料）
     createdAt: string;
 }
 

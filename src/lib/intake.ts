@@ -91,6 +91,7 @@ export interface StoreIntake {
     submittedAt?: string;
     approvedAt?: string;
     studioId?: string;      // 承認後に紐付く studios のID
+    campaign?: string;      // 乗り換えキャンペーン等（例: "switch-2m" = 有料プラン2ヶ月無料）
 }
 
 export const INTAKE_COLLECTION = "storeIntakes";

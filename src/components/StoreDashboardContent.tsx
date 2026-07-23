@@ -83,7 +83,12 @@ interface Store {
     publishedAt?: string;
     planKey?: string;
     planOptions?: string[];
+    planPayMethod?: string;
+    planTrialDays?: number;
     trialEndDate?: string;
+    campaign?: string;
+    name?: string;
+    ownerName?: string;
 }
 interface Booking {
     id: string; userId: string; studioId: string; roomName: string; date: string;
@@ -2971,7 +2976,7 @@ function PlanTab({ store, setStore, notify }: any) {
                 const res = await fetch("/api/store/subscribe", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ studioId: store.id, planKey: selectedPlan, options: selectedOptions, storeEmail: store.email }),
+                    body: JSON.stringify({ studioId: store.id, planKey: selectedPlan, options: selectedOptions, storeEmail: store.email, trialDays: store.planTrialDays || 0 }),
                 });
                 const data = await res.json();
                 if (data.sessionUrl) {
@@ -3147,14 +3152,19 @@ function PlanTab({ store, setStore, notify }: any) {
 
             <div>
                 <h2 className="text-foreground font-black text-lg mb-3">お支払い方法</h2>
-                <div className="grid grid-cols-2 gap-3">
-                    {[{key:"stripe",label:"クレジットカード"},{key:"invoice",label:"請求書払い"}].map(m => (
+                <div className="grid grid-cols-3 gap-3">
+                    {[{key:"stripe",label:"クレジットカード"},{key:"direct_debit",label:"口座振替"},{key:"invoice",label:"請求書払い（銀行振込）"}].map(m => (
                         <button key={m.key} onClick={() => setPayMethod(m.key)}
                             className={`p-4 rounded-2xl border-2 font-black text-sm transition-all ${payMethod === m.key ? "border-purple-500 bg-purple-600/10 text-white" : "border-border bg-card text-muted-foreground hover:border-gray-500"}`}>
                             {m.label}
                         </button>
                     ))}
                 </div>
+                {payMethod === "direct_debit" && (
+                    <p className="mt-3 text-xs text-muted-foreground bg-accent/10 border border-border rounded-xl p-3 leading-relaxed">
+                        口座振替の手続き書類をお送りします。口座振替の設定が完了するまで（1〜2ヶ月程度）は、請求書払い（銀行振込）でのご対応をお願いします。
+                    </p>
+                )}
             </div>
 
             <div className="bg-card border border-border rounded-2xl p-4">

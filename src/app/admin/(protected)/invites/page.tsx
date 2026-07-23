@@ -18,6 +18,7 @@ export default function InvitesPage() {
     const [loading, setLoading] = useState(true);
     const [label, setLabel] = useState("");
     const [note, setNote] = useState("");
+    const [campaign, setCampaign] = useState(false);
     const [creating, setCreating] = useState(false);
     const [copied, setCopied] = useState<string | null>(null);
     const [openPreview, setOpenPreview] = useState<string | null>(null);
@@ -40,13 +41,14 @@ export default function InvitesPage() {
             const res = await fetch("/api/admin/invites", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ label, note }),
+                body: JSON.stringify({ label, note, campaign: campaign ? "switch-2m" : undefined }),
             });
             const json = await res.json();
             if (!res.ok) throw new Error(json.error);
             setInvites((prev) => [json.invite, ...prev]);
             setLabel("");
             setNote("");
+            setCampaign(false);
         } catch (e: any) {
             setError(e.message || "発行に失敗しました");
         } finally {
@@ -120,6 +122,16 @@ export default function InvitesPage() {
                         {creating ? "発行中..." : "招待リンクを発行"}
                     </button>
                 </div>
+                <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                    <input
+                        type="checkbox"
+                        checked={campaign}
+                        onChange={(e) => setCampaign(e.target.checked)}
+                        className="w-4 h-4 accent-purple-600"
+                    />
+                    <span className="font-bold">乗り換えキャンペーンを適用（有料プラン2ヶ月無料）</span>
+                    <span className="text-xs text-muted-foreground">※この招待から登録した店舗に60日間の無料期間が自動適用されます</span>
+                </label>
             </div>
 
             {/* 一覧 */}
@@ -139,6 +151,7 @@ export default function InvitesPage() {
                                     <div className="flex flex-wrap items-center gap-3">
                                         <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${st.cls}`}>{st.text}</span>
                                         <span className="font-bold text-sm flex-1 min-w-32">{inv.data?.storeName || inv.label}</span>
+                                        {inv.campaign === "switch-2m" && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 border border-amber-500/30">乗換2ヶ月無料</span>}
                                         {inv.note && <span className="text-xs text-muted-foreground">📝 {inv.note}</span>}
                                         <span className="text-[11px] text-muted-foreground">更新: {new Date(inv.updatedAt).toLocaleString("ja-JP")}</span>
                                     </div>

@@ -565,7 +565,10 @@ export default function PlansPage() {
                                         return (
                                             <tr key={s.id} className="hover:bg-accent/5 transition-colors">
                                                 <td className="px-5 py-4">
-                                                    <p className="font-bold text-foreground text-sm">{s.storeName}</p>
+                                                    <p className="font-bold text-foreground text-sm flex items-center gap-2">
+                                                        {s.storeName}
+                                                        {s.campaign === "switch-2m" && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 border border-amber-500/30">乗換2ヶ月無料</span>}
+                                                    </p>
                                                     <p className="text-xs text-muted-foreground">{s.email}</p>
                                                 </td>
                                                 <td className="px-5 py-4">
@@ -601,7 +604,7 @@ export default function PlansPage() {
                                                     {monthly > 0 ? `¥${monthly.toLocaleString()}` : "—"}
                                                 </td>
                                                 <td className="px-5 py-4 text-xs text-muted-foreground">
-                                                    {s.planPayMethod === "stripe" ? "💳 カード" : s.planPayMethod === "invoice" ? "🧾 請求書" : "—"}
+                                                    {s.planPayMethod === "stripe" ? "💳 カード" : s.planPayMethod === "direct_debit" ? "🏦 口座振替" : s.planPayMethod === "invoice" ? "🧾 請求書" : "—"}
                                                 </td>
                                                 <td className="px-5 py-4 text-xs text-muted-foreground">
                                                     {s.planUpdatedAt ? new Date(s.planUpdatedAt).toLocaleDateString("ja-JP") : "—"}
@@ -708,7 +711,7 @@ export default function PlansPage() {
                         <div className="mb-5">
                             <label className="block text-xs font-bold text-muted-foreground tracking-widest mb-3">支払方法</label>
                             <div className="flex gap-3">
-                                {[["invoice","🧾 請求書払い"],["stripe","💳 カード"]].map(([v,l]) => (
+                                {[["invoice","🧾 請求書払い"],["direct_debit","🏦 口座振替"],["stripe","💳 カード"]].map(([v,l]) => (
                                     <button key={v} onClick={() => setEditForm({ ...editForm, planPayMethod: v })}
                                         className={`flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${editForm.planPayMethod === v ? "border-purple-500 bg-purple-500/10 text-purple-400" : "border-border text-muted-foreground hover:border-purple-400"}`}>
                                         {l}
