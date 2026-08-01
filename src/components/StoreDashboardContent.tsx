@@ -448,15 +448,15 @@ function ProfileTab({ store, setStore, notify }: any) {
             <div className={`rounded-xl p-4 border-2 ${store.isPublished ? "border-green-500/40 bg-green-500/5" : "border-yellow-500/40 bg-yellow-500/5"}`}>
                 <div className="flex items-center justify-between mb-2">
                     <div>
-                        <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-0.5">公開設定</p>
+                        <p className="text-xs font-black uppercase tracking-widest text-foreground/70 mb-0.5">公開設定</p>
                         <div className="flex items-center gap-2">
-                            <span className={`inline-block w-2 h-2 rounded-full ${store.isPublished ? "bg-green-400 animate-pulse" : "bg-yellow-400"}`} />
-                            <span className={`text-sm font-black ${store.isPublished ? "text-green-400" : "text-yellow-400"}`}>
+                            <span className={`inline-block w-2 h-2 rounded-full ${store.isPublished ? "bg-green-600 dark:bg-green-400 animate-pulse" : "bg-yellow-600 dark:bg-yellow-400"}`} />
+                            <span className={`text-sm font-black ${store.isPublished ? "text-green-700 dark:text-green-400" : "text-yellow-700 dark:text-yellow-400"}`}>
                                 {store.isPublished ? "公開中" : "非公開"}
                             </span>
                         </div>
                         {store.isPublished && store.publishedAt && (
-                            <p className="text-[10px] text-muted-foreground mt-0.5">公開日: {new Date(store.publishedAt).toLocaleDateString("ja-JP")}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">公開日: {new Date(store.publishedAt).toLocaleDateString("ja-JP")}</p>
                         )}
                     </div>
                     <button
@@ -464,22 +464,22 @@ function ProfileTab({ store, setStore, notify }: any) {
                         disabled={publishing}
                         className={`px-4 py-2 rounded-lg text-xs font-black transition-all disabled:opacity-50 ${
                             store.isPublished
-                                ? "bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 border border-yellow-500/40"
-                                : "bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/40"
+                                ? "bg-yellow-500/20 text-yellow-800 dark:text-yellow-300 hover:bg-yellow-500/30 border border-yellow-600/50"
+                                : "bg-green-500/20 text-green-800 dark:text-green-300 hover:bg-green-500/30 border border-green-600/50"
                         }`}
                     >
                         {publishing ? "処理中..." : store.isPublished ? "🔒 非公開にする" : "🚀 公開する"}
                     </button>
                 </div>
                 {!store.isPublished && (
-                    <p className="text-[10px] text-yellow-400/80 mt-1">※ 公開するとユーザー検索に表示されます。スタジオ設定・料金設定を完了してから公開してください。</p>
+                    <p className="text-[11px] text-yellow-800 dark:text-yellow-300 mt-1">※ 公開するとユーザー検索に表示されます。スタジオ設定・料金設定を完了してから公開してください。</p>
                 )}
 
                 {/* 予約ページURL（公開前でもアクセス可能。ホームページ・SNS・LINEに貼って集客できる） */}
                 <div className="mt-3 pt-3 border-t border-border/50">
-                    <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-1.5">あなたの予約ページ</p>
+                    <p className="text-xs font-black uppercase tracking-widest text-foreground/70 mb-1.5">あなたの予約ページ</p>
                     <div className="flex items-center gap-2 flex-wrap">
-                        <code className="flex-1 min-w-0 truncate bg-accent/10 border border-border rounded-lg px-3 py-2 text-xs font-mono text-foreground">
+                        <code className="flex-1 min-w-0 truncate bg-background border border-border rounded-lg px-3 py-2 text-xs font-mono text-foreground font-semibold">
                             {bookingUrl}
                         </code>
                         <button
@@ -492,12 +492,12 @@ function ProfileTab({ store, setStore, notify }: any) {
                             href={bookingUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-3 py-2 rounded-lg text-xs font-black bg-accent/20 hover:bg-accent/30 text-foreground transition-all whitespace-nowrap"
+                            className="px-3 py-2 rounded-lg text-xs font-black bg-accent/30 hover:bg-accent/50 border border-border text-foreground transition-all whitespace-nowrap"
                         >
                             開く ↗
                         </a>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-1.5">
+                    <p className="text-[11px] text-muted-foreground mt-1.5">
                         このURLをホームページ・SNS・LINEなどに掲載すると、お客様が直接予約できます。{!store.isPublished && "（非公開中でもこのURLからは予約ページを開けます）"}
                     </p>
                 </div>
