@@ -740,6 +740,7 @@ function SettingsTab({ store, setStore }: any) {
                                     </select>
                                     <Toggle label="有効" value={d.enabled} onChange={v => uPPD("enabled", v)} />
                                 </div>
+                                <DiscountTimeEditor timeRestriction={d.timeRestriction} onChange={tr => uPPD("timeRestriction", tr)} />
                             </div>
                         );
                     })}
@@ -846,7 +847,7 @@ function DiscountTimeEditor({ timeRestriction, onChange }: { timeRestriction?: a
                         </div>
                         <button type="button" onClick={addSlot} className="mt-2 w-full py-1.5 border border-dashed border-border rounded-lg text-[10px] font-black text-muted-foreground hover:text-foreground transition-all">+ 時間帯を追加</button>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">この曜日・時間帯に当てはまる予約だけ学割が表示・適用されます。</p>
+                    <p className="text-[10px] text-muted-foreground">この曜日・時間帯に当てはまる予約だけ、この割引が表示・適用されます。</p>
                 </div>
             )}
         </div>

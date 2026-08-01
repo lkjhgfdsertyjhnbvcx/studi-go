@@ -23,7 +23,7 @@ interface Studio {
   personalPracticeSettings?: { enabled: boolean; maxPeople: number; pricePerHour?: number };
   studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string; timeRestriction?: { enabled: boolean; days: number[]; slots: { start: string; end: string }[] } };
   otherDiscounts?: Array<{ name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string }>;
-  personalPracticeDiscounts?: Array<{ name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string }>;
+  personalPracticeDiscounts?: Array<{ name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string; timeRestriction?: { enabled: boolean; days: number[]; slots: { start: string; end: string }[] } }>;
   paymentMethod?: "store" | "studigo";
   stripeAccountId?: string;
   stripeAccountStatus?: "none" | "pending" | "active";
@@ -274,11 +274,19 @@ export default function StudioDetailPage() {
     if (!d || !d.enabled) return sum;
     return sum + calcDiscount(d.value, d.discountType, d.billingUnit);
   }, 0);
-  const ppDiscountAmount = isPersonalPractice ? selectedPPDiscounts.reduce((sum, idx) => {
+  // 個人練習割引のうち、時間帯・曜日制限を満たすものだけを有効扱いにする（学割と同じ判定）。
+  // 日時を変更して対象外になった選択が残っていても、金額・予約内容には反映されない。
+  const eligiblePPDiscounts = isPersonalPractice
+    ? selectedPPDiscounts.filter(idx => {
+      const d = studio?.personalPracticeDiscounts?.[idx];
+      return !!d && d.enabled && isDiscountAvailable(d, selectedDate, selectedStart);
+    })
+    : [];
+  const ppDiscountAmount = eligiblePPDiscounts.reduce((sum, idx) => {
     const d = studio?.personalPracticeDiscounts?.[idx];
-    if (!d || !d.enabled) return sum;
+    if (!d) return sum;
     return sum + calcDiscount(d.value, d.discountType, d.billingUnit);
-  }, 0) : 0;
+  }, 0);
   const totalPrice = Math.max(0, subtotal - studentDiscountAmount - otherDiscountAmount - ppDiscountAmount);
 
   const toggleOption = (idx: number) => {
@@ -306,7 +314,7 @@ export default function StudioDetailPage() {
           student: isStudentDiscount,
           otherDiscounts: selectedOtherDiscounts,
           pp: isPersonalPractice,
-          ppDiscounts: selectedPPDiscounts,
+          ppDiscounts: eligiblePPDiscounts,
         };
         localStorage.setItem(`pendingBooking_${studioId}`, JSON.stringify(pending));
       }
@@ -825,17 +833,37 @@ export default function StudioDetailPage() {
                           {isPersonalPractice && (studio as any).personalPracticeDiscounts?.filter((d: any) => d.enabled).length > 0 && (
                             <div className="mt-2 ml-6 space-y-1">
                               <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">個人練習割引</p>
-                              {(studio as any).personalPracticeDiscounts?.map((d: any, i: number) => d.enabled && (
-                                <label key={i} className="flex items-center justify-between cursor-pointer">
-                                  <div className="flex items-center gap-2">
-                                    <input type="checkbox" checked={selectedPPDiscounts.includes(i)} onChange={e => setSelectedPPDiscounts(prev => e.target.checked ? [...prev, i] : prev.filter(x => x !== i))} className="w-4 h-4 accent-purple-600 rounded" />
-                                    <span className="text-sm font-bold text-foreground">{d.name}</span>
-                                  </div>
-                                  <span className="text-xs font-bold text-purple-300">
-                                    -{d.value}{d.discountType === "percentage" ? "%" : "円"}{d.billingUnit === "per_hour" ? "/h" : "/回"}
-                                  </span>
-                                </label>
-                              ))}
+                              {(studio as any).personalPracticeDiscounts?.map((d: any, i: number) => {
+                                if (!d.enabled) return null;
+                                // 時間帯・曜日制限の対象外なら、選択させず条件を案内する（学割と同じ挙動）
+                                const eligible = isDiscountAvailable(d, selectedDate, selectedStart);
+                                if (!eligible) {
+                                  const tr = d.timeRestriction;
+                                  const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
+                                  const dayPart = (Array.isArray(tr?.days) && tr.days.length > 0)
+                                    ? tr.days.map((n: number) => dayLabels[n]).join("・") + "曜"
+                                    : "全曜日";
+                                  const slotPart = (Array.isArray(tr?.slots) && tr.slots.length > 0)
+                                    ? tr.slots.map((s: any) => `${s.start}〜${s.end}`).join("、")
+                                    : "全時間";
+                                  return (
+                                    <p key={i} className="text-[10px] text-muted-foreground">
+                                      {d.name}は {dayPart} {slotPart} の予約が対象です
+                                    </p>
+                                  );
+                                }
+                                return (
+                                  <label key={i} className="flex items-center justify-between cursor-pointer">
+                                    <div className="flex items-center gap-2">
+                                      <input type="checkbox" checked={selectedPPDiscounts.includes(i)} onChange={e => setSelectedPPDiscounts(prev => e.target.checked ? [...prev, i] : prev.filter(x => x !== i))} className="w-4 h-4 accent-purple-600 rounded" />
+                                      <span className="text-sm font-bold text-foreground">{d.name}</span>
+                                    </div>
+                                    <span className="text-xs font-bold text-purple-300">
+                                      -{d.value}{d.discountType === "percentage" ? "%" : "円"}{d.billingUnit === "per_hour" ? "/h" : "/回"}
+                                    </span>
+                                  </label>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
