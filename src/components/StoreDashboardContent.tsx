@@ -387,6 +387,22 @@ export default function StoreDashboard({ studioId: propStudioId, isAdmin = false
 function ProfileTab({ store, setStore, notify }: any) {
     const u = (k: string, v: any) => setStore({ ...store, [k]: v });
     const [publishing, setPublishing] = React.useState(false);
+    const [urlCopied, setUrlCopied] = React.useState(false);
+
+    // 店舗の予約ページURL（公開前でもこのURLからアクセス可能。公開ボタンは検索一覧への掲載可否）
+    const bookingUrl = typeof window !== "undefined"
+        ? `${window.location.origin}/studio/${store.id}`
+        : `https://studi-go.com/studio/${store.id}`;
+
+    const copyBookingUrl = async () => {
+        try {
+            await navigator.clipboard.writeText(bookingUrl);
+            setUrlCopied(true);
+            setTimeout(() => setUrlCopied(false), 2000);
+        } catch {
+            notify?.("コピーに失敗しました。URLを手動で選択してコピーしてください");
+        }
+    };
 
     const handlePublishToggle = async () => {
         const next = !store.isPublished;
@@ -448,6 +464,33 @@ function ProfileTab({ store, setStore, notify }: any) {
                 {!store.isPublished && (
                     <p className="text-[10px] text-yellow-400/80 mt-1">※ 公開するとユーザー検索に表示されます。スタジオ設定・料金設定を完了してから公開してください。</p>
                 )}
+
+                {/* 予約ページURL（公開前でもアクセス可能。ホームページ・SNS・LINEに貼って集客できる） */}
+                <div className="mt-3 pt-3 border-t border-border/50">
+                    <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-1.5">あなたの予約ページ</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <code className="flex-1 min-w-0 truncate bg-accent/10 border border-border rounded-lg px-3 py-2 text-xs font-mono text-foreground">
+                            {bookingUrl}
+                        </code>
+                        <button
+                            onClick={copyBookingUrl}
+                            className="px-3 py-2 rounded-lg text-xs font-black bg-purple-600 hover:bg-purple-500 text-white transition-all whitespace-nowrap"
+                        >
+                            {urlCopied ? "✓ コピーしました" : "URLをコピー"}
+                        </button>
+                        <a
+                            href={bookingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-2 rounded-lg text-xs font-black bg-accent/20 hover:bg-accent/30 text-foreground transition-all whitespace-nowrap"
+                        >
+                            開く ↗
+                        </a>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1.5">
+                        このURLをホームページ・SNS・LINEなどに掲載すると、お客様が直接予約できます。{!store.isPublished && "（非公開中でもこのURLからは予約ページを開けます）"}
+                    </p>
+                </div>
             </div>
 
             <Field label="店舗名" value={store.storeName} onChange={v => u("storeName", v)} />
