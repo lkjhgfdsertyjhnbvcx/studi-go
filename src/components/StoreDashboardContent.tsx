@@ -324,6 +324,16 @@ export default function StoreDashboard({ studioId: propStudioId, isAdmin = false
                             <span className="leading-tight">{m.label}</span>
                         </button>
                     ))}
+                    {/* 操作マニュアル（メニュー最下部・別タブで開く） */}
+                    <a
+                        href="/Studi-Go_店舗ガイド.pdf"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="操作マニュアル"
+                        className="mt-auto mx-3 mb-1 flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-accent/10 border border-border/60 transition-all"
+                    >
+                        <span className="leading-tight">📖 操作マニュアル ↗</span>
+                    </a>
                 </aside>
                 {/* クリックで開く設定パネル */}
                 {sidebarOpen && (
