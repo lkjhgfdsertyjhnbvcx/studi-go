@@ -83,7 +83,22 @@ export default function TopPage() {
     fetch('/api/studios')
       .then(r => r.json())
       .then((data: any[]) => {
-        setStudios((data || []).filter((s: any) => s.isPublished === true));
+        // 優先掲載（top_page_listing）は「載る／載らない」ではなく表示順で差をつける。
+        // フリー店舗を一覧から外すと、立ち上げ期にページが空に見えてしまうため。
+        // 同じ順位帯では写真のある店舗を先に出す（一覧全体の見栄えと、
+        // 店舗が写真を登録する動機づけを兼ねる）。
+        const PLAN_RANK: Record<string, number> = { pro: 0, standard: 0, light: 1, free: 2 };
+        const hasPhoto = (s: any) =>
+          (s.images?.length ?? 0) > 0 || (s.rooms || []).some((r: any) => (r.images?.length ?? 0) > 0) ? 1 : 0;
+        const published = (data || []).filter((s: any) => s.isPublished === true);
+        published.sort((a: any, b: any) => {
+          const pr = (PLAN_RANK[a.planKey ?? "free"] ?? 2) - (PLAN_RANK[b.planKey ?? "free"] ?? 2);
+          if (pr !== 0) return pr;
+          const ph = hasPhoto(b) - hasPhoto(a);
+          if (ph !== 0) return ph;
+          return String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? ""));
+        });
+        setStudios(published);
       })
       .catch(() => setStudios([]))
       .finally(() => setLoading(false));
@@ -126,7 +141,10 @@ export default function TopPage() {
       </section>
       <div style={{ background: "#1d1d1f" }}>
         <div className="py-6 flex items-center justify-center gap-16">
-          {[{ num: studios.length, label: "掲載スタジオ" }, { num: studios.reduce((s,st) => s+(st.rooms?.length||0),0), label: "練習部屋" }, { num: "24h", label: "オンライン予約" }].map((stat, i) => (
+          {/* 260808: 以前は掲載スタジオ数・部屋数を出していたが、掲載が少ない時期に
+              「少なさ」を一番目立つ場所で宣言してしまっていた。
+              また、このトップは一般ユーザー向けなので店舗数より利用条件を出すほうが伝わる。 */}
+          {[{ num: "24h", label: "いつでも予約" }, { num: "¥0", label: "会員登録・利用料" }, { num: "即時", label: "空き状況を確認" }].map((stat, i) => (
             <div key={i} className="text-center">
               <p className="text-2xl font-bold text-white" style={{ letterSpacing: "-0.02em" }}>{typeof stat.num === "number" ? `${stat.num}+` : stat.num}</p>
               <p className="text-xs font-medium mt-0.5" style={{ color: "#a1a1a6" }}>{stat.label}</p>

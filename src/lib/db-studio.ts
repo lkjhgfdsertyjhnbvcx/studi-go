@@ -124,6 +124,8 @@ export interface StudioProfile {
     stripeAccountStatus?: "pending" | "active" | "restricted";
     feeBearer?: "store" | "user";
     planKey?: string;
+    /** 店舗ごとの機能例外。プラン制限を後付けした際の救済と、営業上の個別開放に使う */
+    featureOverrides?: Record<string, boolean>;
     planOptions?: string[];
     planPayMethod?: string;
     customDomain?: string; // カスタムドメイン (例: "mystudio.com")

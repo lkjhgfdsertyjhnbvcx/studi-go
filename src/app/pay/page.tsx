@@ -14,6 +14,9 @@ function PayContent() {
     const [splitShareUrl, setSplitShareUrl] = useState<string | null>(null);
     const [splitCopied, setSplitCopied] = useState(false);
 
+    // 割り勘決済の可否。呼び出し元（/studio/[id]）がプランを見て付ける。
+    // 指定が無い場合（既存リンク・直リンク）は従来どおり許可する。
+    const splitAllowed = (searchParams.get("split") ?? "1") !== "0";
     const studioId = searchParams.get("studioId") || "";
     const studioName = searchParams.get("studioName") || "スタジオ";
     const roomId = searchParams.get("roomId") || "";
@@ -142,9 +145,11 @@ function PayContent() {
                         <button onClick={()=>handlePay()} disabled={isProcessing} className="w-full py-5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded-2xl font-black text-lg text-white transition-all mb-3">
                             {isProcessing ? "処理中..." : "決済する →"}
                         </button>
-                        <button onClick={()=>setSplitMode("choose")} className="w-full py-4 bg-accent/20 hover:bg-accent/30 border border-border rounded-2xl font-black text-sm text-muted-foreground transition-all">
-                            👥 メンバーで割り勘する
-                        </button>
+                        {splitAllowed && (
+                            <button onClick={()=>setSplitMode("choose")} className="w-full py-4 bg-accent/20 hover:bg-accent/30 border border-border rounded-2xl font-black text-sm text-muted-foreground transition-all">
+                                👥 メンバーで割り勘する
+                            </button>
+                        )}
                     </div>
                 )}
 

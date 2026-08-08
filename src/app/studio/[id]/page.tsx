@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { parseBusinessHours } from "@/lib/business-hours";
 import { useParams, useSearchParams } from "next/navigation";
-import { canUseLineBooking } from "@/lib/plan-features";
+import { canUseLineBooking, canUseFeature, getPlanLimits } from "@/lib/plan-features";
 
 interface TimeSlot { start: string; end: string; price: number; }
 interface RoomPricingDay { slots?: TimeSlot[] }
@@ -30,6 +30,8 @@ interface Studio {
   stripeAccountStatus?: "none" | "pending" | "active";
   planKey?: string;
   planOptions?: string[];
+  /** 店舗ごとの機能例外（プラン制限を後付けした際の救済） */
+  featureOverrides?: Record<string, boolean>;
 }
 
 function getDayType(date: Date): "weekday" | "saturday" | "sundayHoliday" {
@@ -143,7 +145,8 @@ export default function StudioDetailPage() {
           setActiveRoom(data.rooms?.[0]?.id || null);
           // タイトルとファビコンを店舗用に変更
           document.title = data.storeName || "Studi-Go";
-          if (data.logoUrl) {
+          // ファビコンも「ページカラー・ロゴ変更」の一部。フリープランでは店舗ロゴに差し替えない。
+          if (data.logoUrl && canUseFeature(data.planKey, "page_design", data.featureOverrides)) {
             const link = document.querySelector("link[rel*='icon']") as HTMLLinkElement || document.createElement("link");
             link.type = "image/x-icon";
             link.rel = "shortcut icon";
@@ -225,8 +228,28 @@ export default function StudioDetailPage() {
   const businessHoursStr = studio.businessHours?.[hoursKey as keyof typeof studio.businessHours];
   const { open, close } = parseBusinessHours(businessHoursStr);
   const startMinute = selectedRoom?.startType === "30min" ? 0.5 : 0;
+  // 開始枠は「1時間使っても閉店時刻を超えない」ものだけ出す。
+  // 260808: 旧実装は h < close で回していたため、30分スタートの部屋
+  //（営業 14:00-21:00）で 20:30 の枠が出ていた。21:30 終了で閉店を30分超える。
   const timeSlots: number[] = [];
-  for (let h = open; h < close; h++) timeSlots.push(h + startMinute);
+  for (let h = open; h + startMinute + 1 <= close; h++) timeSlots.push(h + startMinute);
+
+  // 利用時間も閉店時刻で頭打ちにする。
+  // 260808: 旧実装は常に1〜6時間から選べたので、20:00開始で6時間を選ぶと
+  // 翌2:00 までの予約が成立していた（サーバー側にも閉店チェックは無い）。
+  const maxDuration = selectedStart !== null
+    ? Math.max(1, Math.floor(close - selectedStart))
+    : 6;
+  const durationOptions = [1, 2, 3, 4, 5, 6].filter((h) => h <= maxDuration);
+
+  // 開始時刻を選ぶときに、閉店時刻を超える利用時間が残らないよう詰める。
+  // useEffect にすると早期 return（loading / !studio）より後ろになり、
+  // フックの数が描画ごとに変わってしまうため、通常の関数で行う。
+  const chooseStart = (t: number) => {
+    setSelectedStart(t);
+    const maxD = Math.max(1, Math.floor(close - t));
+    setSelectedDuration((d) => Math.min(d, maxD));
+  };
 
   // 個人練習の時間単価。店舗が onboard / ダッシュボードで設定していれば、
   // 部屋の通常料金の代わりにこの単価を使う。
@@ -352,6 +375,9 @@ export default function StudioDetailPage() {
       total: String(totalPrice),
       options: optionNames,
       optionPrices: optionPrices,
+      // 割り勘決済はライトプラン以上。/pay は URLパラメータだけで動くので、
+      // プラン判定ができるこちら側で可否を渡す。
+      split: canUseFeature(studio.planKey, "split_payment", studio.featureOverrides) ? "1" : "0",
     });
     window.location.href = `/pay?${p.toString()}`;
   };
@@ -461,7 +487,7 @@ export default function StudioDetailPage() {
     return (
       <div className="space-y-1 max-h-64 overflow-y-auto">
         {timeSlots.map((t) => (
-          <button key={t} onClick={() => { if(isSlotBooked(t)) return; setSelectedDate(dateToShow); setSelectedStart(t); setBookingStep("calendar"); }}
+          <button key={t} onClick={() => { if(isSlotBooked(t)) return; setSelectedDate(dateToShow); chooseStart(t); setBookingStep("calendar"); }}
             disabled={isSlotBooked(t)}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all border
               ${isSlotBooked(t) ? "opacity-40 cursor-not-allowed bg-accent/5 border-gray-800 line-through text-gray-500" : selectedStart === t ? "bg-purple-600 border-purple-500 text-white" : "bg-accent/10/50 border-gray-700 text-muted-foreground hover:text-foreground hover:border-gray-500"}`}>
@@ -486,8 +512,19 @@ export default function StudioDetailPage() {
     return calendarDate.toLocaleDateString("ja-JP", { month: "long", day: "numeric", weekday: "short" });
   };
 
+  // ページのロゴ・背景は「page_design」（ライトプラン以上）の機能。
+  // 260808までプラン判定が入っておらず、フリープランでも反映されていた。
+  // フリープランでは店舗独自のロゴ・背景を使わず、標準デザイン＋Studi-Goロゴにする。
+  // 個別に開放したい店舗は studios.featureOverrides.page_design = true で例外にできる。
+  const canDesign = canUseFeature(studio.planKey, "page_design", studio.featureOverrides);
+  const brandLogo = canDesign ? studio.logoUrl : undefined;
+  const brandBgImage = canDesign ? studio.bgImageUrl : undefined;
+  const brandBgColor = canDesign ? (studio.designSettings?.backgroundColor || studio.bgColor) : undefined;
+  // フリープランのページには Studi-Go のロゴを入れる（例外開放した店舗には出さない）
+  const showStudiGoLogo = getPlanLimits(studio.planKey).showLogo && !canDesign;
+
   // 背景色の輝度を計算して文字色を自動判定
-  const rawBg = studio.designSettings?.backgroundColor || studio.bgColor || "#ffffff";
+  const rawBg = brandBgColor || "#ffffff";
   const bgHex = typeof rawBg === "string" ? rawBg : "#ffffff";
   const isDarkBg = (() => {
     try {
@@ -498,13 +535,13 @@ export default function StudioDetailPage() {
     } catch { return false; }
   })();
   // 背景画像がある場合も暗いとみなす
-  const effectiveDark = isDarkBg || !!studio.bgImageUrl;
+  const effectiveDark = isDarkBg || !!brandBgImage;
   const effectiveTextColor = effectiveDark ? "#ffffff" : "#1d1d1f";
   const effectiveSubColor = effectiveDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.55)";
 
   return (
-    <div className="min-h-screen relative" style={{ backgroundColor: bgHex, color: effectiveTextColor, backgroundImage: studio.bgImageUrl ? `url(${studio.bgImageUrl})` : undefined, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
-      {studio.bgImageUrl && <div className="fixed inset-0 pointer-events-none z-0" style={{ backgroundColor: `rgba(0,0,0,${studio.bgOpacity ?? 0.15})` }} />}
+    <div className="min-h-screen relative" style={{ backgroundColor: bgHex, color: effectiveTextColor, backgroundImage: brandBgImage ? `url(${brandBgImage})` : undefined, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
+      {brandBgImage && <div className="fixed inset-0 pointer-events-none z-0" style={{ backgroundColor: `rgba(0,0,0,${studio.bgOpacity ?? 0.15})` }} />}
       <div className="relative z-10" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       {isPreview && (
         <div className="bg-blue-600 text-white text-center py-2 text-xs font-black tracking-wide sticky top-0 z-50">
@@ -515,9 +552,16 @@ export default function StudioDetailPage() {
       <header className="border-b border-border/60 bg-background/80 backdrop-blur-xl sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
-            {studio.logoUrl
-              ? <img src={studio.logoUrl} alt={studio.storeName} className="w-auto object-contain" style={{height: "40px", maxHeight: "40px"}} />
-              : <span className="font-black text-xl text-foreground">{studio.storeName}</span>
+            {brandLogo
+              ? <img src={brandLogo} alt={studio.storeName} className="w-auto object-contain" style={{height: "40px", maxHeight: "40px"}} />
+              : showStudiGoLogo
+                ? (
+                  <span className="flex items-center gap-2.5">
+                    <img src="/logo-new.png" alt="Studi-Go" className="h-6 w-auto object-contain dark:invert" />
+                    <span className="font-black text-lg text-foreground">{studio.storeName}</span>
+                  </span>
+                )
+                : <span className="font-black text-xl text-foreground">{studio.storeName}</span>
             }
           </a>
           <a href="/" className="text-xs font-bold text-muted-foreground hover:text-foreground transition-all">← スタジオ一覧に戻る</a>
@@ -532,9 +576,9 @@ export default function StudioDetailPage() {
                 <img src={allImages[activeImage]} alt="" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center"
-                  style={{ background: studio.bgImageUrl ? `url(${studio.bgImageUrl}) center/cover no-repeat` : studio.bgColor ? `linear-gradient(135deg, ${studio.bgColor}cc, ${studio.bgColor}22)` : "linear-gradient(135deg, #1a0533, #0d0d1a)" }}>
-                  {studio.logoUrl
-                    ? <img src={studio.logoUrl} alt="" className="max-h-24 max-w-48 object-contain opacity-70" />
+                  style={{ background: brandBgImage ? `url(${brandBgImage}) center/cover no-repeat` : brandBgColor ? `linear-gradient(135deg, ${brandBgColor}cc, ${brandBgColor}22)` : "linear-gradient(135deg, #1a0533, #0d0d1a)" }}>
+                  {brandLogo
+                    ? <img src={brandLogo} alt="" className="max-h-24 max-w-48 object-contain opacity-70" />
                     : <span className="text-6xl opacity-20">🎸</span>
                   }
                 </div>
@@ -553,7 +597,7 @@ export default function StudioDetailPage() {
           </div>
           <div className="flex flex-col gap-5">
             <div>
-              {studio.logoUrl && <img src={studio.logoUrl} alt="logo" className="object-contain mb-4" style={{height: `${studio.logoSize || 80}px`, maxHeight: "160px"}} />}
+              {brandLogo && <img src={brandLogo} alt="logo" className="object-contain mb-4" style={{height: `${studio.logoSize || 80}px`, maxHeight: "160px"}} />}
               <h1 className="text-3xl font-black leading-tight mb-3" style={{color: effectiveTextColor}}>{studio.storeName}</h1>
               {studio.appealPoint && <p className="text-sm leading-relaxed" style={{color: effectiveSubColor}}>{studio.appealPoint}</p>}
             </div>
@@ -962,7 +1006,7 @@ export default function StudioDetailPage() {
                     <p className="text-xs font-black text-purple-400 uppercase tracking-widest">開始時間を選ぶ</p>
                     <div className="grid grid-cols-3 gap-2 overflow-y-auto max-h-40">
                       {timeSlots.map((t) => (
-                        <button key={t} onClick={() => { if(isSlotBooked(t)) return; setSelectedStart(t); }} disabled={isSlotBooked(t)}
+                        <button key={t} onClick={() => { if(isSlotBooked(t)) return; chooseStart(t); }} disabled={isSlotBooked(t)}
                           className={`py-2 rounded-xl text-xs font-black transition-all border ${isSlotBooked(t) ? "opacity-40 cursor-not-allowed line-through bg-accent/5 border-gray-800 text-gray-500" : selectedStart === t ? "bg-purple-600 border-purple-500 text-white" : "bg-accent/10 border-gray-700 text-muted-foreground hover:text-foreground hover:border-gray-500"}`}>
                           {formatTime(t)}
                         </button>
@@ -972,7 +1016,7 @@ export default function StudioDetailPage() {
                       <>
                         <p className="text-xs font-black text-purple-400 uppercase tracking-widest">利用時間</p>
                         <div className="flex gap-1">
-                          {[1, 2, 3, 4, 5, 6].map((h) => (
+                          {durationOptions.map((h) => (
                             <button key={h} onClick={() => setSelectedDuration(h)}
                               className={`flex-1 py-2 rounded-xl text-xs font-black transition-all border ${selectedDuration === h ? "bg-purple-600 border-purple-500 text-white" : "bg-accent/10 border-gray-700 text-muted-foreground hover:text-foreground"}`}>
                               {h}h
@@ -1028,6 +1072,18 @@ export default function StudioDetailPage() {
           </section>
         )}
       </main>
+
+      {/* フリープランのページには Studi-Go の表示を入れる（PLAN_LIMITS.showLogo）。
+          /studios/[id] 側にすでにある扱いと揃えている。 */}
+      {showStudiGoLogo && (
+        <footer className="mt-16 py-8 text-center" style={{ color: effectiveSubColor }}>
+          <a href="https://studi-go.com" target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 opacity-80 hover:opacity-100 transition-opacity">
+            <img src="/logo-new.png" alt="Studi-Go" className="h-6 w-auto object-contain dark:invert" />
+            <span className="text-xs font-medium tracking-wide">Powered by Studi-Go</span>
+          </a>
+        </footer>
+      )}
       </div>
     </div>
   );

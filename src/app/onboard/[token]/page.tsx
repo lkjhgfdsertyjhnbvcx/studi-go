@@ -390,11 +390,17 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
                                     <input className={inputCls} disabled={locked} type="number" min={0} value={room.basePrice || ""} onChange={(e) => updateRoom(idx, { basePrice: Number(e.target.value) })} placeholder="2000" />
                                 </div>
                                 <div>
-                                    <label className={labelCls}>予約開始タイミング</label>
+                                    <label className={labelCls}>予約の開始時刻</label>
                                     <select className={inputCls} disabled={locked} value={room.startType || "0min"} onChange={(e) => updateRoom(idx, { startType: e.target.value as "0min" | "30min" })}>
-                                        <option value="0min">毎時00分から</option>
-                                        <option value="30min">毎時30分から</option>
+                                        <option value="0min">毎時00分スタート（14:00 / 15:00 …）</option>
+                                        <option value="30min">毎時30分スタート（14:30 / 15:30 …）</option>
                                     </select>
+                                    {/* 260808: 「30分単位で予約できる」という意味に読み違えられ、
+                                        営業時間と噛み合わない枠が出る事例があったため補足を足す */}
+                                    <p className="mt-1 text-[11px] text-muted-foreground leading-snug">
+                                        お客様が予約を始められる時刻です。30分単位で予約できるという意味ではありません。
+                                        通常は「毎時00分スタート」です。
+                                    </p>
                                 </div>
                             </div>
                             <div>

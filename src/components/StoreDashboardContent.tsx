@@ -78,6 +78,7 @@ interface Store {
     nightPacks?: Array<{ name: string; enabled: boolean; startHour: number; endHour: number; price: number; availableDays: string[] }>;
     rooms?: Room[]; equipmentOptions?: EquipmentOption[];
     staff?: StaffMember[]; blacklist?: BlacklistEntry[]; monthlyRevenueTarget?: number;
+    featureOverrides?: Record<string, boolean>;
     isPublished?: boolean;
     updatedAt?: string;
     publishedAt?: string;
@@ -345,18 +346,24 @@ export default function StoreDashboard({ studioId: propStudioId, isAdmin = false
                         <div className="p-6">
                             {activeMenu === "profile" && <ProfileTab store={store} setStore={setStore} notify={notify} />}
                             {activeMenu === "branding" && (
-                                <PlanGate planKey={store.planKey} feature="page_design">
+                                <PlanGate planKey={store.planKey} feature="page_design" overrides={store.featureOverrides}>
                                     <BrandingTab store={store} setStore={setStore} />
                                 </PlanGate>
                             )}
                             {activeMenu === "settings" && <SettingsTab store={store} setStore={setStore} />}
                             {activeMenu === "studios" && <StudiosTab store={store} setStore={setStore} />}
-                            {activeMenu === "options" && <OptionsTab store={store} setStore={setStore} />}
-                            {activeMenu === "staff" && (
-                                <PlanGate planKey={store.planKey} feature="staff_account">
-                                    <StaffTab store={store} setStore={setStore} notify={notify} />
+                            {/* 機材・オプションはライト以上。中身は見せたうえでロックし、
+                                「何ができないか」が具体的に分かるようにする（PlanGate の挙動）。 */}
+                            {activeMenu === "options" && (
+                                <PlanGate planKey={store.planKey} feature="equipment_options" overrides={store.featureOverrides}>
+                                    <OptionsTab store={store} setStore={setStore} />
                                 </PlanGate>
                             )}
+                            {/* 260808: 以前は「スタッフ」メニュー全体を staff_account で塞いでいたが、
+                                承認時に発行した仮パスワードの変更もここで行うため、フリー店舗が
+                                パスワードを変えられなくなっていた。メニューは常に開き、
+                                「スタッフを追加」だけを StaffTab の中で制限する。 */}
+                            {activeMenu === "staff" && <StaffTab store={store} setStore={setStore} notify={notify} />}
                             {activeMenu === "blacklist" && <BlacklistTab store={store} setStore={setStore} />}
                             {activeMenu === "contact" && <ContactTab store={store} notify={notify} />}
                             {activeMenu === "promotions" && (
@@ -725,6 +732,9 @@ function SettingsTab({ store, setStore }: any) {
                 )}
             </Subsection>
             <Subsection title="割引設定">
+                {/* 学割・その他割引はライト以上。中身を見せたうえでロックし、
+                    何が使えるようになるのかが分かるようにする。 */}
+                <PlanGate planKey={store.planKey} feature="student_discount" overrides={store.featureOverrides}>
                 <Toggle label="学割" value={store.studentDiscount?.enabled ?? false} onChange={v => u("studentDiscount", { ...store.studentDiscount, enabled: v })} />
                 {store.studentDiscount?.enabled && (
                     <div className="ml-4 mt-2 space-y-3">
@@ -742,6 +752,8 @@ function SettingsTab({ store, setStore }: any) {
                         <DiscountTimeEditor timeRestriction={store.studentDiscount?.timeRestriction} onChange={(tr: any) => u("studentDiscount", { ...store.studentDiscount, timeRestriction: tr })} />
                     </div>
                 )}
+                </PlanGate>
+                <PlanGate planKey={store.planKey} feature="reservation_benefit" overrides={store.featureOverrides}>
                 <div className="mt-3 space-y-3">
                     {(store.otherDiscounts || []).map((d: Discount, idx: number) => (
                         <div key={idx} className="bg-accent/10/50 rounded-xl p-3 space-y-2">
@@ -768,6 +780,7 @@ function SettingsTab({ store, setStore }: any) {
                         + 割引を追加
                     </button>
                 </div>
+                </PlanGate>
             </Subsection>
             <Subsection title="個人練習割引設定">
                 <p className="text-[10px] text-muted-foreground mb-2">個人練習利用時に適用される割引を設定できます</p>
@@ -1259,8 +1272,11 @@ function StaffTab({ store, setStore, notify }: any) {
                 ))}
             </div>
 
-            {/* 新規追加（管理者のみ） */}
+            {/* 新規追加（管理者のみ・プラン制限あり）。
+                スタッフ「追加」は staff_account の対象だが、一覧表示と
+                自分のパスワード変更は全プランで使える必要がある。 */}
             {isAdmin && (
+                <PlanGate planKey={store.planKey} feature="staff_account" overrides={store.featureOverrides}>
                 <div className="bg-accent/10/40 rounded-2xl p-4 space-y-3">
                     <p className="text-xs font-black text-muted-foreground uppercase">新しいスタッフを追加</p>
                     <Field label="名前" value={newStaff.name} onChange={v => setNewStaff({ ...newStaff, name: v })} />
@@ -1275,6 +1291,7 @@ function StaffTab({ store, setStore, notify }: any) {
                     </div>
                     <button onClick={addStaff} className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 rounded-xl text-sm font-black transition-all">追加する</button>
                 </div>
+                </PlanGate>
             )}
             {!isAdmin && (
                 <p className="text-xs text-muted-foreground text-center py-4">スタッフの管理は管理者権限が必要です</p>
@@ -2370,6 +2387,9 @@ function AnalyticsTab({ bookings, store, setStore, planKey }: any) {
 }
 
 function CustomersTab({ customers, bookings, planKey, storeId, onRefresh }: { customers: any[]; bookings: Booking[]; planKey?: string; storeId?: string; onRefresh?: () => void }) {
+    const customerLimit = getPlanLimits(planKey).customerListLimit;
+    const atCustomerLimit = customers.length > customerLimit;
+    const visibleCustomers = atCustomerLimit ? customers.slice(0, customerLimit) : customers;
     const [showImport, setShowImport] = React.useState(false);
     const [csvFile, setCsvFile] = React.useState<File | null>(null);
     const [csvHeaders, setCsvHeaders] = React.useState<string[]>([]);
@@ -2435,8 +2455,20 @@ function CustomersTab({ customers, bookings, planKey, storeId, onRefresh }: { cu
                     </div>
                 </div>
             </PlanGate>
+            {/* フリープランは表示件数を PLAN_LIMITS.customerListLimit（50件）で絞る。
+                260808まで定義だけあって未実装だった。件数を隠すのではなく
+                「あと何件で上限か」を見せて、上位プランの理由を具体的にする。 */}
+            {customerLimit !== Infinity && (
+                <div className={`mb-4 rounded-xl border-2 p-3 text-xs font-bold ${atCustomerLimit ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-border bg-accent/10 text-muted-foreground"}`}>
+                    {atCustomerLimit
+                        ? `⚠️ フリープランは顧客${customerLimit}件までです。${customers.length - customerLimit}件が表示されていません。ライトプラン以上で全件表示できます。`
+                        : `フリープランは顧客${customerLimit}件まで表示できます（現在 ${customers.length}件）。`}
+                </div>
+            )}
             <div className="flex items-center justify-between mb-4">
-                <h2 className="font-black text-lg text-foreground">顧客一覧 ({customers.length}件)</h2>
+                <h2 className="font-black text-lg text-foreground">
+                    顧客一覧 ({atCustomerLimit ? `${visibleCustomers.length} / ${customers.length}` : customers.length}件)
+                </h2>
                 <button onClick={() => setShowImport(!showImport)} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-black rounded-lg transition-all">
                     CSVインポート
                 </button>
@@ -2506,7 +2538,7 @@ function CustomersTab({ customers, bookings, planKey, storeId, onRefresh }: { cu
 
             {customers.length === 0
                 ? <div className="text-center py-20 text-muted-foreground"><p className="text-4xl mb-3">👥</p><p className="font-bold">顧客データがありません</p><p className="text-xs mt-2">CSVインポートで他社システムから顧客データを移行できます</p></div>
-                : <div className="space-y-3">{customers.map((c: any) => {
+                : <div className="space-y-3">{visibleCustomers.map((c: any) => {
                     const userBookings = bookings.filter(b => b.userId === c.id);
                     const ltv = userBookings.reduce((s, b) => s + (b.totalPrice || 0), 0);
                     const isLine = c.authProvider === "line" || !!c.lineUserId;

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { canUseFeature, getPlanInfo, type FeatureKey, type PlanKey, FEATURE_LABELS } from "@/lib/plan-features";
+import { canUseFeature, getPlanInfo, type FeatureKey, type FeatureOverrides, type PlanKey, FEATURE_LABELS } from "@/lib/plan-features";
 
 interface PlanGateProps {
     planKey: string | null | undefined;
@@ -9,14 +9,16 @@ interface PlanGateProps {
     children: React.ReactNode;
     /** カスタムのロックメッセージ */
     message?: string;
+    /** 店舗ごとの機能例外（studios.featureOverrides） */
+    overrides?: FeatureOverrides | null;
 }
 
 /**
  * プラン機能ゲーティングコンポーネント
  * planKey に基づいて機能を制限し、ロック表示を行う
  */
-export function PlanGate({ planKey, feature, children, message }: PlanGateProps) {
-    const allowed = canUseFeature(planKey, feature);
+export function PlanGate({ planKey, feature, children, message, overrides }: PlanGateProps) {
+    const allowed = canUseFeature(planKey, feature, overrides);
 
     if (allowed) {
         return <>{children}</>;

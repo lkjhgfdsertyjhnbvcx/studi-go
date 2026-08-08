@@ -85,7 +85,9 @@ const FEATURE_MAP: Record<FeatureKey, Record<PlanKey, boolean>> = {
     booking_csv_import:     { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
     recurring_booking:      { free: false, light: false, standard: false, pro: true  }, // Pro
     // ── 顧客管理 ──
-    customer_list:          { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
+    // 顧客一覧そのものは全プランで使える（公開しているプラン比較表でも「顧客管理 ✓」）。
+    // フリーは PLAN_LIMITS.customerListLimit（50件）で表示件数を絞る。
+    customer_list:          { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン（フリーは50件まで）
     customer_search:        { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
     customer_detail:        { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン（予約履歴閲覧）
     customer_rank:          { free: false, light: false, standard: false, pro: true  }, // Pro
@@ -117,14 +119,18 @@ const FEATURE_MAP: Record<FeatureKey, Record<PlanKey, boolean>> = {
     waitlist:               { free: false, light: false, standard: false, pro: true  }, // Pro
     // ── 決済（ユーザー向け） ──
     credit_card_payment:    { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
-    split_payment:          { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
+    split_payment:          { free: false, light: true,  standard: true,  pro: true  }, // Light+（260808変更）
     coupon_apply:           { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
     activa_usage:           { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン（ACTIVA登録ユーザー対象）
     // ── スタッフ管理 ──
     staff_account:          { free: false, light: true,  standard: true,  pro: true  }, // Light+
     staff_permission:       { free: false, light: true,  standard: true,  pro: true  }, // Light+
     staff_schedule:         { free: false, light: true,  standard: true,  pro: true  }, // Light+
-    staff_password:         { free: false, light: true,  standard: true,  pro: true  }, // Light+
+    // 260808: 承認時に仮パスワードを発行し「スタッフ管理から変更してください」と
+    // 案内する運用にしたため、パスワード変更をプランで塞ぐと
+    // フリー店舗が仮パスワードのまま変えられなくなる。全プランで開放する。
+    // 「スタッフを追加できるか」は staff_account 側で引き続き制限する。
+    staff_password:         { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン（自分のパスワード変更）
     // ── 通知・メール ──
     email_notification:     { free: true,  light: true,  standard: true,  pro: true  }, // 全プラン
     promo_email_template:   { free: false, light: false, standard: false, pro: true  }, // Pro（販促メール）
@@ -153,7 +159,10 @@ export interface PlanLimits {
 }
 
 const PLAN_LIMITS: Record<PlanKey, PlanLimits> = {
-    free:     { roomLimit: 1,        locationLimit: 1,        bookingFeeRate: 0.05, showLogo: true,  customerListLimit: 50       },
+    // 260808: フリーのルーム上限を 1 → 5（ライトと同じ）に緩和。
+    // 2部屋以上のスタジオが「試すことすらできない」状態で、乗り換え検討層を
+    // 入口で失っていた。差別化は部屋数ではなく、手数料と運営機能で行う。
+    free:     { roomLimit: 5,        locationLimit: 1,        bookingFeeRate: 0.05, showLogo: true,  customerListLimit: 50       },
     light:    { roomLimit: 5,        locationLimit: 1,        bookingFeeRate: 0,    showLogo: false, customerListLimit: 200      },
     standard: { roomLimit: 15,       locationLimit: 2,        bookingFeeRate: 0,    showLogo: false, customerListLimit: Infinity },
     pro:      { roomLimit: Infinity, locationLimit: Infinity, bookingFeeRate: 0,    showLogo: false, customerListLimit: Infinity },
@@ -338,7 +347,27 @@ export function normalizePlanKey(key: string | null | undefined): PlanKey {
 }
 
 /** 指定プランで機能が使えるかチェック */
-export function canUseFeature(planKey: string | null | undefined, feature: FeatureKey): boolean {
+/**
+ * 店舗ごとの機能例外。studios.featureOverrides に持たせる。
+ * true = プランに関わらず使える / false = プランで使えても封じる
+ */
+export type FeatureOverrides = Partial<Record<FeatureKey, boolean>>;
+
+export function canUseFeature(
+    planKey: string | null | undefined,
+    feature: FeatureKey,
+    overrides?: FeatureOverrides | null,
+): boolean {
+    // 店舗ごとの例外を最優先する。
+    //
+    // 260808: プラン制限は仕様としては最初からあったが実装されていなかった。
+    // あとから実装すると、すでにその機能を使って公開している店舗
+    // （T.I.G Sounds のロゴ・背景、機材オプション）を巻き込んでしまう。
+    // 日付での線引きより、店舗ごとのフラグのほうが後から融通が利くため
+    // こちらを採用した。「乗り換え特典としてこの機能だけ開放する」等にも使える。
+    const o = overrides?.[feature];
+    if (typeof o === "boolean") return o;
+
     const plan = normalizePlanKey(planKey);
     return FEATURE_MAP[feature]?.[plan] ?? false;
 }
