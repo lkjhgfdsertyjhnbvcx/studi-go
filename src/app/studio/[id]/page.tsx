@@ -520,8 +520,13 @@ export default function StudioDetailPage() {
   const brandLogo = canDesign ? studio.logoUrl : undefined;
   const brandBgImage = canDesign ? studio.bgImageUrl : undefined;
   const brandBgColor = canDesign ? (studio.designSettings?.backgroundColor || studio.bgColor) : undefined;
-  // フリープランのページには Studi-Go のロゴを入れる（例外開放した店舗には出さない）
-  const showStudiGoLogo = getPlanLimits(studio.planKey).showLogo && !canDesign;
+  // フリープランのページには Studi-Go のロゴを入れる。
+  // 260808: 当初 `&& !canDesign` を付けていたが、これは誤り。
+  // Studi-Go ロゴの表示はフリープランの対価（PLAN_LIMITS.showLogo）であって、
+  // page_design の例外とは別の軸。例外で独自ロゴを使えるようにした店舗でも、
+  // フリープランである限り Studi-Go の表示は残す。
+  // （独自ロゴがある店舗ではヘッダーは店舗ロゴ、フッターに Powered by Studi-Go が出る）
+  const showStudiGoLogo = getPlanLimits(studio.planKey).showLogo;
 
   // 背景色の輝度を計算して文字色を自動判定
   const rawBg = brandBgColor || "#ffffff";
