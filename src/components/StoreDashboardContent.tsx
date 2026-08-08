@@ -1770,8 +1770,10 @@ function DayView({ date, bookings, onBookingClick, blockedSlots = [], selectedRo
         ...dayBookings.map(b => (parseSlotTime(b.startTime)?.hours ?? 0) + Math.ceil(b.durationHours || 1)),
         ...dayBlocked.map(bs => parseSlotTime(bs.endTime)?.hours ?? 0),
     ];
-    const START_H = Math.max(0, Math.min(bh.open, ...(slotStarts.length ? slotStarts : [bh.open])));
-    const END_H = Math.max(bh.close, ...(slotEnds.length ? slotEnds : [bh.close]));
+    // 行は1時間刻みの整数時にそろえる。開店が12:30でも行見出しは 12:00 から始める。
+    // （小数のままだと "12.5:00" のような表示崩れになる）
+    const START_H = Math.max(0, Math.floor(Math.min(bh.open, ...(slotStarts.length ? slotStarts : [bh.open]))));
+    const END_H = Math.ceil(Math.max(bh.close, ...(slotEnds.length ? slotEnds : [bh.close])));
     const HOURS = Math.max(1, END_H - START_H);
     // 部屋ごとにグループ化（予約 + ブロック枠 + 機材貸出の部屋を合算）
     const bookingRooms = dayBookings.map(b => b.roomName);
