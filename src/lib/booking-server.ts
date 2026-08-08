@@ -37,8 +37,14 @@ function getPriceForTime(
     if (!Array.isArray(slots)) return basePrice;
     for (const slot of slots) {
         const sh = Number(String(slot.start).split(":")[0]);
-        const eh = Number(String(slot.end).split(":")[0]);
-        if (hour >= sh && hour < eh) return Number(slot.price) || basePrice;
+        let eh = Number(String(slot.end).split(":")[0]);
+        if (!Number.isFinite(sh) || !Number.isFinite(eh)) continue;
+        // 「22:00〜00:00」のように終了が0の枠は 24:00 の意味として扱う。
+        // 深夜営業に対応するため、判定ロジックは顧客向けページ（studio/[id]）と揃える。
+        // 揃えないとサーバー再計算額が客側表示と食い違い、正しい予約が弾かれる。
+        if (eh <= sh) eh += 24;
+        const h = hour < sh ? hour + 24 : hour;
+        if (h >= sh && h < eh) return Number(slot.price) || basePrice;
     }
     return basePrice;
 }
@@ -69,14 +75,18 @@ export async function computeAuthoritativeRoomPrice(params: {
 
     const basePrice = Number(room.basePrice) || 0;
     const dayType = getDayType(date);
-    const startHour = Number(String(startTime).split(":")[0]);
-    const dur = Math.max(1, Math.floor(Number(durationHours) || 1));
+    // 30分スタートの部屋（"23:30"）にも対応するため分も見る
+    const [shStr, smStr] = String(startTime).split(":");
+    const startHour = Number(shStr) + (Number(smStr) === 30 ? 0.5 : 0);
+    // 30分単位に対応（0.5刻みで積む）。計算方法は顧客向けページと必ず揃える。
+    const dur = Math.max(0.5, Math.floor((Number(durationHours) || 1) * 2) / 2);
 
     let total = 0;
-    for (let i = 0; i < dur; i++) {
-        total += getPriceForTime(room.pricing, basePrice, dayType, startHour + i);
+    for (let t = 0; t < dur; t += 0.5) {
+        const rate = getPriceForTime(room.pricing, basePrice, dayType, Math.floor(startHour + t));
+        total += rate * Math.min(0.5, dur - t);
     }
-    return total;
+    return Math.round(total);
 }
 
 /**

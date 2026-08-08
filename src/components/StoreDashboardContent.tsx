@@ -1,6 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { uploadImageToStorage } from "@/lib/uploadImage";
+import { parseBusinessHours, describeBusinessHours } from "@/lib/business-hours";
+import { parseSlotTime } from "@/lib/time-slots";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PlanGate } from "@/components/PlanGate";
 import { canUseFeature, getPlanLimits, normalizePlanKey, type FeatureKey } from "@/lib/plan-features";
@@ -389,7 +391,7 @@ export default function StoreDashboard({ studioId: propStudioId, isAdmin = false
                         ))}
                     </div>
                     <div className="flex-1 overflow-y-auto p-6">
-                        {centerTab === "calendar" && <CalendarTab bookings={storeBookings} rooms={store.rooms || []} setBookings={setBookings} allBookings={bookings} blockedSlots={blockedSlots} equipmentOptions={store.equipmentOptions || []} equipmentRentals={equipmentRentals} storeId={store.id} onRefreshBookings={() => fetch(`/api/bookings?studioId=${store.id}`).then(r => r.json()).then(b => { if (!b.error) setBookings(b); })} />}
+                        {centerTab === "calendar" && <CalendarTab bookings={storeBookings} rooms={store.rooms || []} setBookings={setBookings} allBookings={bookings} blockedSlots={blockedSlots} equipmentOptions={store.equipmentOptions || []} equipmentRentals={equipmentRentals} storeId={store.id} businessHours={store.businessHours} onRefreshBookings={() => fetch(`/api/bookings?studioId=${store.id}`).then(r => r.json()).then(b => { if (!b.error) setBookings(b); })} />}
                         {centerTab === "blocked" && <BlockedSlotsTab storeId={store.id} rooms={store.rooms || []} blockedSlots={blockedSlots} setBlockedSlots={setBlockedSlots} />}
                         {centerTab === "rentals" && <EquipmentRentalsTab storeId={store.id} rooms={store.rooms || []} equipmentOptions={store.equipmentOptions || []} rentals={equipmentRentals} setRentals={setEquipmentRentals} />}
                         {centerTab === "analytics" && <AnalyticsTab bookings={storeBookings} store={store} setStore={setStore} planKey={store.planKey} />}
@@ -685,9 +687,21 @@ function SettingsTab({ store, setStore }: any) {
                 </div>
             </Subsection>
             <Subsection title="営業時間">
-                <Field label="平日" value={store.businessHours?.weekday || ""} onChange={v => u("businessHours", { ...store.businessHours, weekday: v })} placeholder="10:00-22:00" />
-                <Field label="土曜" value={store.businessHours?.saturday || ""} onChange={v => u("businessHours", { ...store.businessHours, saturday: v })} placeholder="10:00-22:00" />
-                <Field label="日祝" value={store.businessHours?.sundayHoliday || ""} onChange={v => u("businessHours", { ...store.businessHours, sundayHoliday: v })} placeholder="10:00-22:00" />
+                <p className="text-[10px] text-muted-foreground mb-2">深夜営業は「22:00-26:00」または「22:00-翌2:00」のように入力してください（翌朝9:00まで対応）。</p>
+                {([["weekday","平日"],["saturday","土曜"],["sundayHoliday","日祝"]] as const).map(([key, label]) => {
+                    const val = store.businessHours?.[key] || "";
+                    const desc = val ? describeBusinessHours(val) : null;
+                    return (
+                        <div key={key}>
+                            <Field label={label} value={val} onChange={v => u("businessHours", { ...store.businessHours, [key]: v })} placeholder="10:00-22:00" />
+                            {desc && (
+                                <p className={`text-[10px] mt-0.5 ${desc.tone === "warn" ? "text-yellow-700 dark:text-yellow-300" : "text-muted-foreground"}`}>
+                                    {desc.text}
+                                </p>
+                            )}
+                        </div>
+                    );
+                })}
             </Subsection>
             <Subsection title="何日先まで予約できるか">
                 <div className="flex items-center gap-2">
@@ -1370,7 +1384,7 @@ function ContactTab({ store, notify }: any) {
 // ===== カレンダー =====
 type CalendarView = "month" | "week" | "day";
 
-function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots = [], equipmentOptions = [], equipmentRentals = [], storeId, onRefreshBookings }: { bookings: Booking[]; rooms: Room[]; setBookings: any; allBookings: Booking[]; blockedSlots?: BlockedSlot[]; equipmentOptions?: EquipmentOption[]; equipmentRentals?: EquipmentRental[]; storeId?: string; onRefreshBookings?: () => void }) {
+function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots = [], equipmentOptions = [], equipmentRentals = [], storeId, businessHours, onRefreshBookings }: { bookings: Booking[]; rooms: Room[]; setBookings: any; allBookings: Booking[]; blockedSlots?: BlockedSlot[]; equipmentOptions?: EquipmentOption[]; equipmentRentals?: EquipmentRental[]; storeId?: string; businessHours?: { weekday: string; saturday: string; sundayHoliday: string }; onRefreshBookings?: () => void }) {
     const PAYMENT_METHOD_LABELS: Record<string, string> = {
         cash: "現金", paypay: "PayPay", rakuten_pay: "楽天ペイ", d_pay: "d払い",
         au_pay: "au PAY", ic_card: "交通系IC", credit_card: "クレジットカード",
@@ -1589,7 +1603,7 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
                 </div>
             )}
 
-            {view === "day" && <DayView date={currentDate} bookings={filtered} onBookingClick={setSelectedBooking} blockedSlots={blockedSlots} selectedRoom={selectedRoom} equipmentOptions={equipmentOptions} equipmentRentals={equipmentRentals} />}
+            {view === "day" && <DayView date={currentDate} bookings={filtered} onBookingClick={setSelectedBooking} blockedSlots={blockedSlots} selectedRoom={selectedRoom} equipmentOptions={equipmentOptions} equipmentRentals={equipmentRentals} businessHours={businessHours} />}
             {view === "week" && <WeekView date={currentDate} bookings={filtered} onBookingClick={setSelectedBooking} blockedSlots={blockedSlots} />}
             {view === "month" && <MonthView date={currentDate} bookings={filtered} onDayClick={d => { setCurrentDate(d); setView("day"); }} blockedSlots={blockedSlots} />}
 
@@ -1734,15 +1748,31 @@ function CalendarTab({ bookings, rooms, setBookings, allBookings, blockedSlots =
     );
 }
 
-function DayView({ date, bookings, onBookingClick, blockedSlots = [], selectedRoom = "all", equipmentOptions = [], equipmentRentals = [] }: { date: Date; bookings: Booking[]; onBookingClick?: (b: Booking) => void; blockedSlots?: BlockedSlot[]; selectedRoom?: string; equipmentOptions?: EquipmentOption[]; equipmentRentals?: EquipmentRental[] }) {
+function DayView({ date, bookings, onBookingClick, blockedSlots = [], selectedRoom = "all", equipmentOptions = [], equipmentRentals = [], businessHours }: { date: Date; bookings: Booking[]; onBookingClick?: (b: Booking) => void; blockedSlots?: BlockedSlot[]; selectedRoom?: string; equipmentOptions?: EquipmentOption[]; equipmentRentals?: EquipmentRental[]; businessHours?: { weekday: string; saturday: string; sundayHoliday: string } }) {
     const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
     const dayBookings = bookings.filter(b => b.date === dateStr);
     const dayBlocked = blockedSlots.filter(bs => bs.date === dateStr && (selectedRoom === "all" || bs.roomName === "all" || bs.roomName === selectedRoom));
     const dayRentals = equipmentRentals.filter(r => r.date === dateStr && (selectedRoom === "all" || !r.roomName || r.roomName === selectedRoom));
     const ROW_H = 48;
-    const START_H = 8;
-    const HOURS = 15;
     const COL_W = 160;
+    // 表示時間帯は店舗の営業時間から決める。
+    // 260808まで 8:00〜22:00 固定だったため、深夜営業の店舗では22時以降の予約が
+    // カレンダーに出ず「予約できない・予約が見えない」状態になっていた。
+    const dow = date.getDay();
+    const hoursStr = dow === 0 ? businessHours?.sundayHoliday : dow === 6 ? businessHours?.saturday : businessHours?.weekday;
+    const bh = parseBusinessHours(hoursStr);
+    // 営業時間外に入っている予約（時間変更・手入力など）も切れないように範囲を広げる
+    const slotStarts = [
+        ...dayBookings.map(b => parseSlotTime(b.startTime)?.hours ?? null),
+        ...dayBlocked.map(bs => parseSlotTime(bs.startTime)?.hours ?? null),
+    ].filter((h): h is number => h !== null);
+    const slotEnds = [
+        ...dayBookings.map(b => (parseSlotTime(b.startTime)?.hours ?? 0) + Math.ceil(b.durationHours || 1)),
+        ...dayBlocked.map(bs => parseSlotTime(bs.endTime)?.hours ?? 0),
+    ];
+    const START_H = Math.max(0, Math.min(bh.open, ...(slotStarts.length ? slotStarts : [bh.open])));
+    const END_H = Math.max(bh.close, ...(slotEnds.length ? slotEnds : [bh.close]));
+    const HOURS = Math.max(1, END_H - START_H);
     // 部屋ごとにグループ化（予約 + ブロック枠 + 機材貸出の部屋を合算）
     const bookingRooms = dayBookings.map(b => b.roomName);
     const blockedRooms = dayBlocked.filter(bs => bs.roomName !== "all").map(bs => bs.roomName);
@@ -1764,7 +1794,10 @@ function DayView({ date, bookings, onBookingClick, blockedSlots = [], selectedRo
                     <div className="relative" style={{height: ROW_H * HOURS}}>
                         {Array.from({ length: HOURS }, (_, i) => i + START_H).map(h => (
                             <div key={h} className="flex border-b border-border absolute w-full" style={{top: (h - START_H) * ROW_H, height: ROW_H}}>
-                                <div className="w-16 p-2 text-xs font-bold text-muted-foreground border-r border-border shrink-0">{String(h).padStart(2,"0")}:00</div>
+                                <div className="w-16 p-2 text-xs font-bold text-muted-foreground border-r border-border shrink-0">
+                                    {String(h).padStart(2,"0")}:00
+                                    {h >= 24 && <span className="block text-[9px] font-normal opacity-70">翌{String(h - 24).padStart(2,"0")}:00</span>}
+                                </div>
                                 {rooms.map(r => (
                                     <div key={r} className="border-r border-border/50" style={{width: COL_W}} />
                                 ))}
@@ -1811,7 +1844,9 @@ function DayView({ date, bookings, onBookingClick, blockedSlots = [], selectedRo
                             const startM = parseInt((b.startTime || "00:00").split(":")[1] || "0");
                             const top = (startH - START_H + startM / 60) * ROW_H + 2;
                             const height = (b.durationHours || 1) * ROW_H - 4;
-                            const endH = String(startH + (b.durationHours || 1)).padStart(2,"00");
+                            // 30分単位・深夜表記に対応した終了時刻ラベル（23:30+1h → 24:30）
+                            const endTotalMin = startH * 60 + startM + (b.durationHours || 1) * 60;
+                            const endLabel = `${String(Math.floor(endTotalMin / 60)).padStart(2, "0")}:${String(Math.round(endTotalMin % 60)).padStart(2, "0")}`;
                             const colIdx = rooms.indexOf(b.roomName);
                             const left = 64 + colIdx * COL_W + 4;
                             const bgColor = b.status === "confirmed"
@@ -1834,7 +1869,7 @@ function DayView({ date, bookings, onBookingClick, blockedSlots = [], selectedRo
                                     title="クリックで詳細を表示"
                                 >
                                     <p className="truncate font-black">{b.userName || b.userId}</p>
-                                    <p className="opacity-90 text-[10px]">{b.startTime}〜{endH}:00 ({b.durationHours}h)</p>
+                                    <p className="opacity-90 text-[10px]">{b.startTime}〜{endLabel} ({b.durationHours}h)</p>
                                     <p className="opacity-80 text-[10px]">¥{b.totalPrice?.toLocaleString()}</p>
                                     <div className="flex items-center justify-between mt-0.5">
                                         <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full inline-block" style={{background: "rgba(255,255,255,0.25)"}}>

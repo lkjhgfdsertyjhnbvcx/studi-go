@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { adminDb } from "@/lib/firebase-admin";
+import { slotToDate } from "@/lib/time-slots";
 
 export async function POST(request: Request) {
     try {
@@ -34,8 +35,9 @@ export async function POST(request: Request) {
 
         // 予約日時チェック（JST基準で過去はキャンセル不可）
         if (booking.date && booking.startTime) {
-            const bookingDateTime = new Date(`${booking.date}T${booking.startTime}:00+09:00`);
-            if (bookingDateTime < new Date()) {
+            // "25:00" のような深夜表記は翌日に繰り上げて判定する
+            const bookingDateTime = slotToDate(booking.date, booking.startTime, { jst: true });
+            if (bookingDateTime && bookingDateTime < new Date()) {
                 return NextResponse.json({ error: "過去の予約はキャンセルできません" }, { status: 400 });
             }
         }

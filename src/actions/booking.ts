@@ -10,6 +10,7 @@ import {
     getAllPaymentsFromFirestore
 } from "@/lib/db-firestore";
 import { Booking } from "@/lib/db-local";
+import { slotToDate, slotEndToDate } from "@/lib/time-slots";
 import { addMyStudioAction, getUserById } from "./user";
 import { fetchStudio } from "./studio";
 import { createPayment } from "./payment";
@@ -100,7 +101,9 @@ export async function createBooking(data: BookingRequest): Promise<BookingRespon
         }
 
         const settings = studio.personalPracticeSettings;
-        const targetDateTime = new Date(`${date}T${startTime}`);
+        // "25:00" のような深夜表記に対応
+        const targetDateTime = slotToDate(date, startTime, { jst: true });
+        if (!targetDateTime) return { success: false, message: "開始時刻が不正です。" };
         const now = new Date();
         let diffMs = targetDateTime.getTime() - now.getTime();
 
@@ -228,8 +231,9 @@ export async function createBooking(data: BookingRequest): Promise<BookingRespon
                     optionsAmount: data.optionsAmount || 0,
                     totalAmount: totalPrice,
                     studioId: studioId,
-                    startTime: new Date(`${date}T${startTime}`),
-                    endTime: new Date(new Date(`${date}T${startTime}`).getTime() + durationHours * 60 * 60 * 1000),
+                    // 深夜表記("25:00")は翌日へ繰り上げた実時刻でPrismaに保存する
+                    startTime: slotToDate(date, startTime, { jst: true }) ?? new Date(),
+                    endTime: slotEndToDate(date, startTime, durationHours, { jst: true }) ?? new Date(),
                 }
             });
 

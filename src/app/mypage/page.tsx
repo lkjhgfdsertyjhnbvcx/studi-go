@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { slotToDate } from "@/lib/time-slots";
 
 export default function MyPage() {
   const [activeTab, setActiveTab] = useState("profile");
@@ -77,7 +78,9 @@ export default function MyPage() {
 
   const isFutureBooking = (b: any): boolean => {
     if (!b.date || !b.startTime) return false;
-    const bookingDT = new Date(`${b.date}T${b.startTime}:00`);
+    // "25:00" のような深夜表記は翌日に繰り上げて判定する（直接 new Date すると Invalid Date）
+    const bookingDT = slotToDate(b.date, b.startTime);
+    if (!bookingDT) return false;
     return bookingDT > new Date();
   };
 

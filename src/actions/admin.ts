@@ -2,6 +2,7 @@
 
 import { getBookings, updateBooking } from "@/lib/db-local";
 import { getAllUsersFromFirestore, getUserByIdFromFirestore, getAllStudiosFromFirestore } from "@/lib/db-firestore";
+import { slotMinutes } from "@/lib/time-slots";
 import { User } from "./auth";
 
 export async function fetchBookings() {
@@ -101,7 +102,11 @@ export async function fetchUserDetail(userId: string) {
                 studioAddress: studio?.address || (b as any).studioAddress || "",
             };
         })
-        .sort((a, b) => new Date(b.date + 'T' + b.startTime).getTime() - new Date(a.date + 'T' + a.startTime).getTime());
+        // 深夜表記("25:00")でも正しく並ぶよう、営業日+経過分で比較する
+        .sort((a, b) => {
+            const key = (x: any) => `${x.date} ${String(slotMinutes(x.startTime) ?? 0).padStart(5, "0")}`;
+            return key(b).localeCompare(key(a));
+        });
 
     // 利用スタジオのサマリー（どの店舗を何回使ったか・直近利用日・今後の予約件数）
     const todayStr = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split("T")[0]; // JST基準

@@ -84,10 +84,16 @@ function isDiscountAvailable(discount: any, date: Date | null, startHour: number
 function formatTime(t: number) {
   const h = Math.floor(t);
   const m = t % 1 === 0.5 ? "30" : "00";
-  // 24以上は深夜表記（25:00 = 翌1:00）。現状 parseBusinessHours が24で止めるので通常は出ないが、
-  // 手入力の予約などで入ってきても表示が壊れないようにしておく。
-  if (h >= 24) return `翌${String(h - 24).padStart(2, "0")}:${m}`;
+  // 24以上は音楽スタジオ慣習の深夜表記（25:00 = 翌1:00）にする。
   return `${String(h).padStart(2, "0")}:${m}`;
+}
+
+/** 深夜帯は誤解を防ぐため「(翌1:00)」を添える。 */
+function lateNightNote(t: number): string {
+  const h = Math.floor(t);
+  if (h < 24) return "";
+  const m = t % 1 === 0.5 ? "30" : "00";
+  return `翌${String(h - 24).padStart(2, "0")}:${m}`;
 }
 
 type CalView = "month" | "week" | "day";
@@ -228,19 +234,29 @@ export default function StudioDetailPage() {
   const businessHoursStr = studio.businessHours?.[hoursKey as keyof typeof studio.businessHours];
   const { open, close } = parseBusinessHours(businessHoursStr);
   const startMinute = selectedRoom?.startType === "30min" ? 0.5 : 0;
-  // 開始枠は「1時間使っても閉店時刻を超えない」ものだけ出す。
+  // 開始枠は「最短30分使っても閉店時刻を超えない」ものだけ出す。
   // 260808: 旧実装は h < close で回していたため、30分スタートの部屋
   //（営業 14:00-21:00）で 20:30 の枠が出ていた。21:30 終了で閉店を30分超える。
+  // 開店が 15:30 のような半端な時刻でも、部屋の開始タイミングに合わせて詰める。
   const timeSlots: number[] = [];
-  for (let h = open; h + startMinute + 1 <= close; h++) timeSlots.push(h + startMinute);
+  {
+    // 開店時刻以降で、部屋の開始タイミング(毎時00分 / 30分)に合う最初の枠を求める
+    let t = Math.ceil(open - startMinute) + startMinute;
+    if (t < open) t += 1;
+    for (; t + 0.5 <= close; t += 1) timeSlots.push(t);
+  }
 
   // 利用時間も閉店時刻で頭打ちにする。
   // 260808: 旧実装は常に1〜6時間から選べたので、20:00開始で6時間を選ぶと
   // 翌2:00 までの予約が成立していた（サーバー側にも閉店チェックは無い）。
+  // 30分単位に対応（24:30閉店の店舗で 24:00開始30分 を売れるようにする）。
+  // ただし30分の選択肢は「閉店まで1時間未満」のときだけ出し、通常は1時間以上とする。
   const maxDuration = selectedStart !== null
-    ? Math.max(1, Math.floor(close - selectedStart))
+    ? Math.max(0.5, Math.floor((close - selectedStart) * 2) / 2)
     : 6;
-  const durationOptions = [1, 2, 3, 4, 5, 6].filter((h) => h <= maxDuration);
+  const durationOptions = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6]
+    .filter((h) => h <= maxDuration)
+    .filter((h) => h >= 1 || maxDuration < 1);
 
   // 開始時刻を選ぶときに、閉店時刻を超える利用時間が残らないよう詰める。
   // useEffect にすると早期 return（loading / !studio）より後ろになり、
@@ -260,12 +276,14 @@ export default function StudioDetailPage() {
 
   const calcRoomPrice = () => {
     if (!selectedDate || selectedStart === null || !selectedRoom) return 0;
-    if (usePersonalPracticeRate) return ppUnitPrice * selectedDuration;
+    if (usePersonalPracticeRate) return Math.round(ppUnitPrice * selectedDuration);
+    // 30分単位に対応するため0.5刻みで積む。30分は該当時間帯の単価の半額。
     let total = 0;
-    for (let i = 0; i < selectedDuration; i++) {
-      total += getPriceForTime(selectedRoom.pricing, selectedRoom.basePrice, dayType, Math.floor(selectedStart + i));
+    for (let t = 0; t < selectedDuration; t += 0.5) {
+      const rate = getPriceForTime(selectedRoom.pricing, selectedRoom.basePrice, dayType, Math.floor(selectedStart + t));
+      total += rate * Math.min(0.5, selectedDuration - t);
     }
-    return total;
+    return Math.round(total);
   };
 
   const calcOptionPrice = () => {
@@ -1014,6 +1032,7 @@ export default function StudioDetailPage() {
                         <button key={t} onClick={() => { if(isSlotBooked(t)) return; chooseStart(t); }} disabled={isSlotBooked(t)}
                           className={`py-2 rounded-xl text-xs font-black transition-all border ${isSlotBooked(t) ? "opacity-40 cursor-not-allowed line-through bg-accent/5 border-gray-800 text-gray-500" : selectedStart === t ? "bg-purple-600 border-purple-500 text-white" : "bg-accent/10 border-gray-700 text-muted-foreground hover:text-foreground hover:border-gray-500"}`}>
                           {formatTime(t)}
+                          {lateNightNote(t) && <span className="block text-[9px] font-normal opacity-70">{lateNightNote(t)}</span>}
                         </button>
                       ))}
                     </div>

@@ -12,10 +12,11 @@
 
 export type BusinessHourRange = {
     open: number;
+    /** 24を超えることがある（26 = 翌2:00）。深夜営業の店舗があるため。 */
     close: number;
     /** 入力を解釈できず既定値（10:00-22:00）にフォールバックした */
     fallback: boolean;
-    /** 深夜0時をまたぐ指定だったため 24:00 で打ち切った */
+    /** 深夜が長すぎて上限（翌9:00）で打ち切った */
     truncatedOvernight: boolean;
     /** 「10:30」のような分指定を切り捨てた（予約枠は1時間単位のため） */
     minutesDropped: boolean;
@@ -23,12 +24,18 @@ export type BusinessHourRange = {
 
 export const DEFAULT_BUSINESS_HOURS = { open: 10, close: 22 };
 
+/** 予約枠として許容する最大の閉店時刻（33 = 翌9:00）。オールナイト営業を想定。 */
+export const MAX_CLOSE_HOUR = 33;
+
 /**
- * 深夜0時をまたぐ場合は 24:00 で打ち切る。
- * 予約データは startTime を時刻文字列として new Date(`${date}T${startTime}`) で解釈する
- * 箇所が複数ある（mypage / cancel-booking / actions/booking）ため、25 のような 24 以上の
- * 値を流すと Invalid Date になって別の壊れ方をする。
- * 0時以降の枠出しは「翌日の 00:00〜」として別途設計が必要。
+ * 深夜0時をまたぐ営業に対応する（260808）。
+ *
+ * 「10:00〜翌2:00」「22:00-26:00」は close=26 として返す。予約枠・予約データは
+ * 「営業日 + 24時超の時刻（25:00 等）」で持つ設計にしたため、24で打ち切る必要はない。
+ * 実時刻が必要な処理は src/lib/time-slots.ts の slotToDate を通す。
+ *
+ * 上限は「翌9:00（33時）」かつ「営業開始時刻を超えない（= 24時間以内）」。
+ * 開店時刻に達するまでを一営業日とみなすため、これを超える指定は打ち切る。
  */
 export function parseBusinessHours(hoursStr?: string): BusinessHourRange {
     const fallbackResult: BusinessHourRange = {
@@ -71,23 +78,30 @@ export function parseBusinessHours(hoursStr?: string): BusinessHourRange {
     const nextDay = Boolean(m[3]);
     let close = Number(m[4]);
     if (!Number.isFinite(open) || !Number.isFinite(close)) return fallbackResult;
-    if (open < 0 || open > 24 || close < 0 || close > 30) return fallbackResult;
+    if (open < 0 || open > 24 || close < 0 || close > MAX_CLOSE_HOUR) return fallbackResult;
+
+    // 「翌2:00」「22:00-2:00」のような0時またぎは 24 を足して深夜表記に正規化する
+    if (nextDay && close < 24) close += 24;
+    else if (close <= open) close += 24;
 
     let truncatedOvernight = false;
-    if (nextDay || close <= open) {
+    // 上限: 翌9:00、かつ開店時刻に達するまで（24時間以内）
+    const limit = Math.min(MAX_CLOSE_HOUR, open + 24);
+    if (close > limit) {
         truncatedOvernight = true;
-        close = 24;
-    }
-    if (close > 24) {
-        truncatedOvernight = true;
-        close = 24;
+        close = limit;
     }
     if (close <= open) return fallbackResult;
 
-    // 予約枠は1時間刻みなので、分は切り捨てられる。黙って捨てると気づけないので伝える。
-    const minutesDropped = Number(m[2] || 0) > 0 || Number(m[5] || 0) > 0;
+    // 30分は保持する（予約は30分単位まで対応）。それ以外の分（:15 等）は切り捨てる。
+    const openMin = Number(m[2] || 0);
+    const closeMin = Number(m[5] || 0);
+    const halfOf = (min: number) => (min === 30 ? 0.5 : 0);
+    const openF = open + halfOf(openMin);
+    const closeF = Math.min(close + halfOf(closeMin), limit);
+    const minutesDropped = (openMin > 0 && openMin !== 30) || (closeMin > 0 && closeMin !== 30);
 
-    return { open, close, fallback: false, truncatedOvernight, minutesDropped };
+    return { open: openF, close: closeF, fallback: false, truncatedOvernight, minutesDropped };
 }
 
 /** 入力欄の下に出す確認文。店舗が「どう解釈されたか」をその場で確認できるようにする。 */
@@ -96,7 +110,14 @@ export function describeBusinessHours(hoursStr?: string): {
     tone: "ok" | "warn";
 } {
     const r = parseBusinessHours(hoursStr);
-    const range = `${String(r.open).padStart(2, "0")}:00〜${String(r.close).padStart(2, "0")}:00`;
+    const hhmm = (t: number) => {
+        const h = Math.floor(t);
+        const m = t % 1 === 0.5 ? "30" : "00";
+        return `${String(h).padStart(2, "0")}:${m}`;
+    };
+    const range = `${hhmm(r.open)}〜${hhmm(r.close)}`;
+    // 深夜帯は「25:00（翌1:00）」のように補足する
+    const note = r.close > 24 ? `（${hhmm(r.close - 24)} は翌朝）` : "";
     if (r.fallback) {
         return {
             tone: "warn",
@@ -106,14 +127,14 @@ export function describeBusinessHours(hoursStr?: string): {
     if (r.truncatedOvernight) {
         return {
             tone: "warn",
-            text: `予約枠は ${range} で作られます。0時以降の枠は現在まだ出せません（対応予定）。運営までご相談ください。`,
+            text: `予約枠は ${range}${note} で作られます。これ以上の深夜帯は受け付けられないため上限で打ち切りました。`,
         };
     }
     if (r.minutesDropped) {
         return {
             tone: "warn",
-            text: `予約枠は1時間単位のため、分は切り捨てて ${range} で作られます。`,
+            text: `予約枠は30分単位のため、分は切り捨てて ${range}${note} で作られます。`,
         };
     }
-    return { tone: "ok", text: `予約枠は ${range} で作られます。` };
+    return { tone: "ok", text: `予約枠は ${range}${note} で作られます。` };
 }

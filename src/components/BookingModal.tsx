@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { createBooking } from "@/actions/booking";
+import { slotToDate } from "@/lib/time-slots";
 import { useTheme } from "@/lib/theme-context";
 import { useLineLiff } from "@/hooks/use-line-liff";
 import { StudioProfile } from "@/lib/db-studio";
@@ -176,7 +177,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         }
 
         const settings = studioData.personalPracticeSettings;
-        const targetDateTime = new Date(`${date}T${startTime}`);
+        // "25:00" のような深夜表記に対応（直接 new Date すると Invalid Date）
+        const targetDateTime = slotToDate(date, startTime);
+        if (!targetDateTime) { setPersonalPracticeError(null); return; }
         const now = new Date();
 
         let diffMs = targetDateTime.getTime() - now.getTime();
