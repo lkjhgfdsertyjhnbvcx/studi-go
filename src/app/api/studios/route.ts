@@ -1,5 +1,12 @@
 // app/api/studios/route.ts
+//
+// GET は公開（トップページのスタジオ一覧・予約画面が未ログインで叩く）。
+// 260808: 一方で PATCH / DELETE / POST / PUT は認証チェックが無く、
+// **studioId を知っているだけで誰でも店舗を公開・非公開に切り替えたり、
+// スタジオのドキュメントごと削除できる**状態だった。
+// これらの呼び出し元は運営管理画面（/admin/studios）だけなので、運営権限に限定する。
 import { NextResponse } from "next/server";
+import { requirePlatformAdmin } from "@/lib/api-auth";
 
 // Firestoreの値を通常のJSの値に変換
 function convertValue(v: any): any {
@@ -53,6 +60,9 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const denied = await requirePlatformAdmin();
+  if (denied) return denied;
+
   try {
     const body = await request.json();
     const { id, isPublished } = body;
@@ -78,6 +88,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const denied = await requirePlatformAdmin();
+  if (denied) return denied;
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

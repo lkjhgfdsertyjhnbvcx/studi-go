@@ -24,15 +24,30 @@ export default function InvitesPage() {
     const [openPreview, setOpenPreview] = useState<string | null>(null);
     const [approving, setApproving] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    // 店舗アカウントのまま運営ページを開いている状態
+    const [forbidden, setForbidden] = useState(false);
     // 承認直後に発行したログイン情報。案内メールが失敗した場合はここから手動で伝える。
     const [issued, setIssued] = useState<{
         token: string; loginEmail: string; tempPassword: string; publicUrl: string; mailSent: boolean; mailError?: string;
     } | null>(null);
 
     const load = () => {
+        // 260808: このページは運営専用（/api/admin/invites は requirePlatformAdmin）だが、
+        // /admin/* のレイアウトは店舗セッションでも通す。店舗としてログインした状態で
+        // ここを開くと API が 403 を返し、旧実装はそれを握り潰して「0件」と表示していた。
+        // 「招待が消えた」と誤解する（実際に起きた）ので、権限不足だと分かるようにする。
+        setLoading(true);
         fetch("/api/admin/invites")
-            .then((r) => r.json())
+            .then(async (r) => {
+                if (r.status === 401 || r.status === 403) {
+                    setForbidden(true);
+                    return { invites: [] };
+                }
+                setForbidden(false);
+                return r.json();
+            })
             .then((res) => setInvites(res.invites || []))
+            .catch(() => setError("招待一覧の取得に失敗しました"))
             .finally(() => setLoading(false));
     };
     useEffect(load, []);
@@ -74,7 +89,7 @@ export default function InvitesPage() {
     };
 
     const approve = async (token: string) => {
-        if (!confirm("この内容で本登録（公開）します。よろしいですか？")) return;
+        if (!confirm("この内容で本登録し、店舗アカウントを発行します。\n（この時点ではまだ非公開です。公開は店舗がダッシュボードで行います）\n\nよろしいですか？")) return;
         setApproving(token);
         setError(null);
         try {
@@ -104,11 +119,27 @@ export default function InvitesPage() {
             <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2"><Send className="w-6 h-6 text-purple-500" /> 店舗招待</h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                    招待リンクを発行して店舗に送ると、店舗側で基本情報・写真・部屋・機材を入力できます。提出内容を確認して承認すると本登録（公開）されます。
+                    招待リンクを発行して店舗に送ると、店舗側で基本情報・写真・部屋・機材を入力できます。提出内容を確認して承認すると本登録され、店舗アカウント（ログイン情報）が発行されます。公開するかどうかは店舗がダッシュボードで判断します。
                 </p>
             </div>
 
             {error && <div className="rounded-lg bg-red-500/10 text-red-500 p-3 text-sm whitespace-pre-line">{error}</div>}
+
+            {forbidden && (
+                <div className="rounded-xl border-2 border-amber-500/50 bg-amber-500/5 p-4 space-y-2 text-sm">
+                    <div className="font-bold">⚠️ 運営アカウントでログインしていません</div>
+                    <p className="text-muted-foreground">
+                        いまは店舗アカウントでログインしているため、招待一覧を表示できません（データは消えていません）。
+                        運営アカウントでログインし直してください。
+                    </p>
+                    <a
+                        href="/admin/platform/login"
+                        className="inline-block rounded-lg bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 text-xs font-bold transition-all"
+                    >
+                        運営アカウントでログイン →
+                    </a>
+                </div>
+            )}
 
             {/* 承認直後のログイン情報。仮パスワードは storeIntakes にも控えているが、
                 案内メールが失敗したときにすぐ手動フォローできるよう画面にも出す。 */}
@@ -116,14 +147,17 @@ export default function InvitesPage() {
                 <div className={`rounded-xl border-2 p-4 space-y-2 text-sm ${issued.mailSent ? "border-green-500/40 bg-green-500/5" : "border-red-500/50 bg-red-500/5"}`}>
                     <div className="font-bold">
                         {issued.mailSent
-                            ? "✅ 公開しました。予約ページURLとログイン情報を店舗へ送信済みです。"
-                            : "⚠️ 公開しましたが、案内メールの送信に失敗しました。下の内容を手動で店舗へお送りください。"}
+                            ? "✅ 承認しました。店舗アカウントを発行し、案内メールを送信しました。"
+                            : "⚠️ 承認しましたが、案内メールの送信に失敗しました。下の内容を手動で店舗へお送りください。"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                        この時点では <b>まだ非公開</b> です。店舗がダッシュボードの「🚀 公開する」を押すと公開されます。
                     </div>
                     {!issued.mailSent && issued.mailError && (
                         <div className="text-xs text-red-500">送信エラー: {issued.mailError}</div>
                     )}
                     <div className="font-mono text-xs bg-background/60 rounded-lg p-3 space-y-1 select-all">
-                        <div>予約ページ　　: {issued.publicUrl}</div>
+                        <div>予約ページ　　: {issued.publicUrl}（公開後に有効）</div>
                         <div>管理ログイン　: https://studi-go.com/store/login</div>
                         <div>ID　　　　　　: {issued.loginEmail}</div>
                         <div>仮パスワード　: {issued.tempPassword}</div>
@@ -178,6 +212,8 @@ export default function InvitesPage() {
                 <div className="px-6 py-4 border-b border-border font-bold text-sm">招待一覧（{invites.length}件）</div>
                 {loading ? (
                     <div className="p-8 text-center text-sm text-muted-foreground">読み込み中...</div>
+                ) : forbidden ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">権限がないため表示できません（上の案内を参照してください）。</div>
                 ) : invites.length === 0 ? (
                     <div className="p-8 text-center text-sm text-muted-foreground">まだ招待がありません。上のフォームから発行してください。</div>
                 ) : (
@@ -209,7 +245,7 @@ export default function InvitesPage() {
                                                 className="inline-flex items-center gap-1 text-xs font-bold rounded-lg bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 disabled:opacity-40"
                                             >
                                                 {approving === inv.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <BadgeCheck className="w-3 h-3" />}
-                                                承認して公開
+                                                承認してアカウント発行
                                             </button>
                                         )}
                                         {inv.status === "approved" && inv.studioId && (

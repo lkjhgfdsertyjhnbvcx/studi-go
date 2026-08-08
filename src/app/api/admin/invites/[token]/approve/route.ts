@@ -1,4 +1,7 @@
-// 運営：提出内容を承認 → studios に本登録（公開）＋店舗アカウント発行＋完了メール送信
+// 運営：提出内容を承認 → studios に本登録（非公開）＋店舗アカウント発行＋案内メール送信
+//
+// 260808: 承認と公開を分離した。承認は「内容を確認してアカウントを発行する」までで、
+// 公開するかどうかは店舗がダッシュボードの「🚀 公開する」で決める。
 //
 // 背景（260807）:
 //   以前はここで studios に書き込むだけで終わっていた。そのため
@@ -62,6 +65,7 @@ function escapeHtml(s: string): string {
 type Approval = {
     storeName: string;
     contactName: string;
+    /** 公開後に使われる予約ページURL（この時点ではまだ非公開） */
     publicUrl: string;
     loginUrl: string;
     loginEmail: string;
@@ -74,17 +78,10 @@ ${a.contactName ? `${a.contactName} 様` : "ご担当者 様"}
 
 お世話になっております。Studi-Go（スタジゴ）です。
 
-ご登録いただいた店舗情報の確認が完了し、予約ページを公開いたしました。
-本日からオンラインでの予約受付をご利用いただけます。
+ご登録いただいた店舗情報を確認し、店舗管理画面のアカウントを発行いたしました。
+まずは管理画面にログインして、内容をご確認ください。
 
-■ お店の予約ページ（お客様にご案内するURL）
-
-${a.publicUrl}
-
-このURLをホームページやSNS、店頭のQRコードに掲載してください。
-お客様はこのページから24時間いつでも予約できます。
-
-■ 店舗管理画面（予約の確認・設定変更）
+■ 店舗管理画面
 
 ログインURL：${a.loginUrl}
 　　　　ID　：${a.loginEmail}
@@ -93,7 +90,25 @@ ${a.publicUrl}
 初回ログイン後、管理画面の「スタッフ管理」からパスワードの変更を
 お願いいたします。仮パスワードはこのメールにのみ記載しています。
 
-管理画面でできること:
+■ 次のステップ：内容をご確認のうえ、公開してください
+
+現在、お店の予約ページは【非公開】です。お客様にはまだ表示されません。
+管理画面の「店舗情報」から内容をご確認いただき、準備が整いましたら
+「🚀 公開する」ボタンを押してください。押した時点で公開されます。
+
+公開前に、下記をご確認いただくとページの見栄えがよくなります。
+・店舗の写真、スタジオ（部屋）の写真の登録
+・料金・営業時間に誤りがないか
+
+■ 公開後の予約ページURL
+
+${a.publicUrl}
+
+公開するとこのURLが有効になります。ホームページやSNS、店頭のQRコードに
+掲載していただければ、お客様が24時間いつでも予約できます。
+
+■ 管理画面でできること
+
 ・予約の確認、電話予約の手入力、キャンセル対応
 ・料金や営業時間の変更
 ・お客様情報の管理
@@ -104,8 +119,8 @@ ${GUIDE_PDF_URL}
 
 管理画面の左メニュー最下部「操作マニュアル」からいつでも開けます。
 
-ご不明な点は、このメールにそのままご返信ください。
-お電話でのご相談も承ります。
+内容のご確認で分からない点や、こちらで公開まで代行したほうがよろしければ、
+このメールにそのままご返信ください。お電話でのご相談も承ります。
 
 引き続きよろしくお願いいたします。
 
@@ -129,36 +144,47 @@ function approvalHtml(a: Approval): string {
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,0.05);">
         <tr>
           <td style="background:linear-gradient(180deg,#16161f 0%,#0d0d15 100%);padding:32px 40px;color:#fff;">
-            <div style="font-size:10px;font-weight:700;letter-spacing:3px;color:#c9a96e;text-transform:uppercase;">Your Booking Page Is Live</div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:3px;color:#c9a96e;text-transform:uppercase;">Your Account Is Ready</div>
             <div style="font-size:22px;font-weight:800;margin-top:8px;color:#ffffff;letter-spacing:0.5px;">Studi-Go（スタジゴ）</div>
           </td>
         </tr>
         <tr>
           <td style="padding:40px;">
             <h1 style="font-size:20px;font-weight:700;color:#1a1a1a;margin:0 0 20px;line-height:1.5;">${escapeHtml(a.storeName)}<br>${escapeHtml(a.contactName || "ご担当者")} 様</h1>
-            <p style="font-size:14px;margin:0 0 24px;">ご登録いただいた店舗情報の確認が完了し、予約ページを公開いたしました。<br>本日からオンラインでの予約受付をご利用いただけます。</p>
+            <p style="font-size:14px;margin:0 0 24px;">ご登録いただいた店舗情報を確認し、店舗管理画面のアカウントを発行いたしました。<br>まずは管理画面にログインして、内容をご確認ください。</p>
 
-            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:#f5f3ef;border-radius:10px;padding:24px;margin:0 0 20px;">
-              <tr><td>
-                <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#b08d57;text-transform:uppercase;margin-bottom:8px;">Step 1</div>
-                <div style="font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:6px;">お店の予約ページ</div>
-                <div style="font-size:12px;color:#888;margin-bottom:16px;">このURLをホームページ・SNS・店頭のQRコードに掲載してください。お客様は24時間いつでも予約できます。</div>
-                <a href="${a.publicUrl}" style="display:inline-block;background:#b08d57;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:700;font-size:14px;">予約ページを見る →</a>
-                <div style="font-size:11px;color:#aaa;margin-top:14px;word-break:break-all;">${a.publicUrl}</div>
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:#fff8e6;border:1px solid #f0d9a0;border-radius:10px;padding:16px;margin:0 0 20px;">
+              <tr><td style="font-size:13px;color:#7a5c1e;">
+                <strong>現在、お店の予約ページは「非公開」です。</strong><br>
+                お客様にはまだ表示されません。内容をご確認いただき、管理画面の「🚀 公開する」ボタンを押した時点で公開されます。
               </td></tr>
             </table>
 
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:#f5f3ef;border-radius:10px;padding:24px;margin:0 0 24px;">
               <tr><td>
-                <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#b08d57;text-transform:uppercase;margin-bottom:8px;">Step 2</div>
+                <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#b08d57;text-transform:uppercase;margin-bottom:8px;">Step 1</div>
                 <div style="font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:6px;">店舗管理画面へのログイン</div>
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-size:13px;margin-bottom:14px;">
                   <tr><td style="padding:4px 0;color:#888;width:110px;">ログインURL</td><td style="padding:4px 0;color:#1a1a1a;word-break:break-all;">${a.loginUrl}</td></tr>
                   <tr><td style="padding:4px 0;color:#888;">ID</td><td style="padding:4px 0;color:#1a1a1a;word-break:break-all;">${escapeHtml(a.loginEmail)}</td></tr>
                   <tr><td style="padding:4px 0;color:#888;">仮パスワード</td><td style="padding:4px 0;color:#1a1a1a;font-family:monospace;font-size:15px;font-weight:700;">${escapeHtml(a.tempPassword)}</td></tr>
                 </table>
-                <a href="${a.loginUrl}" style="display:inline-block;background:#ffffff;color:#b08d57;border:1px solid #b08d57;text-decoration:none;padding:11px 24px;border-radius:8px;font-weight:700;font-size:14px;">管理画面にログイン →</a>
+                <a href="${a.loginUrl}" style="display:inline-block;background:#b08d57;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:700;font-size:14px;">管理画面にログイン →</a>
                 <div style="font-size:11px;color:#aaa;margin-top:14px;">初回ログイン後、「スタッフ管理」からパスワードの変更をお願いいたします。仮パスワードはこのメールにのみ記載しています。</div>
+              </td></tr>
+            </table>
+
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:#f5f3ef;border-radius:10px;padding:24px;margin:0 0 24px;">
+              <tr><td>
+                <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#b08d57;text-transform:uppercase;margin-bottom:8px;">Step 2</div>
+                <div style="font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:6px;">内容をご確認のうえ、公開する</div>
+                <div style="font-size:12px;color:#888;margin-bottom:12px;">管理画面の「店舗情報」で内容をご確認ください。下記を登録いただくとページの見栄えがよくなります。</div>
+                <ul style="font-size:13px;color:#4a4a4a;padding-left:20px;margin:0 0 14px;">
+                  <li>店舗の写真、スタジオ（部屋）の写真</li>
+                  <li>料金・営業時間に誤りがないか</li>
+                </ul>
+                <div style="font-size:12px;color:#888;margin-bottom:8px;">準備ができたら「🚀 公開する」を押してください。公開後の予約ページURLはこちらです。</div>
+                <div style="font-size:11px;color:#aaa;word-break:break-all;">${a.publicUrl}</div>
               </td></tr>
             </table>
 
@@ -166,7 +192,7 @@ function approvalHtml(a: Approval): string {
             <p style="font-size:14px;margin:0 0 24px;"><a href="${GUIDE_PDF_URL}" style="color:#b08d57;">Studi-Go 店舗ガイド（PDF）</a><br><span style="font-size:12px;color:#888;">管理画面の左メニュー最下部「操作マニュアル」からもいつでも開けます。</span></p>
 
             <hr style="border:none;border-top:1px solid #e8e5e0;margin:24px 0;">
-            <div style="font-size:12px;color:#888;">ご不明な点がございましたら、このメールへのご返信、または <a href="mailto:${INTERNAL_NOTIFY}" style="color:#b08d57;">${INTERNAL_NOTIFY}</a> までお気軽にお問い合わせください。</div>
+            <div style="font-size:12px;color:#888;">内容のご確認で分からない点や、こちらで公開まで代行したほうがよろしければ、このメールへのご返信、または <a href="mailto:${INTERNAL_NOTIFY}" style="color:#b08d57;">${INTERNAL_NOTIFY}</a> までお気軽にお知らせください。</div>
           </td>
         </tr>
         <tr>
@@ -323,7 +349,7 @@ export async function POST(
                 from: FROM,
                 to: loginEmail,
                 replyTo: INTERNAL_NOTIFY,
-                subject: `【Studi-Go】予約ページを公開しました／管理画面のログイン情報（${studio.storeName}）`,
+                subject: `【Studi-Go】店舗アカウントを発行しました／内容のご確認と公開のお願い（${studio.storeName}）`,
                 html: approvalHtml(approval),
                 text: approvalText(approval),
             });
@@ -340,12 +366,13 @@ export async function POST(
                 from: FROM,
                 to: INTERNAL_NOTIFY,
                 replyTo: loginEmail,
-                subject: `${mailSent ? "✅" : "【要手動対応】"}【承認】${studio.storeName} を公開しました`,
-                text: `【承認・公開】${studio.storeName}
+                subject: `${mailSent ? "✅" : "【要手動対応】"}【承認】${studio.storeName} のアカウントを発行しました（まだ非公開）`,
+                text: `【承認・アカウント発行】${studio.storeName}
 
 案内メール : ${mailSent ? `✅ 送信済み（${loginEmail}）` : `❌ 送信失敗 — ${mailError ?? "原因不明"}`}
+公開状態   : 🔒 非公開（店舗がダッシュボードの「公開する」を押すと公開されます）
 
-予約ページ : ${approval.publicUrl}
+予約ページ : ${approval.publicUrl}（公開後に有効）
 管理ログイン: ${approval.loginUrl}
 　　　　ID : ${loginEmail}
 仮パスワード: ${tempPassword}
@@ -355,7 +382,7 @@ export async function POST(
 支払方法   : ${intake.planPayMethod ?? "（不明）"}
 studioId   : ${studio.id}
 
-${mailSent ? "店舗側の対応は不要です。" : "【要手動対応】案内メールが届いていません。上記の内容を手動で送ってください。"}
+${mailSent ? "店舗の公開操作を待ってください。数日たっても公開されない場合はフォローを。" : "【要手動対応】案内メールが届いていません。上記の内容を手動で送ってください。"}
 `,
             });
         } catch (e) {

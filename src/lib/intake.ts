@@ -332,7 +332,11 @@ export function intakeToStudioProfile(raw: IntakeData): StudioProfile & { isPubl
             // 未設定のときはキーごと落とす。
             ...(data.bgImageUrl ? { backgroundImageUrl: data.bgImageUrl } : {}),
         },
-        isPublished: true, // 運営が確認・承認した時点で公開
+        // 260808: 承認＝「内容を確認してアカウントを発行する」であって、公開の判断ではない。
+        // 以前はここで即 true にしていたため、承認した瞬間に写真も未登録のページが
+        // トップページの一覧に載ってしまい、店舗が中身を整える余地が無かった。
+        // 公開は店舗がダッシュボードの「🚀 公開する」で行う。
+        isPublished: false,
         createdAt: new Date().toISOString(),
     };
 

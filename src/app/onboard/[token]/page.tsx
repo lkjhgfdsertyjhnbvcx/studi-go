@@ -256,7 +256,9 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
                 )}
                 {locked && (
                     <div className="rounded-xl border-2 border-green-500/40 bg-green-500/5 p-4 text-sm">
-                        🎉 承認済みです。店舗ページが公開されています。修正が必要な場合は運営までご連絡ください。
+                        🎉 承認済みです。店舗管理画面のログイン情報をメールでお送りしました。<br />
+                        予約ページは<b>まだ非公開</b>です。管理画面で内容をご確認のうえ、「🚀 公開する」を押すと公開されます。<br />
+                        この画面からの修正はできません。以降の変更は管理画面から行ってください。
                     </div>
                 )}
                 {message && (
