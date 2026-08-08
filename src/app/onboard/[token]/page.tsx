@@ -1,8 +1,9 @@
 "use client";
 
 // 店舗セットアップ入力ページ（招待リンクからアクセス・ログイン不要）
-import React, { useEffect, useState, useCallback, use } from "react";
+import React, { useEffect, useState, useCallback, useRef, use } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { describeBusinessHours } from "@/lib/business-hours";
 import {
     normalizeIntakeData, emptyPricing,
     type IntakeData, type IntakeRoom, type IntakeEquipment, type IntakeStatus,
@@ -39,7 +40,13 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
     const [data, setData] = useState<IntakeData | null>(null);
     const [saving, setSaving] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const savingRef = useRef(false);
+    const submittingRef = useRef(false);
     const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
+    // 未保存の変更があるか。離脱警告と自動保存の判定に使う。
+    // 260807まで自動保存も離脱警告も無く、画像アップロード後にタブを閉じると
+    // 入力が丸ごと消えていた（フォームが7セクションと長いので実害が大きい）。
+    const [dirty, setDirty] = useState(false);
 
     useEffect(() => {
         fetch(`/api/intake/${token}`)
@@ -54,8 +61,44 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
 
     const locked = status === "approved";
 
+    // 未保存のまま離脱しようとしたら警告する
+    useEffect(() => {
+        if (!dirty || locked) return;
+        const handler = (e: BeforeUnloadEvent) => {
+            e.preventDefault();
+            e.returnValue = "";
+        };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [dirty, locked]);
+
+    // 60秒ごとの自動保存。長いフォームなので、店舗が「保存」を押し忘れても
+    // 入力が消えないようにする。保存中・提出中は走らせない。
+    useEffect(() => {
+        if (!dirty || locked || !data) return;
+        // 保存中・提出中は走らせない。saving/submitting を依存に入れているので、
+        // 完了して false に戻ったところでタイマーが張り直される
+        // （入れていないと「保存中に発火 → 何もせず終了」で以後自動保存されなくなる）。
+        if (saving || submitting) return;
+        const t = setTimeout(() => {
+            if (savingRef.current || submittingRef.current) return;
+            void saveDraft(true);
+        }, 60_000);
+        return () => clearTimeout(t);
+        // saveDraft は data を参照するので、data 変更のたびにタイマーを張り直す
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dirty, locked, data, saving, submitting]);
+
+    // メッセージは数秒で消す（前回の「保存しました」が残って紛らわしくなるため）
+    useEffect(() => {
+        if (!message || message.type === "error") return;
+        const t = setTimeout(() => setMessage(null), 4000);
+        return () => clearTimeout(t);
+    }, [message]);
+
     const update = useCallback(<K extends keyof IntakeData>(key: K, value: IntakeData[K]) => {
         setData((prev) => (prev ? { ...prev, [key]: value } : prev));
+        setDirty(true);
     }, []);
 
     const uploadImage = async (file: File): Promise<string | null> => {
@@ -70,7 +113,7 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
         return json.url as string;
     };
 
-    const saveDraft = async () => {
+    const saveDraft = async (auto = false) => {
         if (!data || locked) return;
         setSaving(true);
         try {
@@ -81,7 +124,8 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
             });
             const json = await res.json();
             if (!res.ok) throw new Error(json.error);
-            setMessage({ type: "ok", text: "下書きを保存しました" });
+            setMessage({ type: "ok", text: auto ? "自動保存しました" : "下書きを保存しました" });
+            setDirty(false);
             if (status === "pending") setStatus("in_progress");
         } catch (e: any) {
             setMessage({ type: "error", text: e.message || "保存に失敗しました" });
@@ -89,6 +133,10 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
             setSaving(false);
         }
     };
+
+    // 自動保存タイマーから最新の実行中フラグを見るための参照
+    savingRef.current = saving;
+    submittingRef.current = submitting;
 
     const submit = async () => {
         if (!data || locked) return;
@@ -103,10 +151,15 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
             const json = await res.json();
             if (!res.ok) throw new Error(json.error);
             setStatus("submitted");
+            setDirty(false);
             setMessage({ type: "ok", text: "提出しました。運営の確認をお待ちください。" });
             window.scrollTo({ top: 0, behavior: "smooth" });
         } catch (e: any) {
+            // 提出エラーは「どの項目が足りないか」を伝えるものなので、
+            // 画面下の提出ボタンを押した位置から見える必要がある。
+            // 下部トーストにも出るが、複数行になるため上部にもスクロールして全文を見せる。
             setMessage({ type: "error", text: e.message || "提出に失敗しました" });
+            window.scrollTo({ top: 0, behavior: "smooth" });
         } finally {
             setSubmitting(false);
         }
@@ -183,6 +236,16 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
                         以下のフォームにご記入ください。途中で「下書き保存」すれば、同じURLからいつでも再開できます。
                         入力が終わったら最後に「提出する」を押してください。
                     </p>
+                    {/* 入力中に参照できるよう、操作マニュアルへの導線をここにも置く
+                        （ダッシュボードのマニュアルはアカウント開設後しか見られないため） */}
+                    <a
+                        href="/Studi-Go_店舗ガイド.pdf"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-xs font-bold rounded-lg border border-border px-3 py-2 text-muted-foreground hover:text-foreground hover:bg-accent/10 transition-all"
+                    >
+                        📖 入力方法がわからないときは 操作マニュアル ↗
+                    </a>
                 </div>
 
                 {/* ステータスバナー */}
@@ -197,7 +260,7 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
                     </div>
                 )}
                 {message && (
-                    <div className={`rounded-lg p-3 text-sm ${message.type === "ok" ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-red-500/10 text-red-600 dark:text-red-400"}`}>
+                    <div className={`rounded-lg p-3 text-sm whitespace-pre-line ${message.type === "ok" ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-red-500/10 text-red-600 dark:text-red-400"}`}>
                         {message.text}
                     </div>
                 )}
@@ -251,19 +314,32 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
                             <input className={inputCls} disabled={locked} value={data.closedDays || ""} onChange={(e) => update("closedDays", e.target.value)} placeholder="例: 毎週水曜・年末年始" />
                         </div>
                     </div>
+                    {/* 営業時間は自由入力なので、入力がどう解釈されて予約枠になるかを
+                        その場で見せる。書き方を誤ると予約枠が既定値に化けたり
+                        0件になったりするが、店舗側からは気づけないため。 */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div>
-                            <label className={labelCls}>営業時間（平日）</label>
-                            <input className={inputCls} disabled={locked} value={data.businessHours.weekday} onChange={(e) => update("businessHours", { ...data.businessHours, weekday: e.target.value })} placeholder="10:00-22:00" />
-                        </div>
-                        <div>
-                            <label className={labelCls}>営業時間（土曜）</label>
-                            <input className={inputCls} disabled={locked} value={data.businessHours.saturday} onChange={(e) => update("businessHours", { ...data.businessHours, saturday: e.target.value })} placeholder="10:00-22:00" />
-                        </div>
-                        <div>
-                            <label className={labelCls}>営業時間（日祝）</label>
-                            <input className={inputCls} disabled={locked} value={data.businessHours.sundayHoliday} onChange={(e) => update("businessHours", { ...data.businessHours, sundayHoliday: e.target.value })} placeholder="10:00-22:00" />
-                        </div>
+                        {([
+                            { key: "weekday" as const, label: "営業時間（平日）" },
+                            { key: "saturday" as const, label: "営業時間（土曜）" },
+                            { key: "sundayHoliday" as const, label: "営業時間（日祝）" },
+                        ]).map(({ key, label }) => {
+                            const hint = describeBusinessHours(data.businessHours[key]);
+                            return (
+                                <div key={key}>
+                                    <label className={labelCls}>{label}</label>
+                                    <input
+                                        className={inputCls}
+                                        disabled={locked}
+                                        value={data.businessHours[key]}
+                                        onChange={(e) => update("businessHours", { ...data.businessHours, [key]: e.target.value })}
+                                        placeholder="10:00-22:00"
+                                    />
+                                    <p className={`mt-1 text-[11px] leading-snug ${hint.tone === "warn" ? "text-amber-600 dark:text-amber-400 font-bold" : "text-muted-foreground"}`}>
+                                        {hint.tone === "warn" ? "⚠️ " : ""}{hint.text}
+                                    </p>
+                                </div>
+                            );
+                        })}
                     </div>
                     <div>
                         <label className={labelCls}>駐車場情報</label>
@@ -438,14 +514,17 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
                                     onChange={(e) => update("personalPracticeSettings", { ...pp, maxPeople: Number(e.target.value) })} />
                             </div>
                             <div>
-                                <label className={labelCls}>料金（円/h・空欄なら通常料金）</label>
+                                <label className={labelCls}>個人練習の料金（円/h・空欄なら部屋の通常料金）</label>
                                 <input className={inputCls} disabled={locked} type="number" min={0} value={pp.pricePerHour || ""}
                                     onChange={(e) => update("personalPracticeSettings", { ...pp, pricePerHour: Number(e.target.value) || 0 })} placeholder="通常料金" />
                             </div>
                             <div>
-                                <label className={labelCls}>何日前から予約可</label>
-                                <input className={inputCls} disabled={locked} type="number" min={0} value={pp.advanceDays ?? 1}
-                                    onChange={(e) => update("personalPracticeSettings", { ...pp, advanceDays: Number(e.target.value) })} />
+                                <label className={labelCls}>何日前から予約可（0=制限なし）</label>
+                                <input className={inputCls} disabled={locked} type="number" min={0} value={pp.advanceDays ?? 0}
+                                    onChange={(e) => update("personalPracticeSettings", { ...pp, advanceDays: Number(e.target.value) })} placeholder="0" />
+                                <p className="mt-1 text-[11px] text-muted-foreground leading-snug">
+                                    例）3 と入れると、利用日の3日前になるまで個人練習の予約を受け付けません。
+                                </p>
                             </div>
                             <div>
                                 <label className={labelCls}>何時間前から予約可</label>
@@ -544,9 +623,22 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
 
                 {/* アクション */}
                 {!locked && (
-                    <div className="sticky bottom-4 rounded-xl border border-border bg-card/95 backdrop-blur p-4 flex flex-col sm:flex-row gap-3 shadow-lg">
+                    <div className="sticky bottom-4 rounded-xl border border-border bg-card/95 backdrop-blur p-4 flex flex-col gap-3 shadow-lg">
+                        {/* 保存結果はここにも出す。フォームが長く、保存ボタンは常に画面下端にあるため、
+                            画面最上部だけに出していると「押したのに何も起きない」ように見えていた。 */}
+                        {message && (
+                            <div className={`rounded-lg px-3 py-2 text-xs font-bold whitespace-pre-line ${message.type === "ok" ? "bg-green-500/15 text-green-700 dark:text-green-300" : "bg-red-500/15 text-red-700 dark:text-red-300"}`}>
+                                {message.text}
+                            </div>
+                        )}
+                        {dirty && !message && (
+                            <div className="rounded-lg px-3 py-2 text-xs font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                                未保存の変更があります（60秒後に自動保存されます）
+                            </div>
+                        )}
+                        <div className="flex flex-col sm:flex-row gap-3">
                         <button
-                            onClick={saveDraft}
+                            onClick={() => saveDraft()}
                             disabled={saving}
                             className="flex-1 rounded-lg border border-border px-4 py-3 text-sm font-bold hover:bg-accent/10 disabled:opacity-50"
                         >
@@ -559,6 +651,7 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
                         >
                             {submitting ? "提出中..." : status === "submitted" ? "🚀 修正して再提出" : "🚀 この内容で提出する"}
                         </button>
+                        </div>
                     </div>
                 )}
             </div>

@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { parseBusinessHours } from "@/lib/business-hours";
 import { useParams, useSearchParams } from "next/navigation";
 import { canUseLineBooking } from "@/lib/plan-features";
 
@@ -43,18 +44,16 @@ function getPriceForTime(pricing: RoomPricing | undefined, basePrice: number, da
   const dayData = (pricing as any)[dayType]; const slots = Array.isArray(dayData) ? dayData : Array.isArray(dayData?.slots) ? dayData.slots : undefined;
   if (!Array.isArray(slots)) return basePrice;
   for (const slot of slots) {
-    const [sh] = slot.start.split(":").map(Number);
-    const [eh] = slot.end.split(":").map(Number);
-    if (hour >= sh && hour < eh) return slot.price;
+    const [sh] = String(slot.start).split(":").map(Number);
+    let [eh] = String(slot.end).split(":").map(Number);
+    if (!Number.isFinite(sh) || !Number.isFinite(eh)) continue;
+    // 「22:00〜00:00」のように終了が0の枠は 24:00 の意味として扱う。
+    // そのままだと sh > eh となり、どの時刻にも当たらず無言で基本料金に落ちる。
+    if (eh <= sh) eh += 24;
+    const h = hour < sh ? hour + 24 : hour;
+    if (h >= sh && h < eh) return slot.price;
   }
   return basePrice;
-}
-
-function parseHours(hoursStr?: string): { open: number; close: number } {
-  if (!hoursStr) return { open: 10, close: 22 };
-  const match = hoursStr.match(/(\d{1,2}):?(\d{0,2})\s*[-~〜]\s*(\d{1,2}):?(\d{0,2})/);
-  if (!match) return { open: 10, close: 22 };
-  return { open: parseInt(match[1]), close: parseInt(match[3]) };
 }
 
 function isHolidayDate(date: Date, holidayPeriods?: Array<{ name: string; start: string; end: string }>): string | null {
@@ -83,6 +82,9 @@ function isDiscountAvailable(discount: any, date: Date | null, startHour: number
 function formatTime(t: number) {
   const h = Math.floor(t);
   const m = t % 1 === 0.5 ? "30" : "00";
+  // 24以上は深夜表記（25:00 = 翌1:00）。現状 parseBusinessHours が24で止めるので通常は出ないが、
+  // 手入力の予約などで入ってきても表示が壊れないようにしておく。
+  if (h >= 24) return `翌${String(h - 24).padStart(2, "0")}:${m}`;
   return `${String(h).padStart(2, "0")}:${m}`;
 }
 
@@ -221,13 +223,21 @@ export default function StudioDetailPage() {
   };
   const hoursKey = dayType === "weekday" ? "weekday" : dayType === "saturday" ? "saturday" : "sundayHoliday";
   const businessHoursStr = studio.businessHours?.[hoursKey as keyof typeof studio.businessHours];
-  const { open, close } = parseHours(businessHoursStr);
+  const { open, close } = parseBusinessHours(businessHoursStr);
   const startMinute = selectedRoom?.startType === "30min" ? 0.5 : 0;
   const timeSlots: number[] = [];
   for (let h = open; h < close; h++) timeSlots.push(h + startMinute);
 
+  // 個人練習の時間単価。店舗が onboard / ダッシュボードで設定していれば、
+  // 部屋の通常料金の代わりにこの単価を使う。
+  // 260807まで、この設定は保存はされるものの料金計算にどこからも参照されておらず、
+  // 「個人練習を割安に設定したのに通常料金で課金される」状態だった。
+  const ppUnitPrice = Number(studio?.personalPracticeSettings?.pricePerHour ?? 0);
+  const usePersonalPracticeRate = isPersonalPractice && ppUnitPrice > 0;
+
   const calcRoomPrice = () => {
     if (!selectedDate || selectedStart === null || !selectedRoom) return 0;
+    if (usePersonalPracticeRate) return ppUnitPrice * selectedDuration;
     let total = 0;
     for (let i = 0; i < selectedDuration; i++) {
       total += getPriceForTime(selectedRoom.pricing, selectedRoom.basePrice, dayType, Math.floor(selectedStart + i));

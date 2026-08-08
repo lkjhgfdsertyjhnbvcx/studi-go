@@ -88,10 +88,18 @@ export default function StoreLogin() {
                         ログイン
                     </button>
                 </form>
-                <div className="mt-8 text-center">
+                {/* 店舗アカウントは「申込 → 店舗情報の入力 → 運営の承認」で発行される。
+                    ここから自己登録できると、入力済みの店舗データと紐づかない重複店舗が
+                    できてしまうため、導線は申込フォームへ寄せる。 */}
+                <div className="mt-8 text-center space-y-2">
                     <p className="text-xs text-gray-400 font-bold">
                         新しく出店をご希望ですか？
-                        <button onClick={() => router.push('/store/register')} className="text-purple-800 ml-2 hover:underline">新規登録はこちら</button>
+                        <a href="/studigo_apply.html" className="text-purple-800 ml-2 hover:underline">お申し込みはこちら</a>
+                    </p>
+                    <p className="text-[11px] text-gray-400">
+                        ログイン情報が届いていない場合は{" "}
+                        <a href="mailto:info@studi-go.com" className="text-purple-800 hover:underline">info@studi-go.com</a>{" "}
+                        までご連絡ください。
                     </p>
                 </div>
             </div>

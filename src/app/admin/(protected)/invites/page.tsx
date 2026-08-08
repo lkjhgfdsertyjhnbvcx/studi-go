@@ -24,6 +24,10 @@ export default function InvitesPage() {
     const [openPreview, setOpenPreview] = useState<string | null>(null);
     const [approving, setApproving] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    // 承認直後に発行したログイン情報。案内メールが失敗した場合はここから手動で伝える。
+    const [issued, setIssued] = useState<{
+        token: string; loginEmail: string; tempPassword: string; publicUrl: string; mailSent: boolean; mailError?: string;
+    } | null>(null);
 
     const load = () => {
         fetch("/api/admin/invites")
@@ -80,6 +84,14 @@ export default function InvitesPage() {
             setInvites((prev) => prev.map((i) =>
                 i.id === token ? { ...i, status: "approved" as IntakeStatus, studioId: json.studioId } : i
             ));
+            setIssued({
+                token,
+                loginEmail: json.loginEmail,
+                tempPassword: json.tempPassword,
+                publicUrl: json.publicUrl,
+                mailSent: Boolean(json.mailSent),
+                mailError: json.mailError,
+            });
         } catch (e: any) {
             setError(e.message || "承認に失敗しました");
         } finally {
@@ -96,7 +108,34 @@ export default function InvitesPage() {
                 </p>
             </div>
 
-            {error && <div className="rounded-lg bg-red-500/10 text-red-500 p-3 text-sm">{error}</div>}
+            {error && <div className="rounded-lg bg-red-500/10 text-red-500 p-3 text-sm whitespace-pre-line">{error}</div>}
+
+            {/* 承認直後のログイン情報。仮パスワードは storeIntakes にも控えているが、
+                案内メールが失敗したときにすぐ手動フォローできるよう画面にも出す。 */}
+            {issued && (
+                <div className={`rounded-xl border-2 p-4 space-y-2 text-sm ${issued.mailSent ? "border-green-500/40 bg-green-500/5" : "border-red-500/50 bg-red-500/5"}`}>
+                    <div className="font-bold">
+                        {issued.mailSent
+                            ? "✅ 公開しました。予約ページURLとログイン情報を店舗へ送信済みです。"
+                            : "⚠️ 公開しましたが、案内メールの送信に失敗しました。下の内容を手動で店舗へお送りください。"}
+                    </div>
+                    {!issued.mailSent && issued.mailError && (
+                        <div className="text-xs text-red-500">送信エラー: {issued.mailError}</div>
+                    )}
+                    <div className="font-mono text-xs bg-background/60 rounded-lg p-3 space-y-1 select-all">
+                        <div>予約ページ　　: {issued.publicUrl}</div>
+                        <div>管理ログイン　: https://studi-go.com/store/login</div>
+                        <div>ID　　　　　　: {issued.loginEmail}</div>
+                        <div>仮パスワード　: {issued.tempPassword}</div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        仮パスワードはこの画面を閉じると再表示できません（控えは storeIntakes に保存されています）。
+                    </p>
+                    <button onClick={() => setIssued(null)} className="text-xs font-bold text-muted-foreground hover:text-foreground underline">
+                        閉じる
+                    </button>
+                </div>
+            )}
 
             {/* 発行フォーム */}
             <div className="rounded-xl border border-border bg-card p-6 space-y-4">

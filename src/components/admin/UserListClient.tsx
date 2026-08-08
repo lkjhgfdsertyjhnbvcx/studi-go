@@ -63,7 +63,7 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
     };
 
     const handleExportCSV = () => {
-        const headers = ["ID", "Name", "Email", "Phone", "Address", "Created At", "Auth Provider", "LINE UserID", "LINE DisplayName", "JOCOLLA User"];
+        const headers = ["ID", "Name", "Email", "Phone", "Address", "Created At", "Auth Provider", "LINE UserID", "LINE DisplayName", "JOCOLLA User", "利用スタジオ", "利用回数", "今後の予約"];
         const rows = users.map(user => [
             user.id,
             user.name,
@@ -74,7 +74,10 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
             user.authProvider || "email",
             user.lineUserId || "",
             user.lineDisplayName || "",
-            user.isJocollaUser ? "Yes" : "No"
+            user.isJocollaUser ? "Yes" : "No",
+            (user.studioNames || []).join(" / "),
+            user.bookingCount ?? "",
+            user.upcomingCount ?? ""
         ]);
 
         const csvContent = [
@@ -116,7 +119,9 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
                         <TableRow className="hover:bg-transparent border-none">
                             <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5 px-8">メンバー情報</TableHead>
                             <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5">連絡先 / 住所</TableHead>
-                            {!isAdmin && <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5">利用履歴</TableHead>}
+                            {isAdmin
+                                ? <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5">利用スタジオ</TableHead>
+                                : <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5">利用履歴</TableHead>}
                             <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5">登録日</TableHead>
                             <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5 px-8 text-right">認証</TableHead>
                             {isAdmin && <TableHead className="text-muted-foreground text-[10px] font-bold tracking-widest py-5 text-right px-6">操作</TableHead>}
@@ -156,10 +161,34 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
                                         </div>
                                     </TableCell>
 
-                                    {!isAdmin && (
+                                    {isAdmin ? (
+                                        <TableCell className="py-6">
+                                            {(user.studioNames?.length || 0) === 0 ? (
+                                                <span className="text-xs text-muted-foreground">利用なし</span>
+                                            ) : (
+                                                <div className="flex flex-col gap-1 max-w-[240px]">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {user.studioNames.slice(0, 2).map((n: string) => (
+                                                            <Badge key={n} variant="outline" className="text-[9px] border-border text-foreground font-normal max-w-[220px] truncate">{n}</Badge>
+                                                        ))}
+                                                        {user.studioNames.length > 2 && (
+                                                            <Badge variant="outline" className="text-[9px] border-border text-muted-foreground">+{user.studioNames.length - 2}</Badge>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                                        <History size={11} />
+                                                        {user.bookingCount} 回利用
+                                                        {user.upcomingCount > 0 && (
+                                                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">予約中 {user.upcomingCount}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </TableCell>
+                                    ) : (
                                         <TableCell className="py-6">
                                             <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-2 text-cyan-400 font-bold text-xs">
+                                                <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 font-bold text-xs">
                                                     <History size={12} />
                                                     {user.bookings?.length || 0} 回来店
                                                 </div>
@@ -315,6 +344,45 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
                                     </div>
                                 </div>
 
+                                {/* 利用スタジオ（どの店舗を使っているか一目で分かるサマリー） */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-6 w-1 bg-emerald-500 rounded-full"></div>
+                                        <h3 className="text-lg font-bold tracking-normal">利用スタジオ</h3>
+                                        {userDetail.upcomingCount > 0 && (
+                                            <Badge className="bg-emerald-600 text-white text-[10px]">今後の予約 {userDetail.upcomingCount} 件</Badge>
+                                        )}
+                                    </div>
+                                    {(!userDetail.studiosUsed || userDetail.studiosUsed.length === 0) ? (
+                                        <div className="border border-border border-dashed p-8 rounded-2xl text-center text-muted-foreground font-mono text-[10px] tracking-widest">
+                                            利用したスタジオはありません
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            {userDetail.studiosUsed.map((s: any) => (
+                                                <div key={s.studioId || s.studioName} className="border border-border rounded-2xl p-4 bg-card/40">
+                                                    <div className="flex justify-between items-start gap-3">
+                                                        <div className="min-w-0">
+                                                            <p className="font-bold text-foreground text-sm truncate">{s.studioName}</p>
+                                                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                                                                直近利用: {s.lastDate || "—"}
+                                                            </p>
+                                                        </div>
+                                                        {s.upcoming > 0 && (
+                                                            <Badge className="bg-emerald-600 text-white text-[9px] shrink-0">予約中 {s.upcoming}</Badge>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex gap-4 mt-3 text-[11px]">
+                                                        <span className="text-muted-foreground">利用 <b className="text-foreground">{s.total - s.cancelled}</b> 回</span>
+                                                        {s.cancelled > 0 && <span className="text-muted-foreground">キャンセル <b className="text-foreground">{s.cancelled}</b></span>}
+                                                        <span className="text-muted-foreground ml-auto">累計 <b className="text-cyan-600 dark:text-cyan-400">¥{(s.totalSpent || 0).toLocaleString()}</b></span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Booking History */}
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-3">
@@ -328,19 +396,24 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
                                                     <TableHead className="text-[10px] uppercase font-bold text-muted-foreground py-3">利用日</TableHead>
                                                     <TableHead className="text-[10px] uppercase font-bold text-muted-foreground py-3">店舗 / ルーム</TableHead>
                                                     <TableHead className="text-[10px] uppercase font-bold text-muted-foreground py-3">時間 (h)</TableHead>
+                                                    <TableHead className="text-[10px] uppercase font-bold text-muted-foreground py-3">状態</TableHead>
                                                     <TableHead className="text-[10px] uppercase font-bold text-muted-foreground py-3 text-right">金額</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
                                                 {(!userDetail.bookings || userDetail.bookings.length === 0) ? (
                                                     <TableRow>
-                                                        <TableCell colSpan={4} className="text-center py-10 text-muted-foreground font-mono text-xs">
+                                                        <TableCell colSpan={5} className="text-center py-10 text-muted-foreground font-mono text-xs">
                                                             利用データがありません
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : (
-                                                    userDetail.bookings.map((booking: any) => (
-                                                        <TableRow key={booking.id} className="border-border hover:bg-white/5 transition-colors">
+                                                    userDetail.bookings.map((booking: any) => {
+                                                        const todayStr = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split("T")[0];
+                                                        const isCancelled = booking.status === "cancelled";
+                                                        const isUpcoming = !isCancelled && booking.date >= todayStr;
+                                                        return (
+                                                        <TableRow key={booking.id} className={`border-border hover:bg-accent/5 transition-colors ${isCancelled ? "opacity-50" : ""}`}>
                                                             <TableCell className="py-4 text-xs font-bold">{booking.date}</TableCell>
                                                             <TableCell className="py-4">
                                                                 <div className="flex flex-col">
@@ -349,9 +422,19 @@ export function UserListClient({ users: initialUsers, isAdmin }: UserListClientP
                                                                 </div>
                                                             </TableCell>
                                                             <TableCell className="py-4 text-xs font-mono">{booking.startTime} ({booking.durationHours}h)</TableCell>
-                                                            <TableCell className="py-4 text-xs font-bold text-right text-cyan-400">¥{booking.totalPrice.toLocaleString()}</TableCell>
+                                                            <TableCell className="py-4">
+                                                                {isCancelled ? (
+                                                                    <Badge variant="outline" className="text-[9px] border-red-500/40 text-red-500">キャンセル</Badge>
+                                                                ) : isUpcoming ? (
+                                                                    <Badge className="text-[9px] bg-emerald-600 text-white">予約中</Badge>
+                                                                ) : (
+                                                                    <Badge variant="outline" className="text-[9px] border-border text-muted-foreground">利用済み</Badge>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className={`py-4 text-xs font-bold text-right ${isCancelled ? "text-muted-foreground line-through" : "text-cyan-600 dark:text-cyan-400"}`}>¥{(booking.totalPrice || 0).toLocaleString()}</TableCell>
                                                         </TableRow>
-                                                    ))
+                                                        );
+                                                    })
                                                 )}
                                             </TableBody>
                                         </Table>

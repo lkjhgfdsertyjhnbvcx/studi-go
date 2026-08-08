@@ -2,6 +2,19 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { v4 as uuidv4 } from "uuid";
 
+import { getApiAuth } from "@/lib/api-auth";
+
+/** 管理者 or 当該スタジオのオーナーだけ許可する。260807: 無認証だったため追加。 */
+async function denyIfNotOwner(studioId: string | null | undefined) {
+    const auth = await getApiAuth();
+    if (auth.isAdmin) return null;
+    if (!auth.studioId) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+    if (!studioId || auth.studioId !== studioId) {
+        return NextResponse.json({ error: "権限がありません" }, { status: 403 });
+    }
+    return null;
+}
+
 export const dynamic = "force-dynamic";
 
 // CSV行をパース（ダブルクォート対応）
@@ -47,6 +60,9 @@ export async function POST(request: Request) {
         const formData = await request.formData();
         const file = formData.get("file") as File | null;
         const studioId = formData.get("studioId") as string | null;
+        // 260807: 無認証だったため、任意の店舗に顧客データを流し込める状態だった
+        const denied = await denyIfNotOwner(studioId);
+        if (denied) return denied;
         const mappingJson = formData.get("mapping") as string | null;
 
         if (!file || !studioId) {

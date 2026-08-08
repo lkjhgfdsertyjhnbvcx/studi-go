@@ -3,7 +3,9 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "support@studi-go.com";
-const FROM_EMAIL = "Studi-Go <noreply@studi-go.com>";
+// 260804: apex の studi-go.com は別アカウント(cwc-inc)の Verified ドメインで、
+// 本アプリのキーでは送信できない。send.studi-go.com を既定にする。
+const FROM_EMAIL = process.env.MAIL_FROM ?? "Studi-Go <info@studi-go.com>";
 
 const PLAN_NAMES: Record<string, string> = {
     free: "フリープラン",

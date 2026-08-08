@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { v4 as uuidv4 } from "uuid";
 import { Resend } from "resend";
+import { syncLeadToOutreach } from "@/lib/outreach-sync";
 
 const CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
@@ -15,8 +16,11 @@ const CORS_HEADERS = {
     "Access-Control-Allow-Headers": "Content-Type",
 };
 
-// jocolla Resend アカウントの認証済みドメイン（DKIM/SPF Verified）から送信
-const FROM = "Studi-Go <noreply@send.studi-go.com>";
+// 差出人。send.studi-go.com は Resend（info@jocolla.com アカウント）で Verified 済み。
+// 260804: no-reply@ は迷惑メール判定を招きやすいため info@ に変更（Resend Insights の指摘）。
+// 実際の返信は Reply-To の info@studi-go.com（有人）で受ける。
+// 送信経路ごと切り替えたい場合は MAIL_FROM で上書きできる。
+const FROM = process.env.MAIL_FROM ?? "Studi-Go <info@studi-go.com>";
 const INTERNAL_NOTIFY = "info@studi-go.com";
 const BASE_URL = "https://studi-go.com";
 const RESEND = new Resend(process.env.RESEND_API_KEY);
@@ -341,6 +345,31 @@ export async function POST(request: Request) {
                 console.log(`lp-leads mail(${kind}) sent:`, r.value);
             }
         });
+
+        // ---- アウトリーチDBへ同期（失敗してもリード受付は成功扱い） ----
+        // スタジオを特定できた場合は replies に登録され、reminder / final の追撃メールが止まる。
+        // 特定できなかった場合も conversions には残るので、日次レポートの「未紐付けリード」に出る。
+        const sync = await syncLeadToOutreach({
+            id: lead.id,
+            storeName: lead.storeName,
+            email: lead.email,
+            phone: lead.phone,
+            interest: lead.interest,
+            currentSystem: lead.currentSystem,
+            source: emailSource,
+            variant: lead.variant,
+            createdAt: lead.createdAt,
+        });
+        if (!sync.ok) {
+            console.error("lp-leads outreach sync failed:", sync.error);
+        } else if (sync.skipped) {
+            console.warn("lp-leads outreach sync skipped: OUTREACH_SUPABASE_* が未設定");
+        } else {
+            console.log(
+                `lp-leads outreach sync: matched=${sync.matched} studios=${sync.studioIds.length} ` +
+                    `rules=[${sync.rules.join(",")}] repliesInserted=${sync.repliesInserted}`,
+            );
+        }
 
         return NextResponse.json({ success: true }, { headers: CORS_HEADERS });
     } catch (error: any) {

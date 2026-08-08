@@ -4,6 +4,12 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// 260804: 差出人が noreply@studi-go.com になっていたが、apex の studi-go.com が
+// Verified なのは cwc-inc アカウントであり、本アプリの RESEND_API_KEY（info@jocolla.com）
+// では送信できない。加えて送信結果を検査していなかったため、失敗しても無言で素通りしていた。
+// 本アプリのキーで Verified な send.studi-go.com を既定にし、MAIL_FROM で上書き可能にする。
+const FROM_EMAIL = process.env.MAIL_FROM ?? "Studi-Go <info@studi-go.com>";
+
 export async function POST(request: Request) {
     try {
         const { bookingId } = await request.json();
@@ -31,8 +37,8 @@ export async function POST(request: Request) {
             })();
             const bookingUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://studi-go.com"}/bookings/${booking.id}`;
 
-            await resend.emails.send({
-                from: "Studi-Go <noreply@studi-go.com>",
+            const sendResult = await resend.emails.send({
+                from: FROM_EMAIL,
                 to: booking.userEmail,
                 subject: "【予約確定】ご予約が完了しました - Studi-Go",
                 html: `<!DOCTYPE html>
@@ -111,6 +117,19 @@ export async function POST(request: Request) {
 </body>
 </html>`,
             });
+
+            // Resend は API エラーで例外を投げず { data, error } を返す。
+            // 検査しないと「メールが届かないのに予約は成功」という無言の失敗になる。
+            if (sendResult.error) {
+                console.error(
+                    `[bookings/confirm] 予約確定メール送信失敗 bookingId=${booking.id} to=${booking.userEmail}:`,
+                    sendResult.error,
+                );
+            } else {
+                console.log(
+                    `[bookings/confirm] 予約確定メール送信 bookingId=${booking.id} messageId=${sendResult.data?.id}`,
+                );
+            }
         }
 
         return NextResponse.json({ ok: true });

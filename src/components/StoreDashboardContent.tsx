@@ -192,7 +192,8 @@ export default function StoreDashboard({ studioId: propStudioId, isAdmin = false
             notify("❌ セッションが切れました。再ログインしてください。");
             setTimeout(() => {
                 localStorage.removeItem("storeId");
-                document.cookie = "__session=;path=/;max-age=0";
+                // __session は httpOnly なので JS からは消せない。サーバー側で破棄する。
+                void fetch("/api/store/logout", { method: "POST" });
                 window.location.href = "/store/login";
             }, 2000);
         } else {
@@ -229,7 +230,8 @@ export default function StoreDashboard({ studioId: propStudioId, isAdmin = false
                             onClick={() => {
                                 if (!confirm("ログアウトしますか？")) return;
                                 localStorage.removeItem("storeId");
-                                document.cookie = "__session=;path=/;max-age=0";
+                                // __session は httpOnly なので JS からは消せない。サーバー側で破棄する。
+                                void fetch("/api/store/logout", { method: "POST" });
                                 window.location.href = "/store/login";
                             }}
                             className="px-4 py-2 text-xs font-bold text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 rounded-lg transition-all"
@@ -293,7 +295,8 @@ export default function StoreDashboard({ studioId: propStudioId, isAdmin = false
                                 onClick={() => {
                                     if (!confirm("ログアウトしますか？")) return;
                                     localStorage.removeItem("storeId");
-                                    document.cookie = "__session=;path=/;max-age=0";
+                                    // __session は httpOnly なので JS からは消せない。サーバー側で破棄する。
+                                    void fetch("/api/store/logout", { method: "POST" });
                                     window.location.href = "/store/login";
                                 }}
                                 className="px-4 py-2 text-xs font-bold text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 rounded-lg transition-all"

@@ -43,7 +43,8 @@ export async function sendPasswordResetAction(formData: FormData) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
-    const emailFrom = process.env.EMAIL_FROM || 'Studi-Go <noreply@send.studi-go.com>';
+    const emailFrom =
+        process.env.EMAIL_FROM || process.env.MAIL_FROM || 'Studi-Go <info@studi-go.com>';
 
     if (process.env.RESEND_API_KEY) {
         try {

@@ -173,6 +173,22 @@
 <footer>© 2026 JOCOLLA Inc. Studi-Go Div.</footer>
 
 <script>
+  // 流入元LP（?lp=switch / ?lp=start）。乗り換えLPは「有料プラン2ヶ月無料」を訴求しているが、
+  // 260807まで申込フォームが流入元を送っていなかったため、サーバー側の campaign 判定
+  // （intake.campaign === "switch-2m" → planTrialDays 60日）に一度も到達していなかった。
+  // LPの約束が履行されない状態だったので、ここで拾ってサーバーに渡す。
+  // リンクを直接踏まずに来た場合に備え、referrer からも推定する。
+  var LP_SOURCE = (function(){
+    try{
+      var q=new URLSearchParams(location.search).get('lp');
+      if(q==='switch'||q==='start') return q;
+      var ref=document.referrer||'';
+      if(ref.indexOf('lp-switch')>=0) return 'switch';
+      if(ref.indexOf('lp-start')>=0) return 'start';
+    }catch(e){}
+    return '';
+  })();
+
   // プラン事前選択（資料の「無料プランから試す」リンク等から ?plan=free で遷移）
   (function(){
     var map={free:'フリー（¥0/月・手数料5%）',light:'ライト（¥2,980/月）',standard:'スタンダード（¥5,980/月）',pro:'プロ（¥12,800/月）'};
@@ -184,26 +200,36 @@
   })();
 
   // ===== 送信設定 =====================================================
-  // ▼ メールアプリを開かず「直接送信」したい場合は、ここにアクセスキーを入れてください。
-  //    取得方法（無料）：https://web3forms.com で info@studi-go.com を登録 → 届いたアクセスキーを貼り付け。
-  //    キーを入れると web3forms 経由で info@studi-go.com へ直接届きます（メールアプリは起動しません）。
-  //    空のままなら、従来どおりメールアプリを起動する方式で動作します。
-  var ACCESS_KEY = "";
+  // 申し込みはサーバー（/api/applications）経由で受け付ける。
+  // サーバー側で Firestore 保存・申込者への自動返信・内部通知・
+  // アウトリーチDBへの同期（追撃メール停止）まで行う。
+  //
+  // 260804まで ACCESS_KEY 未設定の mailto: 方式だったため、
+  // 自動返信も記録も無く、申し込みが放置される事故が発生した。
+  var APPLY_API = '/api/applications';
   // ====================================================================
 
-  // 送信方式に応じて説明文を切り替え
+  // 送信方式の説明文
   (function(){
     var n=document.getElementById('sendNote');
-    if(n && ACCESS_KEY){ n.innerHTML='送信ボタンを押すと、入力内容がそのまま <b>info@studi-go.com</b> 宛に送信されます。メールアプリは起動しません。'; }
+    if(n){ n.innerHTML='送信ボタンを押すと、そのままお申し込みが完了します。メールアプリは起動しません。受付確認のメールをお送りします。'; }
   })();
 
   function showDone(direct){
     var d=document.getElementById('done');
     if(direct){
-      d.querySelector('h2').textContent='お申し込みを送信しました';
-      d.querySelector('p').innerHTML='ご記入ありがとうございます。担当より折り返しご連絡いたします。<br>お急ぎの場合は <a href="mailto:info@studi-go.com">info@studi-go.com</a> までご連絡ください。';
+      d.querySelector('h2').textContent='お申し込みを受け付けました';
+      d.querySelector('p').innerHTML='ご記入ありがとうございます。<br><strong>ご登録いただいたメールアドレス宛に、店舗情報のご登録用リンクを今すぐお送りしました。</strong><br>メール内のリンクから、続けて店舗情報のご入力にお進みください（10分ほど）。<br>数分たっても届かない場合は迷惑メールフォルダをご確認のうえ、<a href="mailto:info@studi-go.com">info@studi-go.com</a> までご連絡ください。';
+      // 正常に受け付けたときだけフォームを閉じる
+      document.getElementById('applyForm').style.display='none';
+    }else{
+      // メーラーへのフォールバック。この時点ではサーバーに何も残っておらず、
+      // 利用者がメールを送信したかも確認できない。完了扱いにするとサイレントに
+      // 申し込みが消えるため、フォームは残して再送できるようにする。
+      d.querySelector('.ic').textContent='!';
+      d.querySelector('h2').textContent='メールアプリを起動しました（まだ完了していません）';
+      d.querySelector('p').innerHTML='作成されたメールを、<strong>そのまま送信してください</strong>。<br>送信されない場合、お申し込みは完了しません。<br>メールアプリが起動しない場合は、下のフォームからもう一度お試しいただくか、<a href="mailto:info@studi-go.com">info@studi-go.com</a> までご連絡ください。';
     }
-    document.getElementById('applyForm').style.display='none';
     d.style.display='block';
     window.scrollTo({top:0,behavior:'smooth'});
   }
@@ -221,7 +247,8 @@
       pref:val('pref'), tel:val('tel'), plan:plan, option:opts,
       payment:payment,
       rooms:(val('rooms')||'未記入'), locations:(val('locations')||'未記入'),
-      message:(val('message')||'なし')
+      message:(val('message')||'なし'),
+      lp: LP_SOURCE
     };
     var subject='【お申し込み】Studi-Go（'+(data.shop||'店舗名未記入')+'）';
     var body=
@@ -238,35 +265,30 @@
       '拠点数：'+data.locations+'\n'+
       'ご質問・ご要望：\n'+data.message+'\n';
 
-    // --- 直接送信（アクセスキーがある場合） ---
-    if(ACCESS_KEY){
-      var btn=f.querySelector('.submit'); if(btn){btn.disabled=true;btn.textContent='送信中…';}
-      fetch('https://api.web3forms.com/submit',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Accept':'application/json'},
-        body:JSON.stringify({
-          access_key:ACCESS_KEY, subject:subject,
-          from_name:data.shop, replyto:data.email,
-          '店舗・スタジオ名':data.shop,'ご担当者名':data.name,'メールアドレス':data.email,
-          '都道府県':data.pref,'電話番号':data.tel,'ご希望プラン':data.plan,
-          'オプション':data.option,'お支払い方法':data.payment,'ルーム数':data.rooms,'拠点数':data.locations,
-          'ご質問・ご要望':data.message
-        })
-      }).then(function(r){return r.json();}).then(function(res){
-        if(res && res.success){ showDone(true); }
-        else { throw new Error(res && res.message ? res.message : 'error'); }
-      }).catch(function(){
-        // 失敗時はメール方式にフォールバック
-        if(btn){btn.disabled=false;btn.textContent='この内容で申し込む →';}
-        window.location.href='mailto:info@studi-go.com?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-        showDone(false);
-      });
-      return;
-    }
+    // --- サーバー経由で送信 ---
+    var btn=f.querySelector('.submit');
+    var btnLabel=btn?btn.textContent:'';
+    if(btn){btn.disabled=true;btn.textContent='送信中…';}
 
-    // --- メール方式（アクセスキーが未設定の場合） ---
-    window.location.href='mailto:info@studi-go.com?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-    showDone(false);
+    fetch(APPLY_API,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify(data)
+    }).then(function(r){
+      if(!r.ok) throw new Error('http '+r.status);
+      return r.json();
+    }).then(function(res){
+      if(res && res.success){ showDone(true); }
+      else { throw new Error(res && res.error ? res.error : 'error'); }
+    }).catch(function(err){
+      // 送信できなかった場合のみ、従来のメール方式にフォールバックする。
+      // 内容が失われるより、メーラー起動でも届いた方がよいため。
+      if(btn){btn.disabled=false;btn.textContent=btnLabel;}
+      var note=document.getElementById('sendNote');
+      if(note){ note.innerHTML='<b style="color:#c0392b">送信に失敗したため、メールアプリを起動します。</b>作成されたメールをそのまま送信してください。'; }
+      window.location.href='mailto:info@studi-go.com?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+      showDone(false);
+    });
   });
 </script>
 </body>

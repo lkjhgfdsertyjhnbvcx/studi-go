@@ -7,7 +7,10 @@ import { requirePlatformAdmin } from "@/lib/api-auth";
 export const dynamic = "force-dynamic";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM_EMAIL = process.env.EMAIL_FROM ?? "Studi-Go <noreply@studi-go.com>";
+// 260804: apex の studi-go.com は別アカウント(cwc-inc)の Verified ドメインで、
+// 本アプリのキーでは送信できない。send.studi-go.com を既定にする。
+const FROM_EMAIL =
+    process.env.EMAIL_FROM ?? process.env.MAIL_FROM ?? "Studi-Go <info@studi-go.com>";
 
 export async function POST(request: Request) {
     try {
