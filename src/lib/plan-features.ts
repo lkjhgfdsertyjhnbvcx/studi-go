@@ -393,6 +393,48 @@ export function getPlanLimits(planKey: string | null | undefined): PlanLimits {
     return PLAN_LIMITS[normalizePlanKey(planKey)];
 }
 
+/**
+ * 申込フォーム（studigo_apply.html）の表示ラベルから PlanKey を推定する。
+ * 「未定・相談したい」など該当しないものは null。
+ */
+export function planKeyFromLabel(label: string | null | undefined): PlanKey | null {
+    if (!label) return null;
+    if (label.includes("フリー")) return "free";
+    if (label.includes("ライト")) return "light";
+    if (label.includes("スタンダード")) return "standard";
+    if (label.includes("プロ")) return "pro";
+    return null;
+}
+
+/** その部屋数を登録するのに必要な最小プラン */
+export function minimumPlanForRooms(rooms: number): PlanKey {
+    if (rooms <= PLAN_LIMITS.free.roomLimit) return "free";
+    if (rooms <= PLAN_LIMITS.light.roomLimit) return "light";
+    if (rooms <= PLAN_LIMITS.standard.roomLimit) return "standard";
+    return "pro";
+}
+
+/**
+ * プランと部屋数が矛盾していないかを判定し、矛盾していれば説明文を返す。
+ * 申込フォームは JavaScript で防いでいるが、直接APIを叩かれる経路もあるため
+ * サーバー側でも同じ判定を行う。ただし**申込は拒否しない**（取りこぼしを防ぐため）。
+ */
+export function describePlanRoomMismatch(
+    planLabelOrKey: string | null | undefined,
+    rooms: number | null | undefined,
+): string | null {
+    const n = Number(rooms);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    const key = isValidPlanKey(planLabelOrKey ?? "")
+        ? (planLabelOrKey as PlanKey)
+        : planKeyFromLabel(planLabelOrKey);
+    if (!key) return null; // 「未定・相談したい」等は判定しない
+    const limit = PLAN_LIMITS[key].roomLimit;
+    if (n <= limit) return null;
+    const required = minimumPlanForRooms(n);
+    return `${getPlanInfo(key).name}プランは${limit}室までですが、${n}室で申告されています（必要な最小プラン: ${getPlanInfo(required).name}）`;
+}
+
 /** 指定プランの基本情報を取得 */
 export function getPlanInfo(planKey: string | null | undefined): PlanInfo {
     const key = normalizePlanKey(planKey);

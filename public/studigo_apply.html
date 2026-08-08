@@ -45,6 +45,11 @@
   .plan-opt span{display:block;border:1px solid var(--line);border-radius:12px;padding:13px 14px;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s}
   .plan-opt span small{display:block;font-weight:500;font-size:12px;color:var(--gray);margin-top:2px}
   .plan-opt input:checked + span{border-color:var(--accent);background:var(--accent-soft)}
+  /* ルーム数がプランの上限を超えたとき、選べないプランを無効表示にする */
+  .plan-opt input:disabled + span{opacity:.4;cursor:not-allowed;background:#f4f4f4}
+  .plan-opt input:disabled + span small{color:#aaa}
+  .plan-note{margin-top:10px;padding:11px 13px;border-radius:10px;font-size:13px;line-height:1.6;display:none}
+  .plan-note.warn{display:block;background:#fff4e5;border:1px solid #f0c98a;color:#8a5a12}
   .checks{display:flex;flex-direction:column;gap:10px}
   .check{display:flex;gap:11px;align-items:flex-start;font-size:14px;cursor:pointer}
   .check input{margin-top:4px;width:17px;height:17px;accent-color:var(--accent);flex:0 0 auto}
@@ -119,6 +124,7 @@
           <label class="plan-opt"><input type="radio" name="plan" value="プロ（¥12,800/月）"><span>プロ<small>¥12,800／月</small></span></label>
           <label class="plan-opt"><input type="radio" name="plan" value="未定・相談したい"><span>まだ決めていない<small>相談して決めたい</small></span></label>
         </div>
+        <div class="plan-note" id="planNote"></div>
       </div>
 
       <div class="field">
@@ -142,6 +148,7 @@
         <div class="field">
           <label class="l" for="rooms">ルーム数<span class="opt-mark">任意</span></label>
           <input type="number" id="rooms" name="rooms" min="0" placeholder="例：3">
+          <small style="display:block;color:#888;font-size:12px;margin-top:4px;">ご登録いただく部屋の数です。プランによって上限があります。</small>
         </div>
         <div class="field">
           <label class="l" for="locations">拠点数<span class="opt-mark">任意</span></label>
@@ -197,6 +204,77 @@
       var el=document.querySelector('input[name="plan"][value="'+map[p]+'"]');
       if(el) el.checked=true;
     }
+  })();
+
+  // ===== ルーム数とプランの整合チェック ================================
+  // 260808: フリープラン（5室まで）を選んだままルーム数6と入力しても、
+  // そのまま申し込めてしまっていた。制限はダッシュボードにしか入っておらず、
+  // 「登録は通るが、あとから部屋を増やせない」状態になっていた。
+  // 申込の時点で正しいプランに誘導する。弾いたまま放置すると離脱するので、
+  // 必要な最小プランを自動で選び直すところまで行う。
+  //
+  // 上限は src/lib/plan-features.ts の PLAN_LIMITS と合わせること。
+  var PLAN_ROOM_LIMITS = [
+    { value: 'フリー（¥0/月・手数料5%）',   name: 'フリー',       limit: 5 },
+    { value: 'ライト（¥2,980/月）',        name: 'ライト',       limit: 5 },
+    { value: 'スタンダード（¥5,980/月）',   name: 'スタンダード', limit: 15 },
+    { value: 'プロ（¥12,800/月）',         name: 'プロ',         limit: Infinity }
+  ];
+
+  (function(){
+    var roomsEl = document.getElementById('rooms');
+    var noteEl  = document.getElementById('planNote');
+    if(!roomsEl || !noteEl) return;
+
+    function planInput(value){
+      return document.querySelector('input[name="plan"][value="' + value + '"]');
+    }
+
+    function apply(){
+      var rooms = parseInt(roomsEl.value, 10);
+      var hasRooms = !isNaN(rooms) && rooms > 0;
+
+      // 「まだ決めていない」は室数に関わらず常に選べる（相談したい店舗を弾かないため）
+      var blocked = [];
+      PLAN_ROOM_LIMITS.forEach(function(p){
+        var el = planInput(p.value);
+        if(!el) return;
+        var ng = hasRooms && rooms > p.limit;
+        el.disabled = ng;
+        if(ng){
+          blocked.push(p.name);
+          if(el.checked) el.checked = false;
+        }
+      });
+
+      if(!hasRooms || !blocked.length){
+        noteEl.className = 'plan-note';
+        noteEl.innerHTML = '';
+        return;
+      }
+
+      // 必要な最小プランを自動で選ぶ
+      var required = null;
+      for(var i=0;i<PLAN_ROOM_LIMITS.length;i++){
+        if(rooms <= PLAN_ROOM_LIMITS[i].limit){ required = PLAN_ROOM_LIMITS[i]; break; }
+      }
+      var anyChecked = document.querySelector('input[name="plan"]:checked');
+      if(required && !anyChecked){
+        var el = planInput(required.value);
+        if(el){ el.checked = true; }
+      }
+
+      noteEl.className = 'plan-note warn';
+      noteEl.innerHTML =
+        '<b>' + rooms + '室のご登録には「' + (required ? required.name : 'プロ') + '」プラン以上が必要です。</b><br>' +
+        blocked.join('・') + 'プランは室数の上限を超えるため、お選びいただけません。<br>' +
+        '迷われる場合は「まだ決めていない」を選んでご送信ください。' +
+        '<a href="mailto:info@studi-go.com" style="color:#8a5a12;text-decoration:underline;">info@studi-go.com</a> へのご相談も承ります。';
+    }
+
+    roomsEl.addEventListener('input', apply);
+    roomsEl.addEventListener('change', apply);
+    apply();
   })();
 
   // ===== 送信設定 =====================================================

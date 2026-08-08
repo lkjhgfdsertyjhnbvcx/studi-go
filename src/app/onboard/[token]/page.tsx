@@ -4,6 +4,7 @@
 import React, { useEffect, useState, useCallback, useRef, use } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { describeBusinessHours } from "@/lib/business-hours";
+import { getPlanInfo, getPlanLimits, minimumPlanForRooms, planKeyFromLabel } from "@/lib/plan-features";
 import {
     normalizeIntakeData, emptyPricing,
     type IntakeData, type IntakeRoom, type IntakeEquipment, type IntakeStatus,
@@ -38,6 +39,8 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
     const [notFound, setNotFound] = useState(false);
     const [status, setStatus] = useState<IntakeStatus>("pending");
     const [data, setData] = useState<IntakeData | null>(null);
+    // 申込時の希望プラン。部屋数の上限案内に使う（承認前なので studios はまだ無い）
+    const [planRequested, setPlanRequested] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const savingRef = useRef(false);
@@ -53,6 +56,7 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
             .then((r) => (r.ok ? r.json() : Promise.reject()))
             .then((res) => {
                 setStatus(res.status);
+                setPlanRequested(res.planRequested ?? null);
                 setData(normalizeIntakeData(res.data, res.label || ""));
             })
             .catch(() => setNotFound(true))
@@ -372,6 +376,25 @@ export default function OnboardPage({ params }: { params: Promise<{ token: strin
                     {data.rooms.length === 0 && (
                         <p className="text-sm text-muted-foreground">「＋ 部屋を追加」から、予約を受け付ける部屋を登録してください。</p>
                     )}
+                    {/* 申込時のプランの部屋数上限を超えたら知らせる。
+                        入力自体は止めない（運営が承認時に判断できるようにする）。
+                        止めてしまうと、店舗が登録を完了できずそのまま離脱する。 */}
+                    {(() => {
+                        const key = planKeyFromLabel(planRequested);
+                        if (!key) return null;
+                        const limit = getPlanLimits(key).roomLimit;
+                        if (data.rooms.length <= limit) return null;
+                        const required = minimumPlanForRooms(data.rooms.length);
+                        return (
+                            <div className="rounded-xl border-2 border-amber-500/50 bg-amber-500/5 p-3 text-xs font-bold text-amber-700 dark:text-amber-300 leading-relaxed">
+                                ⚠️ お申し込みいただいた{getPlanInfo(key).name}プランは{limit}室までですが、
+                                現在{data.rooms.length}室ご登録いただいています。
+                                このままご提出いただいても構いませんが、公開までに
+                                {getPlanInfo(required).name}プラン以上へのご変更をご案内する場合があります。
+                                ご不明な点は info@studi-go.com までご連絡ください。
+                            </div>
+                        );
+                    })()}
                     {data.rooms.map((room, idx) => (
                         <div key={room.id} className="rounded-lg border border-border p-4 space-y-3 bg-background/50">
                             <div className="flex items-center justify-between">

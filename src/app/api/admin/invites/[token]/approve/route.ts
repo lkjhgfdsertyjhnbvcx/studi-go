@@ -18,6 +18,7 @@ import { requirePlatformAdmin } from "@/lib/api-auth";
 import { hashPassword } from "@/lib/password";
 import { v4 as uuidv4 } from "uuid";
 import { INTAKE_COLLECTION, intakeToStudioProfile, validateIntakeForPublish, type StoreIntake } from "@/lib/intake";
+import { describePlanRoomMismatch } from "@/lib/plan-features";
 import { VOWCHA_REFERRALS, type VowchaReferral } from "@/lib/vowcha";
 
 export const dynamic = "force-dynamic";
@@ -342,6 +343,13 @@ export async function POST(
             tempPassword,
         };
 
+        // 申込時の希望プランに対して部屋数が多すぎないか。公開自体は止めず、
+        // 運営が気づけるように控えメールに出す（例外を出したいケースもあるため）。
+        const roomMismatch = describePlanRoomMismatch(
+            intake.planRequested,
+            (studio.rooms ?? []).length,
+        );
+
         let mailSent = false;
         let mailError: string | undefined;
         try {
@@ -377,7 +385,7 @@ export async function POST(
 　　　　ID : ${loginEmail}
 仮パスワード: ${tempPassword}
 
-ルーム数   : ${(studio.rooms ?? []).length}
+ルーム数   : ${(studio.rooms ?? []).length}${roomMismatch ? `　⚠️ ${roomMismatch}` : ""}
 希望プラン : ${intake.planRequested ?? "（不明）"}（planKey は free で登録済み。課金設定後に引き上げてください）
 支払方法   : ${intake.planPayMethod ?? "（不明）"}
 studioId   : ${studio.id}

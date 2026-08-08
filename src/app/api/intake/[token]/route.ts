@@ -78,6 +78,8 @@ export async function GET(
             status: intake.status,
             data: intake.data,
             submittedAt: intake.submittedAt || null,
+            // 部屋数の上限案内に使う（承認前なので studios.planKey はまだ存在しない）
+            planRequested: intake.planRequested ?? null,
         });
     } catch (error: any) {
         console.error("【入力取得APIエラー】:", error.message);

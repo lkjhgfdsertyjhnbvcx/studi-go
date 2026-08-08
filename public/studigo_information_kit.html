@@ -468,14 +468,15 @@
     <div class="plans">
       <div class="plan">
         <div class="pname">フリー</div>
-        <div class="pdesc">まずは費用ゼロで。1ルームで予約管理を始めたい方に。</div>
+        <div class="pdesc">まずは費用ゼロで。予約管理を始めたい個人・小規模の方に。</div>
         <div class="price"><span class="num">¥0</span><span class="unit">/ 月</span></div>
         <div class="pfee">予約手数料 5%</div>
         <ul>
           <li>24時間オンライン予約</li>
-          <li>予約・顧客管理</li>
+          <li>予約・顧客管理（50件まで）</li>
+          <li>クーポン発行</li>
           <li>確認メール通知</li>
-          <li>ルーム1／拠点1</li>
+          <li>ルーム5／拠点1</li>
         </ul>
       </div>
       <div class="plan">
@@ -485,9 +486,9 @@
         <div class="pfee">予約手数料 なし</div>
         <ul>
           <li>フリーの全機能</li>
-          <li>クーポン発行</li>
+          <li>機材・学割・割り勘決済</li>
           <li>CSV出力・売上レポート</li>
-          <li>スタッフ管理／ルーム5</li>
+          <li>スタッフ管理・ページデザイン／ルーム5</li>
         </ul>
       </div>
       <div class="plan pop">
@@ -500,7 +501,7 @@
           <li>ライトの全機能</li>
           <li>稼働率ヒートマップ</li>
           <li>トップページ優先掲載</li>
-          <li>自動リマインダー／直前割引</li>
+          <li>自動リマインドメール</li>
           <li>ルーム15／拠点2</li>
         </ul>
       </div>
@@ -511,8 +512,8 @@
         <div class="pfee">予約手数料 なし</div>
         <ul>
           <li>スタンダードの全機能</li>
-          <li>顧客ランク・キャンセル待ち</li>
-          <li>定期予約・請求書払い</li>
+          <li>LINEログイン・定期予約</li>
+          <li>顧客ランク・キャンセル待ち・直前割引</li>
           <li>優先サポート／API連携</li>
           <li>ルーム・拠点 無制限</li>
         </ul>
@@ -534,22 +535,27 @@
         <tbody>
           <tr class="grp"><td colspan="5">基本条件</td></tr>
           <tr><td>予約手数料</td><td>5%</td><td>なし</td><td class="std">なし</td><td>なし</td></tr>
-          <tr><td>ルーム数上限</td><td>1</td><td>5</td><td class="std">15</td><td>無制限</td></tr>
+          <tr><td>ルーム数上限</td><td>5</td><td>5</td><td class="std">15</td><td>無制限</td></tr>
           <tr><td>拠点数上限</td><td>1</td><td>1</td><td class="std">2</td><td>無制限</td></tr>
           <tr><td>Studi-Goロゴ表示</td><td>あり</td><td>なし</td><td class="std">なし</td><td>なし</td></tr>
           <tr class="grp"><td colspan="5">基本機能</td></tr>
           <tr><td>予約管理</td><td class="yes">✓</td><td class="yes">✓</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
-          <tr><td>顧客管理</td><td class="yes">✓</td><td class="yes">✓</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>顧客管理</td><td class="yes">✓（50件）</td><td class="yes">✓</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
           <tr><td>メール通知（確認）</td><td class="yes">✓</td><td class="yes">✓</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
-          <tr><td>クーポン発行</td><td class="no">–</td><td class="yes">✓</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>クーポン発行</td><td class="yes">✓</td><td class="yes">✓</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>機材・オプション追加</td><td class="no">–</td><td class="yes">✓</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>学割設定</td><td class="no">–</td><td class="yes">✓</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>予約特典（その他割引）</td><td class="no">–</td><td class="yes">✓</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>割り勘決済</td><td class="no">–</td><td class="yes">✓</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
           <tr><td>CSV出力</td><td class="no">–</td><td class="yes">✓</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
           <tr><td>売上レポート（基本）</td><td class="no">–</td><td class="yes">✓</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
           <tr><td>スタッフ管理</td><td class="no">–</td><td class="yes">✓</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
           <tr class="grp"><td colspan="5">上位機能</td></tr>
           <tr><td>稼働率ヒートマップ</td><td class="no">–</td><td class="no">–</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
-          <tr><td>トップページ優先掲載</td><td class="no">–</td><td class="no">–</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>トップページ掲載</td><td class="yes">掲載</td><td class="yes">掲載</td><td class="std yes">優先掲載</td><td class="yes">優先掲載</td></tr>
           <tr><td>自動リマインダーメール</td><td class="no">–</td><td class="no">–</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
-          <tr><td>直前割引・タイムセール</td><td class="no">–</td><td class="no">–</td><td class="std yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>直前割引・タイムセール</td><td class="no">–</td><td class="no">–</td><td class="std no">–</td><td class="yes">✓</td></tr>
+          <tr><td>LINEログイン</td><td class="no">–</td><td class="yes" style="font-size:12px">¥9,500</td><td class="std yes" style="font-size:12px">¥9,500</td><td class="yes">✓</td></tr>
           <tr class="grp"><td colspan="5">プロ限定</td></tr>
           <tr><td>顧客ランク管理</td><td class="no">–</td><td class="no">–</td><td class="std no">–</td><td class="yes">✓</td></tr>
           <tr><td>キャンセル待ち機能</td><td class="no">–</td><td class="no">–</td><td class="std no">–</td><td class="yes">✓</td></tr>
@@ -560,7 +566,7 @@
         </tbody>
       </table>
     </div>
-    <p class="opt-note">オプション：カスタムドメイン ¥1,000/月　／　店舗設定サポート（初期設定の代行）¥12,000（1回）</p>
+    <p class="opt-note">オプション：カスタムドメイン ¥1,000/月　／　店舗設定サポート（初期設定の代行）¥12,000（1回）<br>トップページは全プラン掲載され、Standard以上が上位に優先表示されます（同じ順位帯では写真を登録している店舗が上位に表示されやすくなります）。<br>LINEログインはProが標準機能。Light・Standardは買い切りオプション¥9,500で利用可、Freeは利用不可です。<br>フリープランは顧客登録50件までです。</p>
   </div>
 </section>
 
@@ -578,7 +584,7 @@
 </section>
 
 <footer>
-  © 2026 JOCOLLA Inc. Studi-Go Div.
+  © 2026 JOCOLLA Inc. Studi-Go Div.<br><span style="opacity:.65;font-size:11px">最終更新: 2026年8月8日</span>
 </footer>
 
 </body>

@@ -20,6 +20,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Resend } from "resend";
 import { syncLeadToOutreach } from "@/lib/outreach-sync";
 import { INTAKE_COLLECTION, emptyIntakeData, type StoreIntake } from "@/lib/intake";
+import { describePlanRoomMismatch } from "@/lib/plan-features";
 
 const CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
@@ -232,6 +233,10 @@ function internalNotifyText(
         `流入元LP　　　 : ${a.lp || "（直接・不明）"}${campaignFromLp(a.lp) ? " → 有料プラン2ヶ月無料の対象（承認時に自動適用）" : ""}`,
     ].join("\n");
 
+    // 申込フォームは JS でプランを制限しているので通常ここには来ないが、
+    // 直接APIを叩かれた場合に備えて警告だけ出す（申込自体は成立させる）。
+    const mismatch = describePlanRoomMismatch(a.plan, Number(a.rooms));
+
     const todo = !reply.sent
         ? `【要手動対応】申込者へ受付連絡が届いていません。
 ${onboardUrl ? `招待リンクは発行済みなので、下記URLを添えて手動で連絡してください。\n${onboardUrl}` : "/admin/invites で招待リンクを発行し、手動で連絡してください。"}`
@@ -241,7 +246,7 @@ ${onboardUrl ? `招待リンクは発行済みなので、下記URLを添えて�
           : `次のアクション: 先方の登録完了を待ち、/admin/invites で内容を確認して承認する`;
 
     return `【お申し込み】${a.shop}
-
+${mismatch ? `\n⚠️ プラン不整合: ${mismatch}\n　 プランのご案内が必要です。\n` : ""}
 ■ 自動処理の結果
 ${statusLines}
 
