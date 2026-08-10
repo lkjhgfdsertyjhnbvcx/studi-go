@@ -553,6 +553,34 @@ function ProfileTab({ store, setStore, notify }: any) {
 
 function BrandingTab({ store, setStore }: any) {
     const u = (k: string, v: any) => setStore({ ...store, [k]: v });
+
+    // 背景の設定先は bgColor / bgImageUrl と designSettings.* の2系統が存在する。
+    // 予約ページは designSettings を優先して読むため、片方だけ更新すると表示がズレる。
+    // 表示に使われる値（designSettings優先）を単一の真実として扱い、更新時は両方に書く。
+    const currentBgColor: string = store.designSettings?.backgroundColor || store.bgColor || "#ffffff";
+    const setBgColorEverywhere = (color: string) => {
+        setStore({
+            ...store,
+            bgColor: color,
+            designSettings: {
+                ...(store.designSettings || {}),
+                backgroundColor: color,
+                // 背景画像が未設定なら「色」モードに揃える
+                backgroundType: store.bgImageUrl || store.designSettings?.backgroundImageUrl ? (store.designSettings?.backgroundType || "image") : "color",
+            },
+        });
+    };
+    const setBgImageEverywhere = (url: string) => {
+        setStore({
+            ...store,
+            bgImageUrl: url,
+            designSettings: {
+                ...(store.designSettings || {}),
+                backgroundImageUrl: url,
+                backgroundType: url ? "image" : "color",
+            },
+        });
+    };
     return (
         <Section title="ブランディング">
             <div>
@@ -575,11 +603,25 @@ function BrandingTab({ store, setStore }: any) {
             <div>
                 <Label>背景色</Label>
                 <div className="flex gap-2 items-center mt-1">
-                    <input type="color" value={store.bgColor || "#1a1a2e"} onChange={e => u("bgColor", e.target.value)} className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-0" />
-                    <span className="text-sm font-bold text-muted-foreground">{store.bgColor || "#1a1a2e"}</span>
+                    {/* 260808: 背景色の保存先が bgColor と designSettings.backgroundColor の2つあり、
+                        この画面は bgColor だけを更新していた。一方、予約ページは designSettings 側を
+                        優先して読むため「白に変えたのに黒のまま」になっていた（S-force様の事例）。
+                        どちらを読んでも同じ色になるよう、常に両方を同時に更新する。 */}
+                    <input type="color" value={currentBgColor} onChange={e => setBgColorEverywhere(e.target.value)} className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-0" />
+                    <span className="text-sm font-bold text-muted-foreground">{currentBgColor}</span>
                 </div>
+                <div className="flex gap-2 mt-2">
+                    {["#ffffff", "#f5f5f7", "#1a1a2e", "#000000"].map(c => (
+                        <button key={c} onClick={() => setBgColorEverywhere(c)}
+                            className={`w-7 h-7 rounded-lg border-2 transition-all ${currentBgColor.toLowerCase() === c ? "border-purple-500 scale-110" : "border-border"}`}
+                            style={{ backgroundColor: c }} title={c} />
+                    ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1.5">
+                    文字色は背景の明るさに合わせて自動で切り替わります（白背景なら黒文字）。
+                </p>
             </div>
-            <StorageImageUpload label="背景画像" image={store.bgImageUrl} storagePath={`studios/${store.id}/bg`} onUpload={url => u("bgImageUrl", url)} />
+            <StorageImageUpload label="背景画像" image={store.bgImageUrl} storagePath={`studios/${store.id}/bg`} onUpload={url => setBgImageEverywhere(url)} />
             {store.bgImageUrl && (
                 <div>
                     <Label>背景画像の暗さ（オーバーレイ）: {Math.round((store.bgOpacity ?? 0.15) * 100)}%</Label>

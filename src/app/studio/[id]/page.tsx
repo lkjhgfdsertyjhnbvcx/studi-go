@@ -517,7 +517,7 @@ export default function StudioDetailPage() {
           <button key={t} onClick={() => { if(isSlotBooked(t)) return; setSelectedDate(dateToShow); chooseStart(t); setBookingStep("calendar"); }}
             disabled={isSlotBooked(t)}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all border
-              ${isSlotBooked(t) ? "opacity-40 cursor-not-allowed bg-accent/5 border-gray-800 line-through text-gray-500" : selectedStart === t ? "bg-purple-600 border-purple-500 text-white" : "bg-accent/10/50 border-gray-700 text-muted-foreground hover:text-foreground hover:border-gray-500"}`}>
+              ${isSlotBooked(t) ? "opacity-40 cursor-not-allowed bg-accent/5 border-gray-800 line-through text-gray-500" : selectedStart === t ? "bg-purple-600 border-purple-500 text-white" : "bg-black/5 dark:bg-white/10 border-gray-700 text-muted-foreground hover:text-foreground hover:border-gray-500"}`}>
             <span className="font-black w-12">{formatTime(t)}</span>
             <span className="text-gray-600">〜</span>
             <span className="ml-auto text-purple-400 font-black">
@@ -545,7 +545,14 @@ export default function StudioDetailPage() {
   // 個別に開放したい店舗は studios.featureOverrides.page_design = true で例外にできる。
   const canDesign = canUseFeature(studio.planKey, "page_design", studio.featureOverrides);
   const brandLogo = canDesign ? studio.logoUrl : undefined;
-  const brandBgImage = canDesign ? studio.bgImageUrl : undefined;
+  // 背景の設定先は designSettings.* と bgColor/bgImageUrl の2系統ある（歴史的経緯）。
+  // 260808: 店舗が背景を白にしても designSettings 側に古い黒が残っていて黒表示になる不具合があった。
+  // 新しく更新された側を採用したいが判別できないため、
+  //  - 画像: どちらかに入っていれば使う
+  //  - 色: designSettings を優先（従来通り）。ダッシュボードは両方同時に書くようにした。
+  const brandBgImage = canDesign
+    ? (studio.bgImageUrl || (studio as any).designSettings?.backgroundImageUrl || undefined)
+    : undefined;
   const brandBgColor = canDesign ? (studio.designSettings?.backgroundColor || studio.bgColor) : undefined;
   // フリープランのページには Studi-Go のロゴを入れる。
   // 260808: 当初 `&& !canDesign` を付けていたが、これは誤り。
@@ -571,8 +578,32 @@ export default function StudioDetailPage() {
   const effectiveTextColor = effectiveDark ? "#ffffff" : "#1d1d1f";
   const effectiveSubColor = effectiveDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.55)";
 
+  // 260808: カード類は bg-card（= 閲覧者端末のダークモード設定に追従）だったため、
+  // 店舗が背景を白にしていても、お客様がダークモード端末だと予約フォームだけ黒くなっていた。
+  // 店舗ページは「店舗が設定した配色」で常に表示されるべきなので、
+  // 背景の明暗から算出した固定色をカード・境界線・淡色背景に使う。
+  const surfaceStyle: React.CSSProperties = effectiveDark
+    ? { backgroundColor: "rgba(255,255,255,0.06)", borderColor: "rgba(255,255,255,0.16)", color: effectiveTextColor }
+    : { backgroundColor: "#ffffff", borderColor: "rgba(0,0,0,0.10)", color: effectiveTextColor };
+  const subtleStyle: React.CSSProperties = effectiveDark
+    ? { backgroundColor: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.14)" }
+    : { backgroundColor: "rgba(0,0,0,0.04)", borderColor: "rgba(0,0,0,0.10)" };
+
+  // text-foreground / text-muted-foreground / border-border など、テーマ変数を使った
+  // クラスが多数あるため、このページ内だけ変数を店舗の配色で上書きする。
+  // これで閲覧者端末のダークモード設定に引きずられなくなる。
+  const themeVars = {
+    "--foreground": effectiveTextColor,
+    "--card-foreground": effectiveTextColor,
+    "--muted-foreground": effectiveDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.58)",
+    "--border": effectiveDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.10)",
+    "--card": effectiveDark ? "rgba(255,255,255,0.06)" : "#ffffff",
+    "--accent": effectiveDark ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.8)",
+    "--background": bgHex,
+  } as React.CSSProperties;
+
   return (
-    <div className="min-h-screen relative" style={{ backgroundColor: bgHex, color: effectiveTextColor, backgroundImage: brandBgImage ? `url(${brandBgImage})` : undefined, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
+    <div className="min-h-screen relative" style={{ ...themeVars, backgroundColor: bgHex, color: effectiveTextColor, backgroundImage: brandBgImage ? `url(${brandBgImage})` : undefined, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
       {brandBgImage && <div className="fixed inset-0 pointer-events-none z-0" style={{ backgroundColor: `rgba(0,0,0,${studio.bgOpacity ?? 0.15})` }} />}
       <div className="relative z-10" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       {isPreview && (
@@ -648,7 +679,7 @@ export default function StudioDetailPage() {
                 <span className="font-medium">{studio.parkingInfo}</span></div>}
             </div>
             {studio.businessHours && (
-              <div className="bg-card border border-border rounded-2xl p-4">
+              <div className="border rounded-2xl p-4" style={surfaceStyle}>
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3">営業時間</p>
                 <div className="space-y-2">
                   {studio.businessHours.weekday && <div className="flex justify-between text-sm"><span className="text-muted-foreground font-bold">平日</span><span className="text-foreground font-black">{studio.businessHours.weekday}</span></div>}
@@ -790,7 +821,7 @@ export default function StudioDetailPage() {
         {selectedRoom && (
           <section className="mb-12">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="bg-card border border-border rounded-3xl overflow-hidden">
+              <div className="border rounded-3xl overflow-hidden" style={surfaceStyle}>
                 <div className="h-48 bg-accent/10">
                   {selectedRoom.images?.[0]
                     ? <img src={selectedRoom.images[0]} alt={selectedRoom.name} className="w-full h-full object-cover" />
@@ -808,7 +839,7 @@ export default function StudioDetailPage() {
                     <div className="space-y-1">
                       <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">平日料金</p>
                       {((selectedRoom.pricing as any).weekday as TimeSlot[]).map((slot, i) => (
-                        <div key={i} className="flex justify-between text-xs bg-accent/10/50 rounded-lg px-3 py-1.5">
+                        <div key={i} className="flex justify-between text-xs bg-black/5 dark:bg-white/10 rounded-lg px-3 py-1.5">
                           <span className="text-muted-foreground">{slot.start}〜{slot.end}</span>
                           <span className="text-foreground font-black">¥{slot.price.toLocaleString()}/h</span>
                         </div>
@@ -818,7 +849,7 @@ export default function StudioDetailPage() {
                 </div>
               </div>
 
-              <div className="bg-card border border-border rounded-3xl p-6 flex flex-col gap-4">
+              <div className="border rounded-3xl p-6 flex flex-col gap-4" style={surfaceStyle}>
                 <div className="flex items-center justify-between">
                   <button onClick={() => goCalendar(-1)} className="p-2 bg-accent/10 hover:bg-gray-700 rounded-lg text-muted-foreground transition-all text-xs">◀</button>
                   <p className="font-black text-foreground text-sm">{calLabel()}</p>
@@ -849,7 +880,7 @@ export default function StudioDetailPage() {
                 )}
               </div>
 
-              <div className="bg-card border border-border rounded-3xl p-6 flex flex-col gap-4">
+              <div className="border rounded-3xl p-6 flex flex-col gap-4" style={surfaceStyle}>
                 {!selectedDate ? (
                   <div className="flex-1 flex items-center justify-center">
                     <p className="text-gray-600 text-sm font-bold text-center">← まず日付を選んでください</p>
@@ -857,7 +888,7 @@ export default function StudioDetailPage() {
                 ) : bookingStep === "confirm" ? (
                   <div className="flex flex-col gap-4">
                     <p className="text-xs font-black text-purple-400 uppercase tracking-widest">予約確認</p>
-                    <div className="bg-accent/10/50 rounded-2xl p-4 space-y-2">
+                    <div className="bg-black/5 dark:bg-white/10 rounded-2xl p-4 space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground font-bold">日付</span>
                         <span className="text-foreground font-black">{selectedDate.toLocaleDateString("ja-JP", { month: "long", day: "numeric", weekday: "short" })}</span>
@@ -1068,7 +1099,7 @@ export default function StudioDetailPage() {
                             </button>
                           ))}
                         </div>
-                        <div className="bg-accent/10/50 rounded-2xl p-3 flex justify-between items-center">
+                        <div className="bg-black/5 dark:bg-white/10 rounded-2xl p-3 flex justify-between items-center">
                           <span className="text-muted-foreground text-xs font-bold">{formatTime(selectedStart)}〜{formatTime(selectedStart + selectedDuration)}</span>
                           <span className="text-purple-400 font-black">¥{totalPrice.toLocaleString()}</span>
                         </div>
