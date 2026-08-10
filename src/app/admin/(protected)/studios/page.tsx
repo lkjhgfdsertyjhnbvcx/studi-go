@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { Store, Trash2, ExternalLink, Search, Globe, EyeOff, Clock } from "lucide-react";
+import { Store, Trash2, ExternalLink, Search, Globe, EyeOff, Clock, Copy, Check } from "lucide-react";
 
 const PLANS: Record<string, { name: string; color: string }> = {
     free:     { name: "フリー",       color: "#9ca3af" },
@@ -28,6 +28,7 @@ export default function StudiosAdminPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<"all" | "published" | "unpublished">("all");
+    const [copiedId, setCopiedId] = useState<string | null>(null);
     const [deleting, setDeleting] = useState<string | null>(null);
     const [toggling, setToggling] = useState<string | null>(null);
 
@@ -264,6 +265,31 @@ export default function StudiosAdminPage() {
                                                 >
                                                     代理編集
                                                 </Link>
+                                                {/* お客様に見える予約ページ（非公開でもこのURLで開ける） */}
+                                                <a
+                                                    href={`/studio/${s.id}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1 whitespace-nowrap"
+                                                    title={`予約ページを開く（/studio/${s.id}）`}
+                                                >
+                                                    <ExternalLink className="w-3 h-3" />
+                                                    予約ページ
+                                                </a>
+                                                {/* 店舗に案内するURLをコピー */}
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(`${window.location.origin}/studio/${s.id}`);
+                                                        setCopiedId(s.id);
+                                                        setTimeout(() => setCopiedId(null), 2000);
+                                                    }}
+                                                    className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent/20 rounded-lg transition-all"
+                                                    title="予約ページのURLをコピー"
+                                                >
+                                                    {copiedId === s.id
+                                                        ? <Check className="w-4 h-4 text-emerald-500" />
+                                                        : <Copy className="w-4 h-4" />}
+                                                </button>
                                                 <button
                                                     onClick={() => handleDelete(s.id, s.storeName || s.email)}
                                                     disabled={deleting === s.id}
