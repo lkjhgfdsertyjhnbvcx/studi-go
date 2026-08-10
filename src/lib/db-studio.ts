@@ -111,12 +111,15 @@ export interface StudioProfile {
         enabled: boolean;
         discountType: 'amount' | 'percentage';
         value: number;
+        /** 個人練習の予約にも適用するか（未設定=false: 個人練習では表示・適用しない） */
+        applyToPersonalPractice?: boolean;
     };
     otherDiscounts?: Array<{
         name: string;
         enabled: boolean;
         discountType: 'amount' | 'percentage';
         value: number;
+        applyToPersonalPractice?: boolean;
     }>;
     personalPracticeSettings?: PersonalPracticeSettings;
     designSettings?: DesignSettings;

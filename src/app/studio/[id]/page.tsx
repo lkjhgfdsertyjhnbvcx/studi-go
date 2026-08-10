@@ -22,8 +22,8 @@ interface Studio {
   equipmentOptions?: EquipmentOption[];
   designSettings?: { backgroundColor?: string; backgroundType?: string; backgroundImageUrl?: string; logoSize?: number; showMap?: boolean };
   personalPracticeSettings?: { enabled: boolean; maxPeople: number; pricePerHour?: number };
-  studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string; timeRestriction?: { enabled: boolean; days: number[]; slots: { start: string; end: string }[] } };
-  otherDiscounts?: Array<{ name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string }>;
+  studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string; timeRestriction?: { enabled: boolean; days: number[]; slots: { start: string; end: string }[] }; applyToPersonalPractice?: boolean };
+  otherDiscounts?: Array<{ name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string; timeRestriction?: { enabled: boolean; days: number[]; slots: { start: string; end: string }[] }; applyToPersonalPractice?: boolean }>;
   personalPracticeDiscounts?: Array<{ name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string; timeRestriction?: { enabled: boolean; days: number[]; slots: { start: string; end: string }[] } }>;
   paymentMethod?: "store" | "studigo";
   stripeAccountId?: string;
@@ -317,12 +317,21 @@ export default function StudioDetailPage() {
       : "全時間";
     return `${dayPart} ${slotPart}`;
   })();
-  const studentDiscountAmount = (isStudentDiscount && studio?.studentDiscount?.enabled && studentEligibleByTime)
-    ? calcDiscount(studio.studentDiscount.value, studio.studentDiscount.discountType, studio.studentDiscount.billingUnit)
+  // 個人練習の予約に通常の割引を適用するかは店舗設定次第（既定は適用しない）。
+  // 個人練習には専用の「個人練習割引」があり、学割等が二重に効くのを防ぐ。
+  const allowsInPersonalPractice = (d?: { applyToPersonalPractice?: boolean }) =>
+    !isPersonalPractice || d?.applyToPersonalPractice === true;
+
+  const studentEligible = studio?.studentDiscount?.enabled
+    && studentEligibleByTime
+    && allowsInPersonalPractice(studio.studentDiscount);
+  const studentDiscountAmount = (isStudentDiscount && studentEligible)
+    ? calcDiscount(studio!.studentDiscount!.value, studio!.studentDiscount!.discountType, studio!.studentDiscount!.billingUnit)
     : 0;
   const otherDiscountAmount = selectedOtherDiscounts.reduce((sum, idx) => {
     const d = studio?.otherDiscounts?.[idx];
     if (!d || !d.enabled) return sum;
+    if (!allowsInPersonalPractice(d)) return sum;
     return sum + calcDiscount(d.value, d.discountType, d.billingUnit);
   }, 0);
   // 個人練習割引のうち、時間帯・曜日制限を満たすものだけを有効扱いにする（学割と同じ判定）。
@@ -904,7 +913,16 @@ export default function StudioDetailPage() {
                       {studio.personalPracticeSettings?.enabled && (
                         <div className="border-t border-gray-700 pt-2 mt-2">
                           <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={isPersonalPractice} onChange={e => { setIsPersonalPractice(e.target.checked); if (!e.target.checked) setSelectedPPDiscounts([]); }} className="w-4 h-4 accent-purple-600 rounded" />
+                            <input type="checkbox" checked={isPersonalPractice} onChange={e => {
+                              const on = e.target.checked;
+                              setIsPersonalPractice(on);
+                              if (!on) setSelectedPPDiscounts([]);
+                              else {
+                                // 個人練習に切り替えたら、個人練習に適用しない割引の選択を外す
+                                if (studio?.studentDiscount?.applyToPersonalPractice !== true) setIsStudentDiscount(false);
+                                setSelectedOtherDiscounts(prev => prev.filter(i => studio?.otherDiscounts?.[i]?.applyToPersonalPractice === true));
+                              }
+                            }} className="w-4 h-4 accent-purple-600 rounded" />
                             <span className="text-sm font-bold text-foreground">個人練習で利用する</span>
                           </label>
                           {isPersonalPractice && (studio as any).personalPracticeDiscounts?.filter((d: any) => d.enabled).length > 0 && (
@@ -945,10 +963,12 @@ export default function StudioDetailPage() {
                           )}
                         </div>
                       )}
-                      {(studio.studentDiscount?.enabled || (studio.otherDiscounts && studio.otherDiscounts.filter(d => d.enabled).length > 0)) && (
+                      {/* 個人練習では、店舗が「個人練習にも適用する」を有効にした割引だけ出す */}
+                      {((studio.studentDiscount?.enabled && allowsInPersonalPractice(studio.studentDiscount))
+                        || (studio.otherDiscounts && studio.otherDiscounts.filter(d => d.enabled && allowsInPersonalPractice(d)).length > 0)) && (
                         <div className="border-t border-gray-700 pt-2 mt-2 space-y-2">
                           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">割引</p>
-                          {studio.studentDiscount?.enabled && studentEligibleByTime && (
+                          {studio.studentDiscount?.enabled && studentEligibleByTime && allowsInPersonalPractice(studio.studentDiscount) && (
                             <label className="flex items-center justify-between cursor-pointer">
                               <div className="flex items-center gap-2">
                                 <input
@@ -964,11 +984,12 @@ export default function StudioDetailPage() {
                               </span>
                             </label>
                           )}
-                          {studio.studentDiscount?.enabled && studentTR?.enabled && !studentEligibleByTime && (
+                          {studio.studentDiscount?.enabled && studentTR?.enabled && !studentEligibleByTime && allowsInPersonalPractice(studio.studentDiscount) && (
                             <p className="text-[10px] text-muted-foreground">学割対象: {studentRestrictionLabel}（対象の日時を選ぶと割引が表示されます）</p>
                           )}
                           {studio.otherDiscounts?.map((d, i) => {
                             if (!d.enabled) return null;
+                            if (!allowsInPersonalPractice(d)) return null;
                             const available = isDiscountAvailable(d, selectedDate, selectedStart);
                             return (
                             <label key={i} className={`flex items-center justify-between ${available ? "cursor-pointer" : "opacity-40 cursor-not-allowed"}`}>

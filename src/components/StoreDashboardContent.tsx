@@ -64,7 +64,9 @@ interface Room {
 interface StaffMember { id: string; name: string; email: string; password?: string; role: "admin" | "staff"; createdAt: string; }
 interface BlacklistEntry { userId: string; userName: string; email?: string; reason: string; createdAt: string; }
 interface EquipmentOption { name: string; pricePerHour: number; priceType?: "per_use" | "per_hour"; imageUrl?: string; quantity?: number; category?: "amp" | "drums" | "mic" | "pa" | "guitar" | "bass" | "keys" | "other"; status?: "active" | "maintenance" | "broken"; assignedRoom?: string; }
-interface Discount { name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: "per_use" | "per_hour"; timeRestriction?: { enabled: boolean; days: number[]; slots: { start: string; end: string }[] }; }
+interface Discount { name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: "per_use" | "per_hour"; timeRestriction?: { enabled: boolean; days: number[]; slots: { start: string; end: string }[] };
+    /** 個人練習の予約にもこの割引を適用するか。未設定(=false)なら個人練習では表示・適用しない。 */
+    applyToPersonalPractice?: boolean; }
 interface Store {
     id: string; storeName: string; companyName?: string; representative?: string; email?: string;
     postalCode?: string; address?: string; phone?: string; invoiceNumber?: string; closedDays?: string;
@@ -73,7 +75,7 @@ interface Store {
     businessHours?: { weekday: string; saturday: string; sundayHoliday: string };
     reservationLeadDays?: number;
     personalPracticeSettings?: { enabled: boolean; maxPeople: number; advanceDays?: number; advanceHours?: number; pricePerHour?: number; };
-    studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: "per_use" | "per_hour"; timeRestriction?: { enabled: boolean; days: number[]; slots: { start: string; end: string }[] } };
+    studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: "per_use" | "per_hour"; timeRestriction?: { enabled: boolean; days: number[]; slots: { start: string; end: string }[] }; applyToPersonalPractice?: boolean };
     otherDiscounts?: Discount[];
     personalPracticeDiscounts?: Discount[];
     holidayPeriods?: Array<{ name: string; start: string; end: string }>;
@@ -764,6 +766,10 @@ function SettingsTab({ store, setStore }: any) {
                             </select>
                         </div>
                         <DiscountTimeEditor timeRestriction={store.studentDiscount?.timeRestriction} onChange={(tr: any) => u("studentDiscount", { ...store.studentDiscount, timeRestriction: tr })} />
+                        <PersonalPracticeApplyToggle
+                            value={store.studentDiscount?.applyToPersonalPractice}
+                            onChange={v => u("studentDiscount", { ...store.studentDiscount, applyToPersonalPractice: v })}
+                        />
                     </div>
                 )}
                 </PlanGate>
@@ -788,6 +794,10 @@ function SettingsTab({ store, setStore }: any) {
                                 <Toggle label="有効" value={d.enabled} onChange={v => uDiscount(idx, "enabled", v)} />
                             </div>
                             <DiscountTimeEditor timeRestriction={d.timeRestriction} onChange={tr => uDiscount(idx, "timeRestriction", tr)} />
+                            <PersonalPracticeApplyToggle
+                                value={d.applyToPersonalPractice}
+                                onChange={v => uDiscount(idx, "applyToPersonalPractice", v)}
+                            />
                         </div>
                     ))}
                     <button onClick={() => setStore({ ...store, otherDiscounts: [...(store.otherDiscounts || []), { name: "", enabled: true, discountType: "amount", value: 0 }] })} className="w-full py-2 border border-dashed border-border rounded-xl text-xs font-black text-muted-foreground hover:text-foreground transition-all">
@@ -878,6 +888,26 @@ function SettingsTab({ store, setStore }: any) {
                 </div>
             </Subsection>
         </Section>
+    );
+}
+
+// ===== 個人練習にも適用するかの切り替え（学割・その他割引で共用） =====
+// 既定は「適用しない」。個人練習には専用の「個人練習割引設定」があるため、
+// バンド利用向けの学割などが個人練習にも二重で効いてしまうのを防ぐ。
+function PersonalPracticeApplyToggle({ value, onChange }: { value?: boolean; onChange: (v: boolean) => void }) {
+    return (
+        <label className="flex items-start gap-2 cursor-pointer select-none mt-1">
+            <input
+                type="checkbox"
+                checked={!!value}
+                onChange={e => onChange(e.target.checked)}
+                className="mt-0.5 w-3.5 h-3.5 accent-purple-600"
+            />
+            <span className="text-[10px] text-muted-foreground leading-snug">
+                個人練習の予約にも適用する
+                <span className="block opacity-80">オフの場合、個人練習では表示されません（個人練習向けは「個人練習割引設定」で設定してください）</span>
+            </span>
+        </label>
     );
 }
 
