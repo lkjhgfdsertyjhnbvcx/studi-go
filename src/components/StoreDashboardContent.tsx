@@ -803,14 +803,19 @@ function SettingsTab({ store, setStore }: any) {
                                 </div>
                             );
                         })()}
-                        {/* 260810: 「当日のみ」「前日22時から」など受付開始を店舗ごとに指定できるようにする */}
-                        <div className="bg-accent/10 border border-border rounded-xl p-3">
+                        {/* 260810: 「当日のみ」「前日22時から」など受付開始を店舗ごとに指定できるようにする。
+                            「何日前から」だけでは "前日の22時から" のような時刻指定ができなかった。 */}
+                        <div className="border-2 border-purple-500/40 bg-purple-500/5 rounded-xl p-3">
+                            <p className="text-xs font-black text-foreground mb-1">個人練習の受付開始</p>
+                            <p className="text-[10px] text-muted-foreground mb-2 leading-snug">
+                                「前日の22:00から受付」のように、予約を受け付け始める日と時刻を指定できます。
+                            </p>
                             <Toggle
-                                label="受付開始のタイミングを指定する"
+                                label="受付開始の日時を指定する"
                                 value={store.personalPracticeSettings?.bookingOpen?.enabled ?? false}
                                 onChange={v => u("personalPracticeSettings", {
                                     ...store.personalPracticeSettings,
-                                    bookingOpen: { ...(store.personalPracticeSettings?.bookingOpen || { openDaysBefore: 0, openAtTime: "" }), enabled: v },
+                                    bookingOpen: { ...(store.personalPracticeSettings?.bookingOpen || { openDaysBefore: 1, openAtTime: "22:00" }), enabled: v },
                                 })}
                             />
                             {store.personalPracticeSettings?.bookingOpen?.enabled && (
@@ -855,6 +860,11 @@ function SettingsTab({ store, setStore }: any) {
                                 <input type="number" min="0" className="w-16 p-2 bg-accent/10 border border-border rounded-lg text-sm font-bold text-foreground outline-none text-center" value={store.personalPracticeSettings?.advanceDays ?? 1} onChange={e => u("personalPracticeSettings", { ...store.personalPracticeSettings, advanceDays: parseInt(e.target.value) })} />
                                 <span className="text-sm text-muted-foreground">日前から</span>
                             </div>
+                            {store.personalPracticeSettings?.bookingOpen?.enabled && (
+                                <p className="text-[10px] text-muted-foreground mt-1">
+                                    ※ 上の「受付開始の日時」を指定している場合は、そちらが優先されます。
+                                </p>
+                            )}
                         </div>
                         <div>
                             <p className="text-xs text-muted-foreground font-bold mb-1.5">何時間前まで予約できるか</p>

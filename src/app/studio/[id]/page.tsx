@@ -132,6 +132,9 @@ export default function StudioDetailPage() {
   const [isPersonalPractice, setIsPersonalPractice] = useState(false);
   // 個人練習の利用人数（1人あたり課金の店舗で料金・割引に掛ける）
   const [personCount, setPersonCount] = useState(1);
+  // 個人練習割引ごとの「適用する人数」。2人で1人だけ学生というケースに対応する。
+  // キー: personalPracticeDiscounts の index
+  const [ppDiscountPeople, setPpDiscountPeople] = useState<Record<number, number>>({});
   const [selectedPPDiscounts, setSelectedPPDiscounts] = useState<number[]>([]);
   const [selectedNightPack, setSelectedNightPack] = useState<number | null>(null);
 
@@ -372,9 +375,11 @@ export default function StudioDetailPage() {
   const ppDiscountAmount = !ppActive ? 0 : eligiblePPDiscounts.reduce((sum, idx) => {
     const d = studio?.personalPracticeDiscounts?.[idx];
     if (!d) return sum;
-    // 1人あたり課金の店舗では割引も人数分（200円/h × 2時間 × 2人 = 800円）。
+    // 1人あたり課金の店舗では割引も人数分だが、対象者だけに適用する。
+    // 例: 2人で利用し1人だけ学生 → 学割は1人分（200円/h × 2時間 × 1人 = 400円）。
     // %割引は小計に対する割合なので人数倍しない（小計に既に人数分が乗っている）。
-    const mult = d.discountType === "percentage" ? 1 : ppPeopleMultiplier;
+    const applied = ppPerPerson ? Math.min(ppDiscountPeople[idx] ?? ppPeople, ppPeople) : 1;
+    const mult = d.discountType === "percentage" ? 1 : applied;
     return sum + calcDiscount(d.value, d.discountType, d.billingUnit) * mult;
   }, 0);
   const totalPrice = Math.max(0, subtotal - studentDiscountAmount - otherDiscountAmount - ppDiscountAmount);
@@ -1000,7 +1005,15 @@ export default function StudioDetailPage() {
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-xs font-bold text-muted-foreground">利用人数</span>
                                 {Array.from({ length: Math.max(1, studio.personalPracticeSettings?.maxPeople || 1) }, (_, i) => i + 1).map(n => (
-                                  <button key={n} onClick={() => setPersonCount(n)}
+                                  <button key={n} onClick={() => {
+                                    setPersonCount(n);
+                                    // 利用人数を減らしたとき、割引の適用人数がそれを超えないように詰める
+                                    setPpDiscountPeople(prev => {
+                                      const next: Record<number, number> = {};
+                                      for (const [k, v] of Object.entries(prev)) next[Number(k)] = Math.min(v, n);
+                                      return next;
+                                    });
+                                  }}
                                     className={`px-3 py-1.5 rounded-lg text-xs font-black border transition-all ${ppPeople === n ? "bg-purple-600 border-purple-500 text-white" : "bg-accent/10 border-gray-700 text-muted-foreground hover:text-foreground"}`}>
                                     {n}人
                                   </button>
@@ -1035,16 +1048,44 @@ export default function StudioDetailPage() {
                                     </p>
                                   );
                                 }
+                                const checked = selectedPPDiscounts.includes(i);
+                                // 1人あたり課金かつ複数人のときは「何人に適用するか」を選べる。
+                                // 例: 2人で利用し1人だけ学生 → 学割は1人分だけ。
+                                const showPeoplePicker = checked && ppPerPerson && ppPeople > 1 && d.discountType !== "percentage";
+                                const appliedPeople = Math.min(ppDiscountPeople[i] ?? ppPeople, ppPeople);
                                 return (
-                                  <label key={i} className="flex items-center justify-between cursor-pointer">
-                                    <div className="flex items-center gap-2">
-                                      <input type="checkbox" checked={selectedPPDiscounts.includes(i)} onChange={e => setSelectedPPDiscounts(prev => e.target.checked ? [...prev, i] : prev.filter(x => x !== i))} className="w-4 h-4 accent-purple-600 rounded" />
-                                      <span className="text-sm font-bold text-foreground">{d.name}</span>
-                                    </div>
-                                    <span className="text-xs font-bold text-purple-300">
-                                      -{d.value}{d.discountType === "percentage" ? "%" : "円"}{d.billingUnit === "per_hour" ? "/h" : "/回"}
-                                    </span>
-                                  </label>
+                                  <div key={i}>
+                                    <label className="flex items-center justify-between cursor-pointer">
+                                      <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={checked} onChange={e => {
+                                          const on = e.target.checked;
+                                          setSelectedPPDiscounts(prev => on ? [...prev, i] : prev.filter(x => x !== i));
+                                          // 初回チェック時は全員に適用（従来どおり）。外したら人数指定も破棄。
+                                          setPpDiscountPeople(prev => {
+                                            const next = { ...prev };
+                                            if (on) next[i] = ppPeople; else delete next[i];
+                                            return next;
+                                          });
+                                        }} className="w-4 h-4 accent-purple-600 rounded" />
+                                        <span className="text-sm font-bold text-foreground">{d.name}</span>
+                                      </div>
+                                      <span className="text-xs font-bold text-purple-300">
+                                        -{d.value}{d.discountType === "percentage" ? "%" : "円"}{d.billingUnit === "per_hour" ? "/h" : "/回"}
+                                      </span>
+                                    </label>
+                                    {showPeoplePicker && (
+                                      <div className="ml-6 mt-1 flex items-center gap-1.5 flex-wrap">
+                                        <span className="text-[10px] text-muted-foreground font-bold">適用人数</span>
+                                        {Array.from({ length: ppPeople }, (_, k) => k + 1).map(n => (
+                                          <button key={n} onClick={() => setPpDiscountPeople(prev => ({ ...prev, [i]: n }))}
+                                            className={`px-2 py-1 rounded-md text-[10px] font-black border transition-all ${appliedPeople === n ? "bg-purple-600 border-purple-500 text-white" : "bg-accent/10 border-gray-700 text-muted-foreground hover:text-foreground"}`}>
+                                            {n}人
+                                          </button>
+                                        ))}
+                                        <span className="text-[10px] text-muted-foreground">（{ppPeople}人中）</span>
+                                      </div>
+                                    )}
+                                  </div>
                                 );
                               })}
                             </div>
@@ -1104,12 +1145,30 @@ export default function StudioDetailPage() {
                       )}
                       {/* 個人練習は人数で金額が変わるため、内訳に人数を明記する */}
                       {ppActive && (
-                        <div className="flex justify-between text-xs border-t border-gray-700 pt-2 mt-2">
-                          <span className="text-muted-foreground font-bold">個人練習</span>
-                          <span className="text-foreground font-bold">
-                            {ppPeople}人{ppPerPerson && ppUnitPrice > 0 ? `（¥${ppUnitPrice.toLocaleString()}/h × ${ppPeople}人）` : ""}
-                          </span>
-                        </div>
+                        <>
+                          <div className="flex justify-between text-xs border-t border-gray-700 pt-2 mt-2">
+                            <span className="text-muted-foreground font-bold">個人練習</span>
+                            <span className="text-foreground font-bold">
+                              {ppPeople}人{ppPerPerson && ppUnitPrice > 0 ? `（¥${ppUnitPrice.toLocaleString()}/h × ${ppPeople}人）` : ""}
+                            </span>
+                          </div>
+                          {/* 割引の適用人数を明記（2人で1人だけ学生などのケースを確認できるように） */}
+                          {eligiblePPDiscounts.map(idx => {
+                            const d = studio.personalPracticeDiscounts?.[idx] as any;
+                            if (!d) return null;
+                            const applied = ppPerPerson ? Math.min(ppDiscountPeople[idx] ?? ppPeople, ppPeople) : 1;
+                            const mult = d.discountType === "percentage" ? 1 : applied;
+                            const amount = calcDiscount(d.value, d.discountType, d.billingUnit) * mult;
+                            return (
+                              <div key={idx} className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">
+                                  {d.name}{ppPerPerson && d.discountType !== "percentage" ? `（${applied}人分）` : ""}
+                                </span>
+                                <span className="text-purple-300 font-bold">-¥{amount.toLocaleString()}</span>
+                              </div>
+                            );
+                          })}
+                        </>
                       )}
                       <div className="flex justify-between text-sm border-t border-gray-700 pt-2 mt-2">
                         <span className="text-muted-foreground font-bold">合計</span>
