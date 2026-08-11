@@ -192,6 +192,20 @@ export default function StudiosAdminPage() {
                                                 <div>
                                                     <p className="font-bold text-foreground text-sm">{s.storeName || "（名称未設定）"}</p>
                                                     <p className="text-xs text-muted-foreground">{s.email}</p>
+                                                    {/* 個人練習の単価が「1人あたり」か「部屋単位」か未指定の店舗を運営側でも把握できるようにする。
+                                                        誤った側で計算すると過大・過小請求になるため。 */}
+                                                    {(() => {
+                                                        const pp = s.personalPracticeSettings;
+                                                        const needs = pp?.enabled && Number(pp?.pricePerHour) > 0
+                                                            && Math.max(1, Number(pp?.maxPeople) || 1) > 1
+                                                            && pp?.perPersonPricing === undefined;
+                                                        if (!needs) return null;
+                                                        return (
+                                                            <span className="inline-block mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-500/15 text-yellow-700 dark:text-yellow-300 border border-yellow-600/40">
+                                                                個人練習の料金単位が未指定
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                         </td>

@@ -774,18 +774,35 @@ function SettingsTab({ store, setStore }: any) {
                         </div>
                         {/* 260810: 1人あたり課金の店舗（例: 900円/人）に対応。
                             料金だけでなく個人練習割引も人数分になる（200円/人 × 2人 = 400円）。 */}
-                        <div className="bg-accent/10 border border-border rounded-xl p-3">
-                            <Toggle
-                                label="料金・割引を1人あたりで計算する"
-                                value={store.personalPracticeSettings?.perPersonPricing ?? false}
-                                onChange={v => u("personalPracticeSettings", { ...store.personalPracticeSettings, perPersonPricing: v })}
-                            />
-                            <p className="text-[10px] text-muted-foreground mt-1.5 leading-snug">
-                                {store.personalPracticeSettings?.perPersonPricing
-                                    ? `オン: 人数分を加算します（例 ${store.personalPracticeSettings?.pricePerHour || 900}円 × 2人 = ${(store.personalPracticeSettings?.pricePerHour || 900) * 2}円／個人練習割引も人数分）`
-                                    : "オフ: 人数に関係なく部屋単位の料金になります"}
-                            </p>
-                        </div>
+                        {(() => {
+                            const pp = store.personalPracticeSettings || {};
+                            const unit = Number(pp.pricePerHour) || 0;
+                            const maxP = Math.max(1, Number(pp.maxPeople) || 1);
+                            const isPerPerson = pp.perPersonPricing === true;
+                            // 単価が入っていて複数人可なのに未指定だと、店舗の意図（1人あたり／部屋単位）が
+                            // 判別できず金額を誤りやすい。設定漏れに気づけるよう確認を促す。
+                            const needsDecision = unit > 0 && maxP > 1 && pp.perPersonPricing === undefined;
+                            return (
+                                <div className={`border rounded-xl p-3 ${needsDecision ? "border-yellow-600/60 bg-yellow-500/10" : "border-border bg-accent/10"}`}>
+                                    {needsDecision && (
+                                        <p className="text-[11px] font-bold text-yellow-800 dark:text-yellow-300 mb-2 leading-snug">
+                                            ⚠ 確認してください: 個人練習の料金 {unit.toLocaleString()}円/時間 は「1人あたり」ですか、それとも「部屋単位（人数に関わらず一定）」ですか？
+                                            下のスイッチで指定してください。現在は<b>部屋単位</b>として計算しています。
+                                        </p>
+                                    )}
+                                    <Toggle
+                                        label="料金・割引を1人あたりで計算する"
+                                        value={isPerPerson}
+                                        onChange={v => u("personalPracticeSettings", { ...store.personalPracticeSettings, perPersonPricing: v })}
+                                    />
+                                    <p className="text-[10px] text-muted-foreground mt-1.5 leading-snug">
+                                        {isPerPerson
+                                            ? `オン: 人数分を加算します（${(unit || 900).toLocaleString()}円 × ${maxP}人 = ${((unit || 900) * maxP).toLocaleString()}円／個人練習割引も人数分）`
+                                            : `オフ: 人数に関わらず ${unit > 0 ? `${unit.toLocaleString()}円/時間` : "部屋の料金"} になります（${maxP}人まで同額）`}
+                                    </p>
+                                </div>
+                            );
+                        })()}
                         {/* 260810: 「当日のみ」「前日22時から」など受付開始を店舗ごとに指定できるようにする */}
                         <div className="bg-accent/10 border border-border rounded-xl p-3">
                             <Toggle
