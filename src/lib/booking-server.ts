@@ -60,8 +60,12 @@ export async function computeAuthoritativeRoomPrice(params: {
     date: string;
     startTime: string;
     durationHours: number;
+    /** 個人練習として予約するか（専用単価・人数分課金の判定に使う） */
+    isPersonalPractice?: boolean;
+    /** 個人練習の利用人数（1人あたり課金の店舗で使う） */
+    personCount?: number;
 }): Promise<number | null> {
-    const { studioId, roomId, roomName, date, startTime, durationHours } = params;
+    const { studioId, roomId, roomName, date, startTime, durationHours, isPersonalPractice, personCount } = params;
     if (!studioId || !date || !startTime) return null;
 
     const studio: any = await getStudioByIdFromFirestore(studioId);
@@ -81,12 +85,71 @@ export async function computeAuthoritativeRoomPrice(params: {
     // 30分単位に対応（0.5刻みで積む）。計算方法は顧客向けページと必ず揃える。
     const dur = Math.max(0.5, Math.floor((Number(durationHours) || 1) * 2) / 2);
 
+    // 260810: 個人練習は部屋の通常料金より安い専用単価を持てる。
+    // これを見ないと「部屋料金を下限」とする検証で個人練習の予約が必ず弾かれる
+    // （例: 部屋2500円/h に対し個人練習900円/h → 事前決済が常に失敗していた）。
+    const pp = studio?.personalPracticeSettings;
+    if (isPersonalPractice && pp?.enabled && Number(pp.pricePerHour) > 0) {
+        const people = pp.perPersonPricing === true
+            ? Math.min(Math.max(1, Math.floor(Number(personCount) || 1)), Math.max(1, Number(pp.maxPeople) || 1))
+            : 1;
+        return Math.round(Number(pp.pricePerHour) * dur * people);
+    }
+
     let total = 0;
     for (let t = 0; t < dur; t += 0.5) {
         const rate = getPriceForTime(room.pricing, basePrice, dayType, Math.floor(startHour + t));
         total += rate * Math.min(0.5, dur - t);
     }
     return Math.round(total);
+}
+
+/**
+ * 店舗が設定した割引のうち、この予約で適用可能な最大の割引額を求める。
+ * クライアントが申告する割引後の金額を検証するための「引いてよい上限」。
+ * 260810: これが無いと割引後の金額が常に下限を割り、正しい予約まで弾かれていた。
+ */
+export async function computeMaxDiscount(params: {
+    studioId: string;
+    subtotal: number;
+    durationHours: number;
+    isPersonalPractice?: boolean;
+    personCount?: number;
+}): Promise<number> {
+    const { studioId, subtotal, durationHours, isPersonalPractice, personCount } = params;
+    const studio: any = await getStudioByIdFromFirestore(studioId);
+    if (!studio) return 0;
+
+    const dur = Math.max(0.5, Number(durationHours) || 1);
+    const pp = studio.personalPracticeSettings;
+    const people = (isPersonalPractice && pp?.perPersonPricing === true)
+        ? Math.min(Math.max(1, Math.floor(Number(personCount) || 1)), Math.max(1, Number(pp?.maxPeople) || 1))
+        : 1;
+
+    const amountOf = (d: any, peopleMult: number) => {
+        if (!d || d.enabled === false) return 0;
+        const v = Number(d.value) || 0;
+        if (d.discountType === "percentage") return Math.round(subtotal * v / 100);
+        const unit = d.billingUnit === "per_hour" ? dur : 1;
+        return Math.round(v * unit * peopleMult);
+    };
+
+    let total = 0;
+    // 通常の割引（学割・その他）。個人練習では店舗が明示的に許可したものだけ。
+    const generalOk = (d: any) => !isPersonalPractice || d?.applyToPersonalPractice === true;
+    if (studio.studentDiscount?.enabled && generalOk(studio.studentDiscount)) {
+        total += amountOf(studio.studentDiscount, 1);
+    }
+    for (const d of (Array.isArray(studio.otherDiscounts) ? studio.otherDiscounts : [])) {
+        if (generalOk(d)) total += amountOf(d, 1);
+    }
+    // 個人練習割引（1人あたり課金なら人数分）
+    if (isPersonalPractice) {
+        for (const d of (Array.isArray(studio.personalPracticeDiscounts) ? studio.personalPracticeDiscounts : [])) {
+            total += amountOf(d, people);
+        }
+    }
+    return Math.max(0, total);
 }
 
 /**
@@ -104,6 +167,8 @@ export async function validateBookingAmount(params: {
     startTime: string;
     durationHours: number;
     claimedTotal: number;
+    isPersonalPractice?: boolean;
+    personCount?: number;
 }): Promise<{ ok: boolean; authoritative: number | null; message?: string }> {
     const authoritative = await computeAuthoritativeRoomPrice(params);
     const claimed = Number(params.claimedTotal);
@@ -115,7 +180,20 @@ export async function validateBookingAmount(params: {
         // 料金を再計算できない場合は検証スキップ（既存挙動を維持）
         return { ok: true, authoritative };
     }
-    if (claimed < authoritative) {
+
+    // 260810: 店舗が設定した割引の分だけ下限を下げる。
+    // これが無いと、学割や個人練習割引を使った正しい予約が「金額が正しくありません」で
+    // 弾かれてしまう（割引後の金額は必ず部屋料金を下回るため）。
+    const maxDiscount = await computeMaxDiscount({
+        studioId: params.studioId,
+        subtotal: authoritative,
+        durationHours: params.durationHours,
+        isPersonalPractice: params.isPersonalPractice,
+        personCount: params.personCount,
+    });
+    const floor = Math.max(0, authoritative - maxDiscount);
+
+    if (claimed < floor) {
         return {
             ok: false,
             authoritative,

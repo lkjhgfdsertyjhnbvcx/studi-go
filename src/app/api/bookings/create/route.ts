@@ -13,6 +13,9 @@ const BookingInput = z.object({
     userCount: z.coerce.number().int().min(1).max(1000).optional(),
     totalPrice: z.coerce.number().int().min(0).max(10_000_000).optional(),
     userId: z.string().max(200).optional(),
+    // 個人練習は専用単価・人数分課金があるため、金額検証に必要
+    isPersonalPractice: z.boolean().optional(),
+    personCount: z.coerce.number().int().min(1).max(100).optional(),
 });
 
 export async function POST(request: Request) {
@@ -34,6 +37,8 @@ export async function POST(request: Request) {
             startTime: data.startTime,
             durationHours,
             claimedTotal: data.totalPrice ?? 0,
+            isPersonalPractice: data.isPersonalPractice,
+            personCount: data.personCount,
         });
         if (!amountCheck.ok) {
             return NextResponse.json({ error: amountCheck.message ?? "金額が正しくありません。" }, { status: 400 });

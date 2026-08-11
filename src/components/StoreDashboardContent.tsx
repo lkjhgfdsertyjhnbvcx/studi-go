@@ -772,6 +772,66 @@ function SettingsTab({ store, setStore }: any) {
                             </div>
                             <p className="text-[10px] text-muted-foreground mt-1">空欄の場合はスタジオの通常料金を使用</p>
                         </div>
+                        {/* 260810: 1人あたり課金の店舗（例: 900円/人）に対応。
+                            料金だけでなく個人練習割引も人数分になる（200円/人 × 2人 = 400円）。 */}
+                        <div className="bg-accent/10 border border-border rounded-xl p-3">
+                            <Toggle
+                                label="料金・割引を1人あたりで計算する"
+                                value={store.personalPracticeSettings?.perPersonPricing ?? false}
+                                onChange={v => u("personalPracticeSettings", { ...store.personalPracticeSettings, perPersonPricing: v })}
+                            />
+                            <p className="text-[10px] text-muted-foreground mt-1.5 leading-snug">
+                                {store.personalPracticeSettings?.perPersonPricing
+                                    ? `オン: 人数分を加算します（例 ${store.personalPracticeSettings?.pricePerHour || 900}円 × 2人 = ${(store.personalPracticeSettings?.pricePerHour || 900) * 2}円／個人練習割引も人数分）`
+                                    : "オフ: 人数に関係なく部屋単位の料金になります"}
+                            </p>
+                        </div>
+                        {/* 260810: 「当日のみ」「前日22時から」など受付開始を店舗ごとに指定できるようにする */}
+                        <div className="bg-accent/10 border border-border rounded-xl p-3">
+                            <Toggle
+                                label="受付開始のタイミングを指定する"
+                                value={store.personalPracticeSettings?.bookingOpen?.enabled ?? false}
+                                onChange={v => u("personalPracticeSettings", {
+                                    ...store.personalPracticeSettings,
+                                    bookingOpen: { ...(store.personalPracticeSettings?.bookingOpen || { openDaysBefore: 0, openAtTime: "" }), enabled: v },
+                                })}
+                            />
+                            {store.personalPracticeSettings?.bookingOpen?.enabled && (
+                                <div className="mt-2 space-y-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <select
+                                            className="p-2 bg-background border border-border rounded-lg text-sm font-bold text-foreground outline-none"
+                                            value={store.personalPracticeSettings?.bookingOpen?.openDaysBefore ?? 0}
+                                            onChange={e => u("personalPracticeSettings", {
+                                                ...store.personalPracticeSettings,
+                                                bookingOpen: { ...store.personalPracticeSettings.bookingOpen, openDaysBefore: parseInt(e.target.value) },
+                                            })}
+                                        >
+                                            <option value={0}>当日</option>
+                                            <option value={1}>前日</option>
+                                            <option value={2}>2日前</option>
+                                            <option value={3}>3日前</option>
+                                            <option value={7}>1週間前</option>
+                                        </select>
+                                        <span className="text-sm text-muted-foreground">の</span>
+                                        <input
+                                            type="time"
+                                            className="p-2 bg-background border border-border rounded-lg text-sm font-bold text-foreground outline-none"
+                                            value={store.personalPracticeSettings?.bookingOpen?.openAtTime || "00:00"}
+                                            onChange={e => u("personalPracticeSettings", {
+                                                ...store.personalPracticeSettings,
+                                                bookingOpen: { ...store.personalPracticeSettings.bookingOpen, openAtTime: e.target.value },
+                                            })}
+                                        />
+                                        <span className="text-sm text-muted-foreground">から受付</span>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground leading-snug">
+                                        例: 「前日 22:00 から受付」にすると、利用日の前日22時を過ぎるまで個人練習の予約はできません。
+                                        「当日 00:00」なら当日のみ受付になります。
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                         <div>
                             <p className="text-xs text-muted-foreground font-bold mb-1.5">何日前から予約できるか</p>
                             <div className="flex items-center gap-2">

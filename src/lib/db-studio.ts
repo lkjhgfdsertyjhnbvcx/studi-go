@@ -67,6 +67,26 @@ export interface PersonalPracticeSettings {
     reservationWindowType: 'hours' | 'days';
     reservationWindowValue: number;
     maxPeople: number;
+    pricePerHour?: number;
+    advanceDays?: number;
+    advanceHours?: number;
+    /**
+     * 個人練習の料金・割引を「1人あたり」で計算するか（260810追加）。
+     * true: 900円/h × 2人 = 1800円、割引200円/h × 2人 = 400円
+     * 未設定(false): 従来どおり部屋単位（人数に関係なく一定）
+     */
+    perPersonPricing?: boolean;
+    /**
+     * 受付開始タイミング（260810追加）。店舗ごとに指定できる。
+     * openDaysBefore: 何日前から受け付けるか（0=当日のみ、1=前日から）
+     * openAtTime: その日の何時から受け付けるか（"22:00"）。未設定なら0:00から。
+     * 未設定の場合は従来の reservationWindowType/Value による判定を使う。
+     */
+    bookingOpen?: {
+        enabled: boolean;
+        openDaysBefore: number;
+        openAtTime?: string;
+    };
 }
 
 export interface DesignSettings {

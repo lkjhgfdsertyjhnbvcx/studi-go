@@ -12,6 +12,7 @@ export async function POST(request: Request) {
             date, startTime, durationHours,
             totalPrice, userId, userName, userEmail,
             selectedOptions,
+            isPersonalPractice, personCount,
         } = body;
 
         if (!studioId || !date || !startTime) {
@@ -57,6 +58,8 @@ export async function POST(request: Request) {
             status: "confirmed",
             paymentStatus: "unpaid",
             paymentMethod: "onsite",  // 店頭払い
+            // 個人練習の内容も残す（店舗が当日の利用形態・人数を把握できるように）
+            ...(isPersonalPractice ? { isPersonalPractice: true, userCount: Math.max(1, Number(personCount) || 1) } : {}),
             createdAt: new Date().toISOString(),
         } as any);
 

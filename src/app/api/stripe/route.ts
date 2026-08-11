@@ -27,6 +27,9 @@ export async function POST(request: Request) {
             splitPerson: z.coerce.number().int().min(1).max(100).optional(),
             splitTotal: z.coerce.number().int().min(0).max(10_000_000).optional(),
             splitMemberCount: z.coerce.number().int().min(1).max(100).optional(),
+            // 個人練習は専用単価・人数分課金があるため、金額検証に必要
+            isPersonalPractice: z.boolean().optional(),
+            personCount: z.coerce.number().int().min(1).max(100).optional(),
         });
         const parsedInput = StripeInput.safeParse(rawBody);
         if (!parsedInput.success) {
@@ -42,6 +45,7 @@ export async function POST(request: Request) {
             skipBooking, existingBookingId,
             // 割り勘情報
             splitPerson, splitTotal, splitMemberCount,
+            isPersonalPractice, personCount,
         } = body;
 
         let bookingId = existingBookingId || "";
@@ -53,6 +57,7 @@ export async function POST(request: Request) {
             studioId, roomId, roomName, date, startTime,
             durationHours: durationHours || 1,
             claimedTotal: intendedTotal,
+            isPersonalPractice, personCount,
         });
         if (!amountCheck.ok) {
             return NextResponse.json({ error: amountCheck.message ?? "金額が正しくありません。" }, { status: 400 });

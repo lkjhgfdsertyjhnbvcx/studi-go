@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { parseBusinessHours } from "@/lib/business-hours";
+import { personalPracticeBookingOpen } from "@/lib/personal-practice";
 import { useParams, useSearchParams } from "next/navigation";
 import { canUseLineBooking, canUseFeature, getPlanLimits } from "@/lib/plan-features";
 
@@ -21,7 +22,13 @@ interface Studio {
   nightPacks?: Array<{ name: string; enabled: boolean; startHour: number; endHour: number; price: number; availableDays: string[] }>;
   equipmentOptions?: EquipmentOption[];
   designSettings?: { backgroundColor?: string; backgroundType?: string; backgroundImageUrl?: string; logoSize?: number; showMap?: boolean };
-  personalPracticeSettings?: { enabled: boolean; maxPeople: number; pricePerHour?: number };
+  personalPracticeSettings?: {
+    enabled: boolean; maxPeople: number; pricePerHour?: number;
+    /** 料金・割引を1人あたりで計算するか */
+    perPersonPricing?: boolean;
+    /** 受付開始タイミング（前日22:00から など） */
+    bookingOpen?: { enabled: boolean; openDaysBefore: number; openAtTime?: string };
+  };
   studentDiscount?: { enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string; timeRestriction?: { enabled: boolean; days: number[]; slots: { start: string; end: string }[] }; applyToPersonalPractice?: boolean };
   otherDiscounts?: Array<{ name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string; timeRestriction?: { enabled: boolean; days: number[]; slots: { start: string; end: string }[] }; applyToPersonalPractice?: boolean }>;
   personalPracticeDiscounts?: Array<{ name: string; enabled: boolean; discountType: "amount" | "percentage"; value: number; billingUnit?: string; timeRestriction?: { enabled: boolean; days: number[]; slots: { start: string; end: string }[] } }>;
@@ -123,6 +130,8 @@ export default function StudioDetailPage() {
   const [isStudentDiscount, setIsStudentDiscount] = useState(false);
   const [selectedOtherDiscounts, setSelectedOtherDiscounts] = useState<number[]>([]);
   const [isPersonalPractice, setIsPersonalPractice] = useState(false);
+  // 個人練習の利用人数（1人あたり課金の店舗で料金・割引に掛ける）
+  const [personCount, setPersonCount] = useState(1);
   const [selectedPPDiscounts, setSelectedPPDiscounts] = useState<number[]>([]);
   const [selectedNightPack, setSelectedNightPack] = useState<number | null>(null);
 
@@ -271,12 +280,24 @@ export default function StudioDetailPage() {
   // 部屋の通常料金の代わりにこの単価を使う。
   // 260807まで、この設定は保存はされるものの料金計算にどこからも参照されておらず、
   // 「個人練習を割安に設定したのに通常料金で課金される」状態だった。
+  // 受付開始（「前日22:00から」等）の判定を先に済ませる。
+  // 受付前の日は個人練習として扱わないため、料金も通常料金に戻す。
+  const selectedDateStr = selectedDate
+    ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`
+    : "";
+  const ppOpen = personalPracticeBookingOpen(selectedDateStr, studio?.personalPracticeSettings?.bookingOpen);
+  const ppOpenOk = ppOpen.open;
+
   const ppUnitPrice = Number(studio?.personalPracticeSettings?.pricePerHour ?? 0);
-  const usePersonalPracticeRate = isPersonalPractice && ppUnitPrice > 0;
+  const usePersonalPracticeRate = isPersonalPractice && ppOpenOk && ppUnitPrice > 0;
+  // 260810: 1人あたり課金の店舗に対応（900円/人 × 2人 = 1800円）。
+  // 個人練習割引も同じ倍率で人数分になる（200円/人 × 2人 = 400円）。
+  const ppPerPerson = isPersonalPractice && studio?.personalPracticeSettings?.perPersonPricing === true;
+  const ppPeopleMultiplier = ppPerPerson ? Math.max(1, personCount) : 1;
 
   const calcRoomPrice = () => {
     if (!selectedDate || selectedStart === null || !selectedRoom) return 0;
-    if (usePersonalPracticeRate) return Math.round(ppUnitPrice * selectedDuration);
+    if (usePersonalPracticeRate) return Math.round(ppUnitPrice * selectedDuration * ppPeopleMultiplier);
     // 30分単位に対応するため0.5刻みで積む。30分は該当時間帯の単価の半額。
     let total = 0;
     for (let t = 0; t < selectedDuration; t += 0.5) {
@@ -342,10 +363,16 @@ export default function StudioDetailPage() {
       return !!d && d.enabled && isDiscountAvailable(d, selectedDate, selectedStart);
     })
     : [];
-  const ppDiscountAmount = eligiblePPDiscounts.reduce((sum, idx) => {
+  // 受付開始前の日に切り替えられた場合、個人練習の選択は無効として扱う
+  // （チェックが残ったまま金額に反映されるのを防ぐ）
+  const ppActive = isPersonalPractice && ppOpen.open;
+  const ppDiscountAmount = !ppActive ? 0 : eligiblePPDiscounts.reduce((sum, idx) => {
     const d = studio?.personalPracticeDiscounts?.[idx];
     if (!d) return sum;
-    return sum + calcDiscount(d.value, d.discountType, d.billingUnit);
+    // 1人あたり課金の店舗では割引も人数分（200円/h × 2時間 × 2人 = 800円）。
+    // %割引は小計に対する割合なので人数倍しない（小計に既に人数分が乗っている）。
+    const mult = d.discountType === "percentage" ? 1 : ppPeopleMultiplier;
+    return sum + calcDiscount(d.value, d.discountType, d.billingUnit) * mult;
   }, 0);
   const totalPrice = Math.max(0, subtotal - studentDiscountAmount - otherDiscountAmount - ppDiscountAmount);
 
@@ -428,6 +455,9 @@ export default function StudioDetailPage() {
           userId: "guest",
           userName: "",
           userEmail: "",
+          // 個人練習の情報も渡す（店舗が予約内容を把握でき、サーバー側の金額検証にも使う）
+          isPersonalPractice: ppActive,
+          personCount: ppActive ? personCount : 1,
         }),
       });
       const data = await res.json();
@@ -953,9 +983,24 @@ export default function StudioDetailPage() {
                                 if (studio?.studentDiscount?.applyToPersonalPractice !== true) setIsStudentDiscount(false);
                                 setSelectedOtherDiscounts(prev => prev.filter(i => studio?.otherDiscounts?.[i]?.applyToPersonalPractice === true));
                               }
-                            }} className="w-4 h-4 accent-purple-600 rounded" />
-                            <span className="text-sm font-bold text-foreground">個人練習で利用する</span>
+                            }} disabled={!ppOpen.open} className="w-4 h-4 accent-purple-600 rounded disabled:opacity-40" />
+                            <span className={`text-sm font-bold ${ppOpen.open ? "text-foreground" : "text-muted-foreground"}`}>個人練習で利用する</span>
                           </label>
+                          {!ppOpen.open && (
+                            <p className="text-[10px] text-muted-foreground mt-1 ml-6">{ppOpen.message}</p>
+                          )}
+                          {/* 1人あたり課金の店舗では人数で金額が変わるため人数を選ばせる */}
+                          {isPersonalPractice && studio.personalPracticeSettings?.perPersonPricing && (
+                            <div className="mt-2 ml-6 flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-bold text-muted-foreground">利用人数</span>
+                              {Array.from({ length: Math.max(1, studio.personalPracticeSettings?.maxPeople || 1) }, (_, i) => i + 1).map(n => (
+                                <button key={n} onClick={() => setPersonCount(n)}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-black border transition-all ${personCount === n ? "bg-purple-600 border-purple-500 text-white" : "bg-accent/10 border-gray-700 text-muted-foreground hover:text-foreground"}`}>
+                                  {n}人
+                                </button>
+                              ))}
+                            </div>
+                          )}
                           {isPersonalPractice && (studio as any).personalPracticeDiscounts?.filter((d: any) => d.enabled).length > 0 && (
                             <div className="mt-2 ml-6 space-y-1">
                               <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">個人練習割引</p>
